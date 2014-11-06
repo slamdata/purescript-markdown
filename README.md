@@ -2,10 +2,13 @@
 
 A Purescript library for parsing SlamData's dialect of Markdown, called *SlamDown*.
 
+**Note**: *As mentioned on Twitter, SlamData is offering a $1k bounty to the first Github user who submits a pull request that we merge into this repository which satisfies the requirements of the library (detailed below). This is a fun way to learn Purescript, contribute an MIT-licensed library to the Purescript community, and earn a little cash.*
+
+Direct comments / questions to [@jdegoes](http://twitter.com/jdegoes) on Twitter.
 
 ## Usage
 
-*This is a propose API subject to change.*
+*This is a proposed API and is subject to change.*
 
 ```purescript
 -- parsing
@@ -19,7 +22,7 @@ trace <<< renderMd <<< parseMarkdown "# foo"
 
 ### API
 
-*This is a propose API subject to change.*
+*This is a proposed API and is subject to change.*
 
 ```purescript
 parseMd :: String -> SlamDown
@@ -44,7 +47,7 @@ instance monoidSlamDown :: Monoid SlamDown
 
 ### Tests
 
-*This is a propose test suite subject to change.*
+*This is a proposed test suite and is subject to change.*
 
 The tests use [purescript-strongcheck](http://github.com/purescript-contrib/purescript-strongcheck) to verify that an arbitrary `SlamDown` document can be rendered as a `String` and then parsed to a `SlamDown` equal to the original.
 
