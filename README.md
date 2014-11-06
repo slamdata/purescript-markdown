@@ -10,8 +10,8 @@ A Purescript library for parsing SlamData's dialect of Markdown, called *SlamDow
 ```purescript
 -- parsing
 case parseMd "# foo" of 
-  Right (Header 1 "foo") -> trace "matched!"
-  _                      -> trace "did not match!"
+  Header 1 "foo" -> trace "matched!"
+  _              -> trace "did not match!"
 
 -- rendering
 trace <<< renderMd <<< parseMarkdown "# foo"
@@ -22,7 +22,7 @@ trace <<< renderMd <<< parseMarkdown "# foo"
 *This is a propose API subject to change.*
 
 ```purescript
-parseMd :: String -> Either String SlamDown
+parseMd :: String -> SlamDown
 
 class RenderMarkdown a
   renderMd :: SlamDown -> a
