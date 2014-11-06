@@ -17,7 +17,7 @@ case parseMd "# foo" of
   _              -> trace "did not match!"
 
 -- rendering
-trace <<< renderMd <<< parseMarkdown "# foo"
+(trace <<< renderMd <<< parseMarkdown) "# foo"
 ```
 
 ### API
