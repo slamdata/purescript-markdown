@@ -51,6 +51,8 @@ If an info-string is specified, the evaluation must use the specified language o
 
 TODO
 
+**Suggestions for better and / or less ambiguous syntax appreciated.**
+
 Credit to [Yevgeniy Brikman](http://brikis98.blogspot.com/2011/07/proposal-extend-markdown-syntax-to.html) for this idea.
 
 #### Text Input
@@ -77,8 +79,25 @@ phones = [] Android [x] iPhone [x] Blackberry
 city = {BOS, SFO, (NYC)}
 ```
 
+### Date
+
+```
+start = __ / __ / ____ (06/06/2015)
+```
+
+### Time
+
+```
+start = __ : __ (10:32 PM)
+```
+
+### DateTime
+
+start = __ / __ / ____ __ : __ (06/06/2015 12:00 PM)
+
 #### Required Fields
 
 ```
 zip code* = ________
 ```
+
