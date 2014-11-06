@@ -1,0 +1,16 @@
+{
+  "name":       "purescript-markdown",
+  "license":    "MIT",
+  "version":    "0.0.1",
+  "repository": "git@github.com:slamdata/purescript-markdown.git",
+  "contributors": [
+    "John A. De Goes <john@degoes.net> (http://degoes.net)"
+  ],
+  "devDependencies": {
+    "gulp":             "~3.8.8",
+    "gulp-purescript":  "~0.0.12",
+    "gulp-run":         "~1.6.4",
+    "run-sequence":     "~1.0.1",
+    "gulp-jsvalidate":  "~1.0.1"
+  }
+}
