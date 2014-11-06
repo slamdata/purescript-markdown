@@ -101,54 +101,68 @@ Code evaluation may be used for inline or block-level fenced code.
 
 If an info-string is specified, the evaluation must use the specified language or error. If no info-string is specified, the default language understood by the Markdown application is used.
 
-### Form Fields
-
-TODO
+### Form Elements
 
 **Suggestions for better and / or less ambiguous syntax appreciated.**
 
-Credit to [Yevgeniy Brikman](http://brikis98.blogspot.com/2011/07/proposal-extend-markdown-syntax-to.html) for this idea.
+Form fields allow the collection of named, weakly-typed user-input. All fields may have default values, and while it's possible to hard-code all static data and default values for all fields, it is also possible to use this feature in conjunction with code evaluation, so that data and default values are pulled dynamically by evaluating code.
+
+Although the suggested syntax has been modified and extended, original credit to [Yevgeniy Brikman](http://brikis98.blogspot.com/2011/07/proposal-extend-markdown-syntax-to.html) for the idea of allowing forms in Markdown.
 
 #### Text Input
 
 ```
 name = ________(default)
+
+name = ________(!`...`)
 ```
 
 #### Radio Buttons
 
 ```
 sex = (x) male () female
+
+sex = (!`...`) !`...`
 ```
 
 #### Checkboxes
 
 ```
 phones = [] Android [x] iPhone [x] Blackberry
+
+phones = [!`..`] !`...`
 ```
 
 #### Dropdowns
 
 ```
-city = {BOS, SFO, (NYC)}
+city = {BOS, SFO, NYC} (NYC)
+
+city = {!`...`} (!`...`)
 ```
 
 ### Date
 
 ```
 start = __ - __ - ____ (06-06-2015)
+
+start = __ - __ - ____ (!`...`)
 ```
 
 ### Time
 
 ```
 start = __ : __ (10:32 PM)
+
+start = __ : __ (!`...`)
 ```
 
 ### DateTime
 
 ```
 start = __ - __ - ____ __ : __ (06-06-2015 12:00 PM)
+
+start = __ - __ - ____ __ : __ (!`...`)
 ```
 
 #### Required Fields
