@@ -93,7 +93,9 @@ start = __ : __ (10:32 PM)
 
 ### DateTime
 
+```
 start = __ / __ / ____ __ : __ (06/06/2015 12:00 PM)
+```
 
 #### Required Fields
 
