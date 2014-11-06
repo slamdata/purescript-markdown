@@ -37,6 +37,11 @@ The parser produces an ADT which describes the structure of the document.
 
 ## Extensions to Common Markdown
 
+SlamDown extends Common Markdown in several ways:
+
+ * **Evaluated code blocks** &mdash; These code blocks are evaluated by the Markdown application and results of the evaluation are inserted into the document.
+ * **Form Elements** &mdash; Form elements may be named, given default values, and embedded into a document.
+
 ### Code Evaluation
 
 Fenced code blocks may be evaluated by prefixing them with an exclamation point character (`!`). The result of evaluating the code is then inserted into the document at that location.
