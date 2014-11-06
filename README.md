@@ -5,6 +5,8 @@ A Purescript library for parsing SlamData's dialect of Markdown, called *SlamDow
 
 ## Usage
 
+*This is a propose API subject to change.*
+
 ```purescript
 -- parsing
 case parseMd "# foo" of 
@@ -15,7 +17,9 @@ case parseMd "# foo" of
 trace <<< renderMd <<< parseMarkdown "# foo"
 ```
 
-## API
+### API
+
+*This is a propose API subject to change.*
 
 ```purescript
 parseMd :: String -> Either String SlamDown
@@ -26,7 +30,23 @@ class RenderMarkdown a
 instance renderMarkdownString :: RenderMarkdown String
 
 data SlamDown = ...
+
+instance eqSlamDown :: Eq SlamDown
+
+instance ordSlamDown :: Ord SlamDown
+
+instance showSlamDown :: Show SlamDown
+
+instance semigroupSlamDown :: Semigroup SlamDown
+
+instance monoidSlamDown :: Monoid SlamDown
 ```
+
+### Tests
+
+*This is a propose test suite subject to change.*
+
+The tests use [purescript-strongcheck](http://github.com/purescript-contrib/purescript-strongcheck) to verify that an arbitrary `SlamDown` document can be rendered as a `String` and then parsed to a `SlamDown` equal to the original.
 
 ## Features
 
