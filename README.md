@@ -2,6 +2,32 @@
 
 A Purescript library for parsing SlamData's dialect of Markdown, called *SlamDown*.
 
+
+## Usage
+
+```purescript
+-- parsing
+case parseMd "# foo" of 
+  Right (Header 1 "foo") -> trace "matched!"
+  _                      -> trace "did not match!"
+
+-- rendering
+trace <<< renderMd <<< parseMarkdown "# foo"
+```
+
+## API
+
+```purescript
+parseMd :: String -> Either String SlamDown
+
+class RenderMarkdown a
+  renderMd :: SlamDown -> a
+
+instance renderMarkdownString :: RenderMarkdown String
+
+data SlamDown = ...
+```
+
 ## Features
 
 In general, SlamDown is a subset of [Common Markdown](http://spec.commonmark.org/0.8/), supporting the following features:
