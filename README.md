@@ -53,7 +53,7 @@ The tests use [purescript-strongcheck](http://github.com/purescript-contrib/pure
 
 ## Features
 
-In general, SlamDown is a subset of [Common Markdown](http://spec.commonmark.org/0.8/), supporting the following features:
+In general, SlamDown is a subset of [CommonMark](http://spec.commonmark.org/0.8/), supporting the following features:
 
 * Leaf Blocks
   * Horizontal rules
@@ -84,9 +84,9 @@ Notably, HTML is not supported. Possibly, a safe subset of HTML could be added a
 
 The parser produces an ADT which describes the structure of the document.
 
-## Extensions to Common Markdown
+## Extensions to CommonMark
 
-SlamDown extends Common Markdown in several ways:
+SlamDown extends CommonMark in several ways:
 
  * **Evaluated code blocks** &mdash; These code blocks are evaluated by the Markdown application and results of the evaluation are inserted into the document.
  * **Form Elements** &mdash; Form elements may be named, given default values, and embedded into a document.
