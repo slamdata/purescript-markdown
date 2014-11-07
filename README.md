@@ -101,7 +101,7 @@ Code evaluation may be used for inline or block-level fenced code.
 
 If an info-string is specified, the evaluation must use the specified language or error. If no info-string is specified, the default language understood by the Markdown application is used.
 
-**Note**: This library does not provide any support for evaluation of code, and the code snippets are treated as completely opaque, but the documentation does define *semantics* for these blocks interact with other elements and with the rendering of the document.
+**Note**: This library does not provide any support for evaluation of code, and the code snippets are treated as completely opaque, but the documentation does define *semantics* for how these blocks interact with other elements and with the rendering of the document.
 
 ### Form Elements
 
