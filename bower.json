@@ -24,5 +24,8 @@
     "purescript-either": "~0.1.3",
     "purescript-maybe": "~0.2.1",
     "purescript-foldable-traversable": "~0.1.3"
+  },
+  "devDependencies": {
+    "purescript-strongcheck": "~0.4.8"
   }
 }
