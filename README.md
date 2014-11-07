@@ -101,21 +101,25 @@ Code evaluation may be used for inline or block-level fenced code.
 
 If an info-string is specified, the evaluation must use the specified language or error. If no info-string is specified, the default language understood by the Markdown application is used.
 
+**Note**: This library does not provide any support for evaluation of code, and the code snippets are treated as completely opaque, but the documentation does define *semantics* for these blocks interact with other elements and with the rendering of the document.
+
 ### Form Elements
 
 **Suggestions for better and / or less ambiguous syntax appreciated.**
 
-Form fields allow the collection of named, weakly-typed user-input. All fields may have default values, and while it's possible to hard-code all static data and default values for all fields, it is also possible to use this feature in conjunction with code evaluation, so that data and default values are pulled dynamically by evaluating code.
+Form fields allow the collection of named, weakly-typed user-input. All fields may have default values, and while it's possible to hard-code all static data and default values for all fields, it is also possible to use this feature in conjunction with code evaluation, so that data and default values are generated dynamically by evaluating code.
 
-Although the suggested syntax has been modified and extended, original credit to [Yevgeniy Brikman](http://brikis98.blogspot.com/2011/07/proposal-extend-markdown-syntax-to.html) for the idea of allowing forms in Markdown.
+Although the suggested syntax has been modified to be more consistent (with respect to default values) and extended to include other types (e.g. dates and times), original credit to [Yevgeniy Brikman](http://brikis98.blogspot.com/2011/07/proposal-extend-markdown-syntax-to.html) for the idea of allowing forms in Markdown.
 
 #### Text Input
 
 ```
-name = ________(default)
+name = ________ (default)
 
-name = ________(!`...`)
+name = ________ (!`...`)
 ```
+
+If code evaluation is used to produce the default, then the snippet must evaluate to textual content.
 
 #### Radio Buttons
 
@@ -125,6 +129,8 @@ sex = (x) male () female
 sex = (!`...`) !`...`
 ```
 
+If code evaluation is used to produce the values, then the first snippet must evaluate to a label, and the second snippet must evaluate to a list of labels.
+
 #### Checkboxes
 
 ```
@@ -132,6 +138,8 @@ phones = [] Android [x] iPhone [x] Blackberry
 
 phones = [!`..`] !`...`
 ```
+
+If code evaluation is used to produce the values, then the first snippet must evaluate to a list of booleans, and the second snippet must evaluate to a list of labels, and the two lists must have the same length.
 
 #### Dropdowns
 
@@ -141,6 +149,8 @@ city = {BOS, SFO, NYC} (NYC)
 city = {!`...`} (!`...`)
 ```
 
+If code evaluation is used to produce the set of choices, the snippet must evaluate to a list of labels. If code evaluation is used to produce the default choice, the snippet must evaluate to a label.
+
 ### Date
 
 ```
@@ -148,6 +158,8 @@ start = __ - __ - ____ (06-06-2015)
 
 start = __ - __ - ____ (!`...`)
 ```
+
+If code evaluation is used to produce the default, the snippet must evaluate to a date.
 
 ### Time
 
@@ -157,6 +169,8 @@ start = __ : __ (10:32 PM)
 start = __ : __ (!`...`)
 ```
 
+If code evaluation is used to produce the default, the snippet must evaluate to a time.
+
 ### DateTime
 
 ```
@@ -164,6 +178,8 @@ start = __ - __ - ____ __ : __ (06-06-2015 12:00 PM)
 
 start = __ - __ - ____ __ : __ (!`...`)
 ```
+
+If code evaluation is used to produce the default, the snippet must evaluate to a date / time.
 
 #### Required Fields
 
