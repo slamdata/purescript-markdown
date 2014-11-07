@@ -13,8 +13,8 @@ Direct comments / questions to [@jdegoes](http://twitter.com/jdegoes) on Twitter
 ```purescript
 -- parsing
 case parseMd "# foo" of 
-  Header 1 "foo" -> trace "matched!"
-  _              -> trace "did not match!"
+  Header1 (Text "foo") -> trace "matched!"
+  _                    -> trace "did not match!"
 
 -- rendering
 (trace <<< renderMd <<< parseMarkdown) "# foo"
