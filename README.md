@@ -2,7 +2,7 @@
 
 A Purescript library for parsing SlamData's dialect of Markdown, called *SlamDown*.
 
-**Note**: *As mentioned on Twitter, SlamData is offering a $1k bounty to the first Github user who submits a pull request that we merge into this repository which satisfies the requirements of the library (detailed below). This is a fun way to learn Purescript, contribute an MIT-licensed library to the Purescript community, and earn a little cash.*
+**Note**: *As mentioned on Twitter, SlamData is offering a $2k bounty to the first Github user who submits a pull request that we merge into this repository which satisfies the requirements of the library (detailed below). This is a fun way to learn Purescript, contribute an MIT-licensed library to the Purescript community, and earn a little cash.*
 
 Direct comments / questions to [@jdegoes](http://twitter.com/jdegoes) on Twitter.
 
