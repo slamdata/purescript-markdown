@@ -53,7 +53,7 @@ The tests use [purescript-strongcheck](http://github.com/purescript-contrib/pure
 
 ## Features
 
-In general, SlamDown is a subset of [CommonMark](http://spec.commonmark.org/0.10/), supporting the following features:
+In general, SlamDown is a subset of [CommonMark](http://spec.commonmark.org/), supporting the following features:
 
 * Leaf Blocks
   * Horizontal rules
