@@ -82,14 +82,16 @@ In general, SlamDown is a subset of [CommonMark](http://spec.commonmark.org/), s
 
 Notably, HTML is not supported. Possibly, a safe subset of HTML could be added at some point in time.
 
+In addition, a few simplifications have been made to exclude some more obscure and redundant cases. This makes the parser much simpler and cleans up the code considerably (if you really need full compatibility, PRs are welcome!).
+
 The parser produces an ADT which describes the structure of the document.
 
 ## Extensions to CommonMark
 
 SlamDown extends CommonMark in several ways:
 
- * **Evaluated code blocks** &mdash; These code blocks are evaluated by the Markdown application and results of the evaluation are inserted into the document.
- * **Form Elements** &mdash; Form elements may be named, given default values, and embedded into a document.
+ * **Evaluated code blocks** &mdash; These code blocks are evaluated by the Markdown application and results of the evaluation are inserted into the document. This is similar to an image which is essentially an evaluated link (restricted to image links).
+ * **Form Elements** &mdash; Form elements may be named, given default values, and embedded into a document. The host application decides what to do with them, if anything &mdash; beyond rendering them as forms.
 
 ### Code Evaluation
 
@@ -104,8 +106,6 @@ If an info-string is specified, the evaluation must use the specified language o
 **Note**: This library does not provide any support for evaluation of code, and the code snippets are treated as completely opaque, but the documentation does define *semantics* for how these blocks interact with other elements and with the rendering of the document.
 
 ### Form Elements
-
-**Suggestions for better and / or less ambiguous syntax appreciated.**
 
 Form fields allow the collection of named, weakly-typed user-input. All fields may have default values, and while it's possible to hard-code all static data and default values for all fields, it is also possible to use this feature in conjunction with code evaluation, so that data and default values are generated dynamically by evaluating code.
 
