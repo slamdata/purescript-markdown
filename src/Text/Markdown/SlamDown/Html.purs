@@ -62,3 +62,17 @@ toHtml (SlamDown bs) = map renderBlock bs
   renderInline (Code _ c) = Open "code" [] [Text c]
   renderInline (Link body url) = Open "a" [Attribute "href" url] (map renderInline body)
   renderInline (Image body url) = Open "img" [Attribute "src" url] (map renderInline body)
+  renderInline (FormField label req el) = Open "label" [Attribute "for" label] $ Text label : requiredLabel (renderFormElement label el)
+    where
+    requiredLabel els | req = Text "*" : els
+                      | otherwise = els
+                      
+  renderFormElement :: String -> FormField -> [Html]
+  renderFormElement label (TextBox (Literal value)) = 
+    [ Open "input" [ Attribute "type" "text"
+                   , Attribute "id" label
+                   , Attribute "type" label
+                   , Attribute "value" value
+                   ] [] ]
+  
+  renderFormElement _ _ = [Text "Unsupported form element"]

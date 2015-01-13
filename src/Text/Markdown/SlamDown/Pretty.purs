@@ -68,3 +68,13 @@ prettyPrintInline (Code e s) = bang <> "`" <> s <> "`"
   where bang = if e then "!" else ""
 prettyPrintInline (Link is url) = "[" <> prettyPrintInlines is <> "](" <> url <> ")"
 prettyPrintInline (Image is url) = "![" <> prettyPrintInlines is <> "](" <> url <> ")"
+prettyPrintInline (FormField l r e) = l <> star <> " = " <> prettyPrintFormElement e
+  where star = if r then "*" else" "
+  
+prettyPrintFormElement :: FormField -> String
+prettyPrintFormElement (TextBox value) = "______ (" <> prettyPrintExpr id value <> ")"
+prettyPrintFormElement _ = "Unsupported form element"
+
+prettyPrintExpr :: forall a. (a -> String) -> Expr a -> String
+prettyPrintExpr f (Literal a) = f a
+prettyPrintExpr _ (Evaluated code) = "!`" <> code <> "`"

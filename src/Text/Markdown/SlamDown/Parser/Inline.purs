@@ -53,7 +53,8 @@ inlines = many inline2 <* eof
             <|> try link
            
   inline2 :: Parser String Inline 
-  inline2 = try inline1
+  inline2 = try formField
+            <|> try inline1
             <|> try image
             <|> other 
       
@@ -92,6 +93,9 @@ inlines = many inline2 <* eof
                
   someOf :: (String -> Boolean) -> Parser String String
   someOf p = S.joinWith "" <$> some (satisfy p) 
+               
+  manyOf :: (String -> Boolean) -> Parser String String
+  manyOf p = S.joinWith "" <$> many (satisfy p) 
       
   code :: Parser String Inline
   code = do
@@ -133,6 +137,32 @@ inlines = many inline2 <* eof
     string "&"
     s <- S.joinWith "" <$> (noneOf [";"] `many1Till` string ";")
     return $ Entity $ "&" <> s <> ";"
+      
+  formField :: Parser String Inline
+  formField = FormField <$> label 
+                        <*> (skipSpaces *> required) 
+                        <*> (skipSpaces *> string "=" *> skipSpaces *> formElement)
+    where
+    label = someOf isAlphaNum
+    required = option false (string "*" *> pure true)
+      
+  formElement :: Parser String FormField
+  formElement = try textBox
+    where
+    textBox :: Parser String FormField
+    textBox = do
+      _ <- someOf ((==) "_")
+      skipSpaces
+      TextBox <$> parens (expr (manyOf ((/=) ")")))
+    
+    expr :: forall a. Parser String a -> Parser String (Expr a)
+    expr p = evaluated <|> Literal <$> p
+    
+    evaluated :: forall a. Parser String (Expr a)
+    evaluated = do
+      string "!"
+      ticks <- someOf ((==) "`")
+      Evaluated <$> S.joinWith "" <$> manyTill char (string ticks)
         
   other :: Parser String Inline
   other = do
@@ -142,6 +172,9 @@ inlines = many inline2 <* eof
             <|> (satisfy ((==) "\n") *> pure LineBreak)
             <|> pure (Str "\\")
        else pure (Str c)
+       
+  parens :: forall a. Parser String a -> Parser String a
+  parens p = string "(" *> skipSpaces *> p <* skipSpaces <* string ")"
   
-  scanSpaces :: Parser String Unit
-  scanSpaces = skipMany (satisfy ((==) " "))
+  skipSpaces :: Parser String Unit
+  skipSpaces = skipMany (satisfy ((==) " "))
