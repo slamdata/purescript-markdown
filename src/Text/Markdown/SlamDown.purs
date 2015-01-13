@@ -94,37 +94,24 @@ instance showExpr :: (Show a) => Show (Expr a) where
   show (Evaluated s) = "(Evaluated " ++ show s ++ ")"
  
 data FormField
-  = TextBox        (Expr String)
+  = TextBox        TextBoxType (Expr String)
   | RadioButtons   (Expr String) (Expr [String])
   | CheckBoxes     (Expr [Boolean]) (Expr [String])
   | DropDown       (Expr [String]) (Expr String)
-  | DatePicker     (Expr Date)
-  | TimePicker     (Expr Date)
-  | DateTimePicker (Expr DateTime) 
   
 instance showFormField :: Show FormField where
-  show (TextBox def) = "(TextBox " ++ show def ++ ")"
+  show (TextBox ty def) = "(TextBox " ++ show ty ++ " " ++ show def ++ ")"
   show (RadioButtons sel ls) = "(RadioButtons " ++ show sel ++ " " ++ show ls ++ ")"
   show (CheckBoxes bs ls) = "(CheckBoxes " ++ show bs ++ " " ++ show ls ++ ")"
   show (DropDown ls def) = "(DropDown " ++ show ls ++ " " ++ show def ++ ")"
-  show (DatePicker def) = "(DatePicker " ++ show def ++ ")"
-  show (TimePicker def) = "(TimePicker " ++ show def ++ ")"
-  show (DateTimePicker def) = "(DateTimePicker " ++ show def ++ ")"
-  
-data Date = Date Number Number Number
+ 
+data TextBoxType = PlainText | Date | Time | DateTime
 
-instance showDate :: Show Date where
-  show (Date mm dd yyyy) = "(Date " ++ show mm ++ " " ++ show dd ++ " " ++ show yyyy ++ ")"
-
-data Time = Time Number Number
-
-instance showTime :: Show Time where
-  show (Time hh mm) = "(Time " ++ show hh ++ " " ++ show mm ++ ")"
-
-data DateTime = DateTime Date Time
-
-instance showDateTime :: Show DateTime where
-  show (DateTime dt tm) = "(DateTime " ++ show dt ++ " " ++ show tm ++ ")"
+instance showTextBoxType :: Show TextBoxType where
+  show PlainText = "PlainText" 
+  show Date      = "Date" 
+  show Time      = "Time" 
+  show DateTime  = "DateTime" 
  
 everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
 everywhere b i (SlamDown bs) = SlamDown (map b' bs)

@@ -68,7 +68,7 @@ toHtml (SlamDown bs) = map renderBlock bs
                       | otherwise = els
                       
   renderFormElement :: String -> FormField -> [Html]
-  renderFormElement label (TextBox (Literal value)) = 
+  renderFormElement label (TextBox _ (Literal value)) = 
     [ Open "input" [ Attribute "type" "text"
                    , Attribute "id" label
                    , Attribute "name" label

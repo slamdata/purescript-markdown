@@ -124,6 +124,11 @@ main = do
   testDocument $ parseMd "city = {BOS, SFO, NYC} (NYC)"
   testDocument $ parseMd "city = {!`...`} (!`...`)"
   testDocument $ parseMd "phones = [] Android [x] iPhone [x] Blackberry"
-  testDocument $ parseMd "phones = [!`..`] !`...`"
-                         
+  testDocument $ parseMd "phones = [!`...`] !`...`"
+  testDocument $ parseMd "start = __ - __ - ____ (06-06-2015)"
+  testDocument $ parseMd "start = __ - __ - ____ (!`...`)"
+  testDocument $ parseMd "start = __ : __ (10:32 PM)"
+  testDocument $ parseMd "start = __ : __ (!`...`)"
+  testDocument $ parseMd "start = __ - __ - ____ __ : __ (06-06-2015 12:00 PM)"
+  testDocument $ parseMd "start = __ - __ - ____ __ : __ (!`...`)"
   trace "All tests passed!"

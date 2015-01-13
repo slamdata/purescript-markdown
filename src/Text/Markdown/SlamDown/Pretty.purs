@@ -72,8 +72,13 @@ prettyPrintInline (FormField l r e) = l <> star <> " = " <> prettyPrintFormEleme
   where star = if r then "*" else" "
   
 prettyPrintFormElement :: FormField -> String
-prettyPrintFormElement (TextBox value) = 
-  "______ (" <> prettyPrintExpr id id value <> ")"
+prettyPrintFormElement (TextBox ty value) = 
+  intro ty <> " (" <> prettyPrintExpr id id value <> ")"
+  where
+  intro PlainText = "______"
+  intro Date      = "__ - __ - ____"
+  intro Time      = "__ : __"
+  intro DateTime  = "__ - __ - ____ __ : __"
 prettyPrintFormElement (RadioButtons def lbls) = 
   prettyPrintExpr parens ((<>) "(x) ") def <> " " <> 
   prettyPrintExpr id (S.joinWith " " <<< map ((<>) "() ")) lbls

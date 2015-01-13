@@ -109,7 +109,7 @@ inlines = many inline2 <* eof
   link = Link <$> linkLabel <*> linkUrl
     where
     linkLabel :: Parser String [Inline]
-    linkLabel = string "[" *> manyTill inline0 (string "]")
+    linkLabel = string "[" *> manyTill (inline0 <|> other) (string "]")
     
     linkUrl :: Parser String String
     linkUrl = S.joinWith "" <$> (string "(" *> manyTill char (string ")"))
@@ -118,7 +118,7 @@ inlines = many inline2 <* eof
   image = Image <$> imageLabel <*> imageUrl
     where
     imageLabel :: Parser String [Inline]
-    imageLabel = string "![" *> manyTill inline1 (string "]")
+    imageLabel = string "![" *> manyTill (inline1 <|> other) (string "]")
     
     imageUrl :: Parser String String
     imageUrl = S.joinWith "" <$> (string "(" *> manyTill char (string ")"))
@@ -148,17 +148,38 @@ inlines = many inline2 <* eof
     required = option false (string "*" *> pure true)
       
   formElement :: Parser String FormField
-  formElement = try textBox
+  formElement = try (textBox DateTime dateTime)
+            <|> try (textBox Date date)
+            <|> try (textBox Time time)
+            <|> try (textBox PlainText plainText)
             <|> try radioButtons
             <|> try checkBoxes
             <|> try dropDown
     where
-    textBox :: Parser String FormField
-    textBox = do
-      _ <- someOf ((==) "_")
-      skipSpaces
-      TextBox <$> parens (expr id (manyOf ((/=) ")")))
+    textBox :: TextBoxType -> Parser String Unit -> Parser String FormField
+    textBox ty p = TextBox ty <$> (p *> skipSpaces *> parens (expr id (manyOf ((/=) ")"))))
       
+    plainText :: Parser String Unit
+    plainText = und
+    
+    und :: Parser String Unit
+    und = void $ someOf ((==) "_")
+    
+    dash :: Parser String Unit
+    dash = void $ string "-"
+    
+    colon :: Parser String Unit
+    colon = void $ string ":"
+      
+    date :: Parser String Unit
+    date = und *> skipSpaces *> dash *> skipSpaces *> und *> skipSpaces *> dash *> skipSpaces *> und
+      
+    time :: Parser String Unit
+    time = und *> skipSpaces *> colon *> skipSpaces *> und
+    
+    dateTime :: Parser String Unit
+    dateTime = date *> skipSpaces *> time
+    
     radioButtons :: Parser String FormField
     radioButtons = do
       def <- expr parens $ string "(x)" *> skipSpaces *> someOf isAlphaNum

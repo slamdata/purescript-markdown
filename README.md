@@ -19,27 +19,16 @@
       Fenced :: Boolean -> String -> CodeBlockType
 
 
-    data Date where
-      Date :: Number -> Number -> Number -> Date
-
-
-    data DateTime where
-      DateTime :: Date -> Time -> DateTime
-
-
     data Expr a where
       Literal :: a -> Expr a
       Evaluated :: String -> Expr a
 
 
     data FormField where
-      TextBox :: Expr String -> FormField
+      TextBox :: TextBoxType -> Expr String -> FormField
       RadioButtons :: Expr String -> Expr [String] -> FormField
       CheckBoxes :: Expr [Boolean] -> Expr [String] -> FormField
       DropDown :: Expr [String] -> Expr String -> FormField
-      DatePicker :: Expr Date -> FormField
-      TimePicker :: Expr Date -> FormField
-      DateTimePicker :: Expr DateTime -> FormField
 
 
     data Inline where
@@ -65,8 +54,11 @@
       SlamDown :: [Block] -> SlamDown
 
 
-    data Time where
-      Time :: Number -> Number -> Time
+    data TextBoxType where
+      PlainText :: TextBoxType
+      Date :: TextBoxType
+      Time :: TextBoxType
+      DateTime :: TextBoxType
 
 
 ### Type Class Instances
@@ -93,12 +85,6 @@
     instance showCodeAttr :: Show CodeBlockType
 
 
-    instance showDate :: Show Date
-
-
-    instance showDateTime :: Show DateTime
-
-
     instance showExpr :: (Show a) => Show (Expr a)
 
 
@@ -114,7 +100,7 @@
     instance showSlamDown :: Show SlamDown
 
 
-    instance showTime :: Show Time
+    instance showTextBoxType :: Show TextBoxType
 
 
 ### Values
