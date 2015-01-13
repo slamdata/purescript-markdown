@@ -72,9 +72,16 @@ prettyPrintInline (FormField l r e) = l <> star <> " = " <> prettyPrintFormEleme
   where star = if r then "*" else" "
   
 prettyPrintFormElement :: FormField -> String
-prettyPrintFormElement (TextBox value) = "______ (" <> prettyPrintExpr id value <> ")"
+prettyPrintFormElement (TextBox value) = 
+  "______ (" <> prettyPrintExpr id id value <> ")"
+prettyPrintFormElement (RadioButtons def lbls) = 
+  prettyPrintExpr parens ((<>) "(x) ") def <> " " <> 
+  prettyPrintExpr id (S.joinWith " " <<< map ((<>) "() ")) lbls
 prettyPrintFormElement _ = "Unsupported form element"
 
-prettyPrintExpr :: forall a. (a -> String) -> Expr a -> String
-prettyPrintExpr f (Literal a) = f a
-prettyPrintExpr _ (Evaluated code) = "!`" <> code <> "`"
+prettyPrintExpr :: forall a. (String -> String) -> (a -> String) -> Expr a -> String
+prettyPrintExpr _    f (Literal a) = f a
+prettyPrintExpr wrap _ (Evaluated code) = wrap $ "!`" <> code <> "`"
+
+parens :: String -> String
+parens s = "(" <> s <> ")"

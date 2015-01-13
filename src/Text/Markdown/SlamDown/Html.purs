@@ -71,8 +71,22 @@ toHtml (SlamDown bs) = map renderBlock bs
   renderFormElement label (TextBox (Literal value)) = 
     [ Open "input" [ Attribute "type" "text"
                    , Attribute "id" label
-                   , Attribute "type" label
+                   , Attribute "name" label
                    , Attribute "value" value
                    ] [] ]
+  renderFormElement label (RadioButtons (Literal def) (Literal ls)) = 
+    radio true def : map (radio false) ls
+    where
+    radio checked value =
+      Open "input" (checkedAttribute 
+                      [ Attribute "type" "radio"
+                      , Attribute "id" value
+                      , Attribute "name" label
+                      , Attribute "value" value
+                      ]) 
+                   [ Open "label" [Attribute "for" value] [Text value] ]
+      where
+      checkedAttribute xs | checked = Attribute "checked" "checked" : xs
+                          | otherwise = xs
   
   renderFormElement _ _ = [Text "Unsupported form element"]

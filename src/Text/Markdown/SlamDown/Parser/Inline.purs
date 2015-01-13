@@ -148,15 +148,24 @@ inlines = many inline2 <* eof
       
   formElement :: Parser String FormField
   formElement = try textBox
+            <|> try radioButtons
     where
     textBox :: Parser String FormField
     textBox = do
       _ <- someOf ((==) "_")
       skipSpaces
-      TextBox <$> parens (expr (manyOf ((/=) ")")))
+      TextBox <$> parens (expr id (manyOf ((/=) ")")))
+      
+    radioButtons :: Parser String FormField
+    radioButtons = do
+      def <- expr parens $ string "(x)" *> skipSpaces *> someOf isAlphaNum
+      skipSpaces
+      ls <- expr id $ many (skipSpaces *> string "()" *> skipSpaces *> someOf isAlphaNum)
+      return $ RadioButtons def ls
     
-    expr :: forall a. Parser String a -> Parser String (Expr a)
-    expr p = evaluated <|> Literal <$> p
+    expr :: forall a. (forall e. Parser String e -> Parser String e) -> 
+            Parser String a -> Parser String (Expr a)
+    expr f p = f evaluated <|> Literal <$> p
     
     evaluated :: forall a. Parser String (Expr a)
     evaluated = do

@@ -117,11 +117,9 @@ main = do
                          \\n\
                          \main = trace \"Hello World\"\n\
                          \~~~"
-  testDocument $ parseMd "Here is a text box:\n\
-                         \\n\
-                         \name = __ (Phil Freeman)"
-  testDocument $ parseMd "Here is a text box with an evaluated value:\n\
-                         \\n\
-                         \name = __ (!`name`)"
+  testDocument $ parseMd "name = __ (Phil Freeman)"
+  testDocument $ parseMd "name = __ (!`name`)"
+  testDocument $ parseMd "sex* = (x) male () female () other"
+  testDocument $ parseMd "sex* = (!`def`) !`others`"
                          
   trace "All tests passed!"
