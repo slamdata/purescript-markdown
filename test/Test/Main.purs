@@ -21,9 +21,6 @@ testDocument sd = do
   let printed = prettyPrintMd sd
       parsed = parseMd printed
   
-  trace "Printed: "
-  trace printed
-  
   trace "Parsed: "
   trace $ "  " <> show parsed
   
@@ -39,6 +36,7 @@ main = do
   testDocument $ parseMd "Paragraph with a [link](http://purescript.org)"
   testDocument $ parseMd "Paragraph with an ![image](image.png)"
   testDocument $ parseMd "Paragraph with some `embedded code`"
+  testDocument $ parseMd "Paragraph with some !`code which can be evaluated`"
   testDocument $ parseMd "Paragraph with _emphasis_"
   testDocument $ parseMd "Paragraph with _emphasis_ and __strong text__"
   testDocument $ parseMd "Paragraph with a\n\
@@ -104,5 +102,21 @@ main = do
                          \\n\
                          \main = trace \"Hello World\"\n\
                          \```"
+  testDocument $ parseMd "Some fenced code which can be evaluated:\n\
+                         \\n\
+                         \!~~~purescript\n\
+                         \import Debug.Trace\n\
+                         \\n\
+                         \main = trace \"Hello World\"\n\
+                         \~~~"
+
+  testDocument $ eval (\_ _ -> "Evaluated!")
+               $ parseMd "Some evaluated fenced code:\n\
+                         \\n\
+                         \!~~~purescript\n\
+                         \import Debug.Trace\n\
+                         \\n\
+                         \main = trace \"Hello World\"\n\
+                         \~~~"
                          
   trace "All tests passed!"

@@ -59,6 +59,6 @@ toHtml (SlamDown bs) = map renderBlock bs
   renderInline LineBreak = Closed "br"
   renderInline (Emph is) = Open "em" [] (map renderInline is)
   renderInline (Strong is) = Open "strong" [] (map renderInline is)
-  renderInline (Code c) = Open "code" [] [Text c]
+  renderInline (Code _ c) = Open "code" [] [Text c]
   renderInline (Link body url) = Open "a" [Attribute "href" url] (map renderInline body)
   renderInline (Image body url) = Open "img" [Attribute "src" url] (map renderInline body)

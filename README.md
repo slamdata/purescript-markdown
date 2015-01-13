@@ -16,7 +16,7 @@
 
     data CodeBlockType where
       Indented :: CodeBlockType
-      Fenced :: String -> CodeBlockType
+      Fenced :: Boolean -> String -> CodeBlockType
 
 
     data Inline where
@@ -27,7 +27,7 @@
       LineBreak :: Inline
       Emph :: [Inline] -> Inline
       Strong :: [Inline] -> Inline
-      Code :: String -> Inline
+      Code :: Boolean -> String -> Inline
       Link :: [Inline] -> String -> Inline
       Image :: [Inline] -> String -> Inline
 
@@ -74,6 +74,15 @@
     instance showSlamDown :: Show SlamDown
 
 
+### Values
+
+
+    eval :: (Maybe String -> [String] -> String) -> SlamDown -> SlamDown
+
+
+    everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
+
+
 ## Module Text.Markdown.SlamDown.Html
 
 ### Types
@@ -95,12 +104,6 @@
 
 
 ## Module Text.Markdown.SlamDown.Parser
-
-### Type Class Instances
-
-
-    instance showContainer :: Show Container
-
 
 ### Values
 

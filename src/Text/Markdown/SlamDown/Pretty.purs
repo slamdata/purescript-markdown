@@ -47,7 +47,10 @@ prettyPrintBlock (List lt bss) = concatMap listItem bss
   prettyPrintMarker (Bullet s) = s
   prettyPrintMarker (Ordered s) = "1" <> s
 prettyPrintBlock (CodeBlock Indented ss) = map (indent 4) ss
-prettyPrintBlock (CodeBlock (Fenced info) ss) = ["```" <> info] <> ss <> ["```"]
+prettyPrintBlock (CodeBlock (Fenced eval info) ss) = [bang <> "```" <> info] <> ss <> ["```"]
+  where
+  bang | eval = "!"
+       | otherwise = ""
 prettyPrintBlock Rule = ["***"]
 
 prettyPrintInlines :: [Inline] -> String
@@ -61,6 +64,7 @@ prettyPrintInline SoftBreak = "\n"
 prettyPrintInline LineBreak = "  \n"
 prettyPrintInline (Emph is) = "*" <> prettyPrintInlines is <> "*"
 prettyPrintInline (Strong is) = "**" <> prettyPrintInlines is <> "**"
-prettyPrintInline (Code s) = "`" <> s <> "`"
+prettyPrintInline (Code e s) = bang <> "`" <> s <> "`"
+  where bang = if e then "!" else ""
 prettyPrintInline (Link is url) = "[" <> prettyPrintInlines is <> "](" <> url <> ")"
 prettyPrintInline (Image is url) = "![" <> prettyPrintInlines is <> "](" <> url <> ")"

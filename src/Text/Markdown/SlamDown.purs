@@ -1,5 +1,7 @@
 module Text.Markdown.SlamDown where
 
+import Data.Array (map)
+import Data.Maybe
 import Data.Monoid
 import Data.Function (on)
 
@@ -45,7 +47,7 @@ data Inline
   | LineBreak  
   | Emph [Inline]  
   | Strong [Inline] 
-  | Code String
+  | Code Boolean String
   | Link [Inline] String   
   | Image [Inline] String
 
@@ -57,7 +59,7 @@ instance showInline :: Show Inline where
   show LineBreak        = "LineBreak"
   show (Emph is)        = "(Emph " ++ show is ++ ")"
   show (Strong is)      = "(Strong " ++ show is ++ ")"
-  show (Code s)         = "(Code " ++ show s ++ ")"
+  show (Code e s)       = "(Code " ++ show e ++ " " ++ show s ++ ")"
   show (Link is uri)    = "(Link " ++ show is ++ " " ++ show uri ++ ")"
   show (Image is uri)   = "(Image " ++ show is ++ " " ++ show uri ++ ")"
    
@@ -75,9 +77,36 @@ instance eqListType :: Eq ListType where
 
 data CodeBlockType 
   = Indented
-  | Fenced String
+  | Fenced Boolean String
 
 instance showCodeAttr :: Show CodeBlockType where
   show Indented      = "Indented"
-  show (Fenced info) = "(Fenced " ++ show info ++ ")"
+  show (Fenced eval info) = "(Fenced " ++ show eval ++ " " ++ show info ++ ")"
  
+everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
+everywhere b i (SlamDown bs) = SlamDown (map b' bs)
+  where
+  b' :: Block -> Block
+  b' (Paragraph is) = b (Paragraph (map i' is))
+  b' (Header n is) = b (Header n (map i' is))
+  b' (Blockquote bs) = b (Blockquote (map b' bs))
+  b' (List lt bss) = b (List lt (map (map b') bss))
+  b' other = b other
+  
+  i' :: Inline -> Inline
+  i' (Emph is)        = i (Emph (map i' is))
+  i' (Strong is)      = i (Strong (map i' is))
+  i' (Link is uri)    = i (Link (map i' is) uri)
+  i' (Image is uri)   = i (Image (map i' is) uri)
+  i' other = i other
+
+eval :: (Maybe String -> [String] -> String) -> SlamDown -> SlamDown
+eval f = everywhere b i
+  where
+  b :: Block -> Block
+  b (CodeBlock (Fenced true info) code) = CodeBlock (Fenced false info) [f (Just info) code]
+  b other = other
+
+  i :: Inline -> Inline
+  i (Code true code) = Code false (f Nothing [code])
+  i other = other

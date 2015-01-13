@@ -95,12 +95,10 @@ inlines = many inline2 <* eof
       
   code :: Parser String Inline
   code = do
+    eval <- option false (string "!" *> pure true)
     ticks <- someOf ((==) "`")
-    let end             = string ticks *> notFollowedBy (string "`")
-        nonBacktickSpan = someOf ((/=) "`")
-        backtickSpan    = someOf ((==) "`")
-    contents <- S.joinWith "" <$> manyTill (nonBacktickSpan <|> backtickSpan) end
-    return <<< Code <<< trim <<< trimEnd $ contents
+    contents <- S.joinWith "" <$> manyTill char (string ticks)
+    return <<< Code eval <<< trim <<< trimEnd $ contents
         
   link :: Parser String Inline
   link = Link <$> linkLabel <*> linkUrl

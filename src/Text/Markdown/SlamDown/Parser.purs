@@ -18,19 +18,8 @@ data Container
   | CSetextHeader Number
   | CBlockquote [Container]
   | CListItem ListType [Container]
-  | CCodeBlockFenced String [String]
+  | CCodeBlockFenced Boolean String [String]
   | CCodeBlockIndented [String]
-
-instance showContainer :: Show Container where
-  show (CText s)               = "(CText " ++ show s ++ ")"
-  show CBlank                  = "CBlank"
-  show CRule                   = "CRule"
-  show (CATXHeader n s)        = "(CATXHeader " ++ show n ++ " " ++ show s ++ ")"
-  show (CSetextHeader n)       = "(CSetextHeader " ++ show n ++ ")"
-  show (CBlockquote cs)        = "(CBlockquote " ++ show cs ++ ")"
-  show (CListItem lt cs)       = "(CListItem " ++ show lt ++ " " ++ show cs ++ ")"
-  show (CCodeBlockFenced s ss) = "(CCodeBlockFenced " ++ show s ++ " " ++ show ss ++ ")"
-  show (CCodeBlockIndented ss) = "(CCodeBlockIndented " ++ show ss ++ ")"
 
 isSpace :: String -> Boolean
 isSpace " "  = true
@@ -165,7 +154,12 @@ splitIndentedChunks ss =
   in { codeLines: codeLines, otherLines: sp.rest }
 
 isCodeFence :: String -> Boolean
-isCodeFence s = S.count (isFenceChar <<< S.charString) s >= 3
+isCodeFence s = isSimpleFence s || (isEvaluatedCode s && isSimpleFence (S.drop 1 s))
+  where
+  isSimpleFence s = S.count (isFenceChar <<< S.charString) s >= 3
+
+isEvaluatedCode :: String -> Boolean
+isEvaluatedCode s = S.take 1 s == "!" 
 
 isFenceChar :: String -> Boolean
 isFenceChar "~" = true
@@ -216,10 +210,12 @@ parseContainers (s : ss)
       in CCodeBlockIndented o.codeLines : parseContainers o.otherLines
   | isCodeFence (removeNonIndentingSpaces s) =
       let s1   = removeNonIndentingSpaces s
-          info = codeFenceInfo s1
-          ch   = codeFenceChar s1
+          eval = isEvaluatedCode s1
+          s2   = if eval then S.drop 1 s1 else s1
+          info = codeFenceInfo s2
+          ch   = codeFenceChar s2
           o    = splitCodeFence (countLeadingSpaces s) ch ss
-      in CCodeBlockFenced info o.codeLines : parseContainers o.otherLines
+      in CCodeBlockFenced eval info o.codeLines : parseContainers o.otherLines
   | otherwise = CText s : parseContainers ss
 
 isTextContainer :: Container -> Boolean
@@ -257,8 +253,8 @@ parseBlocks (CListItem lt cs : cs1) =
   in List lt (bs : bss) : parseBlocks sp.rest
 parseBlocks (CCodeBlockIndented ss : cs) =
   CodeBlock Indented ss : parseBlocks cs
-parseBlocks (CCodeBlockFenced info ss : cs) =
-  CodeBlock (Fenced info) ss : parseBlocks cs
+parseBlocks (CCodeBlockFenced eval info ss : cs) =
+  CodeBlock (Fenced eval info) ss : parseBlocks cs
 parseBlocks (_ : cs) = 
   parseBlocks cs
 
