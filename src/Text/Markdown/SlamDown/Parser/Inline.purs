@@ -1,8 +1,9 @@
 module Text.Markdown.SlamDown.Parser.Inline (parseInlines) where
     
 import Data.Either 
-import Data.Array (take)   
+import Data.Array (map, take)   
 import Data.Foldable (elem)
+import Data.Tuple
     
 import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Parser.Utils
@@ -149,6 +150,7 @@ inlines = many inline2 <* eof
   formElement :: Parser String FormField
   formElement = try textBox
             <|> try radioButtons
+            <|> try checkBoxes
             <|> try dropDown
     where
     textBox :: Parser String FormField
@@ -161,19 +163,33 @@ inlines = many inline2 <* eof
     radioButtons = do
       def <- expr parens $ string "(x)" *> skipSpaces *> someOf isAlphaNum
       skipSpaces
-      ls <- expr id $ many (skipSpaces *> string "()" *> skipSpaces *> someOf isAlphaNum)
+      ls <- expr id $ many (try (skipSpaces *> string "()" *> skipSpaces *> someOf isAlphaNum))
       return $ RadioButtons def ls
+      
+    checkBoxes :: Parser String FormField
+    checkBoxes = literalCheckBoxes <|> evaluatedCheckBoxes
+      where
+      literalCheckBoxes = do
+        ls <- some $ try do
+          skipSpaces
+          b <- (string "[x]" *> pure true) <|> (string "[]" *> pure false)
+          skipSpaces
+          l <- someOf isAlphaNum
+          return $ Tuple b l
+        return $ CheckBoxes (Literal (map fst ls)) (Literal (map snd ls))
+        
+      evaluatedCheckBoxes = CheckBoxes <$> squares evaluated <*> (skipSpaces *> evaluated)
       
     dropDown :: Parser String FormField
     dropDown = do
-      ls <- braces $ expr id $ (skipSpaces *> someOf isAlphaNum) `sepBy` (skipSpaces *> string ",")
+      ls <- braces $ expr id $ (try (skipSpaces *> someOf isAlphaNum)) `sepBy` (skipSpaces *> string ",")
       skipSpaces
       sel <- parens $ expr id $ someOf isAlphaNum
       return $ DropDown ls sel
     
     expr :: forall a. (forall e. Parser String e -> Parser String e) -> 
             Parser String a -> Parser String (Expr a)
-    expr f p = f evaluated <|> Literal <$> p
+    expr f p = try (f evaluated) <|> Literal <$> p
     
     evaluated :: forall a. Parser String (Expr a)
     evaluated = do
@@ -195,6 +211,9 @@ inlines = many inline2 <* eof
   
   braces :: forall a. Parser String a -> Parser String a
   braces p = string "{" *> skipSpaces *> p <* skipSpaces <* string "}"
+  
+  squares :: forall a. Parser String a -> Parser String a
+  squares p = string "[" *> skipSpaces *> p <* skipSpaces <* string "]"
   
   skipSpaces :: Parser String Unit
   skipSpaces = skipMany (satisfy ((==) " "))

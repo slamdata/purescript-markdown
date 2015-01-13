@@ -123,5 +123,7 @@ main = do
   testDocument $ parseMd "sex* = (!`def`) !`others`"
   testDocument $ parseMd "city = {BOS, SFO, NYC} (NYC)"
   testDocument $ parseMd "city = {!`...`} (!`...`)"
+  testDocument $ parseMd "phones = [] Android [x] iPhone [x] Blackberry"
+  testDocument $ parseMd "phones = [!`..`] !`...`"
                          
   trace "All tests passed!"

@@ -1,6 +1,6 @@
 module Text.Markdown.SlamDown.Pretty (prettyPrintMd) where
     
-import Data.Array (concatMap, map, (..))    
+import Data.Array (concatMap, map, zipWith, (..))    
 
 import qualified Data.String as S
 
@@ -77,6 +77,12 @@ prettyPrintFormElement (TextBox value) =
 prettyPrintFormElement (RadioButtons def lbls) = 
   prettyPrintExpr parens ((<>) "(x) ") def <> " " <> 
   prettyPrintExpr id (S.joinWith " " <<< map ((<>) "() ")) lbls
+prettyPrintFormElement (CheckBoxes (Literal bs) (Literal ls)) = 
+  S.joinWith " " (zipWith checkBox bs ls)
+  where
+  checkBox b l = (if b then "[x] " else "[] ") <> l
+prettyPrintFormElement (CheckBoxes (Evaluated bs) (Evaluated ls)) = 
+  "[!`" <> bs <> "`] !`" <> ls <> "`"
 prettyPrintFormElement (DropDown lbls sel) = 
   braces (prettyPrintExpr id (S.joinWith ", ") lbls) <> 
   parens (prettyPrintExpr id id sel)

@@ -5,7 +5,7 @@ module Text.Markdown.SlamDown.Html
   , toHtml
   ) where
     
-import Data.Array (map, concatMap)
+import Data.Array (map, concatMap, zipWith)
 import Data.String (joinWith)
 import Data.Foldable (foldMap)
     
@@ -84,6 +84,20 @@ toHtml (SlamDown bs) = map renderBlock bs
                       , Attribute "name" label
                       , Attribute "value" value
                       ]) 
+                   [ Open "label" [Attribute "for" value] [Text value] ]
+      where
+      checkedAttribute xs | checked = Attribute "checked" "checked" : xs
+                          | otherwise = xs
+  renderFormElement label (CheckBoxes (Literal bs) (Literal ls)) = 
+    zipWith checkBox bs ls
+    where
+    checkBox checked value =
+      Open "input" (checkedAttribute 
+                      [ Attribute "type" "checkbox"
+                      , Attribute "id" value
+                      , Attribute "name" label
+                      , Attribute "value" value
+                      ])
                    [ Open "label" [Attribute "for" value] [Text value] ]
       where
       checkedAttribute xs | checked = Attribute "checked" "checked" : xs
