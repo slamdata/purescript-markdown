@@ -121,5 +121,7 @@ main = do
   testDocument $ parseMd "name = __ (!`name`)"
   testDocument $ parseMd "sex* = (x) male () female () other"
   testDocument $ parseMd "sex* = (!`def`) !`others`"
+  testDocument $ parseMd "city = {BOS, SFO, NYC} (NYC)"
+  testDocument $ parseMd "city = {!`...`} (!`...`)"
                          
   trace "All tests passed!"

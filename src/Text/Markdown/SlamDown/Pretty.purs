@@ -77,6 +77,9 @@ prettyPrintFormElement (TextBox value) =
 prettyPrintFormElement (RadioButtons def lbls) = 
   prettyPrintExpr parens ((<>) "(x) ") def <> " " <> 
   prettyPrintExpr id (S.joinWith " " <<< map ((<>) "() ")) lbls
+prettyPrintFormElement (DropDown lbls sel) = 
+  braces (prettyPrintExpr id (S.joinWith ", ") lbls) <> 
+  parens (prettyPrintExpr id id sel)
 prettyPrintFormElement _ = "Unsupported form element"
 
 prettyPrintExpr :: forall a. (String -> String) -> (a -> String) -> Expr a -> String
@@ -85,3 +88,6 @@ prettyPrintExpr wrap _ (Evaluated code) = wrap $ "!`" <> code <> "`"
 
 parens :: String -> String
 parens s = "(" <> s <> ")"
+
+braces :: String -> String
+braces s = "{" <> s <> "}"

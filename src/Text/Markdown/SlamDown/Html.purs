@@ -88,5 +88,13 @@ toHtml (SlamDown bs) = map renderBlock bs
       where
       checkedAttribute xs | checked = Attribute "checked" "checked" : xs
                           | otherwise = xs
-  
+  renderFormElement label (DropDown (Literal ls) (Literal sel)) = 
+    [ Open "select" [ Attribute "id" label
+                    , Attribute "name" label
+                    ] (map option ls) ]
+    where
+    option value = Open "option" (selectedAttribute [ Attribute "value" value ]) [ Text value ]
+      where
+      selectedAttribute xs | value == sel = Attribute "selected" "selected" : xs
+                           | otherwise = xs
   renderFormElement _ _ = [Text "Unsupported form element"]

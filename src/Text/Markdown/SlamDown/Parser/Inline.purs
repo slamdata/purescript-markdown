@@ -149,6 +149,7 @@ inlines = many inline2 <* eof
   formElement :: Parser String FormField
   formElement = try textBox
             <|> try radioButtons
+            <|> try dropDown
     where
     textBox :: Parser String FormField
     textBox = do
@@ -162,6 +163,13 @@ inlines = many inline2 <* eof
       skipSpaces
       ls <- expr id $ many (skipSpaces *> string "()" *> skipSpaces *> someOf isAlphaNum)
       return $ RadioButtons def ls
+      
+    dropDown :: Parser String FormField
+    dropDown = do
+      ls <- braces $ expr id $ (skipSpaces *> someOf isAlphaNum) `sepBy` (skipSpaces *> string ",")
+      skipSpaces
+      sel <- parens $ expr id $ someOf isAlphaNum
+      return $ DropDown ls sel
     
     expr :: forall a. (forall e. Parser String e -> Parser String e) -> 
             Parser String a -> Parser String (Expr a)
@@ -184,6 +192,9 @@ inlines = many inline2 <* eof
        
   parens :: forall a. Parser String a -> Parser String a
   parens p = string "(" *> skipSpaces *> p <* skipSpaces <* string ")"
+  
+  braces :: forall a. Parser String a -> Parser String a
+  braces p = string "{" *> skipSpaces *> p <* skipSpaces <* string "}"
   
   skipSpaces :: Parser String Unit
   skipSpaces = skipMany (satisfy ((==) " "))
