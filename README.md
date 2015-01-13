@@ -19,6 +19,29 @@
       Fenced :: Boolean -> String -> CodeBlockType
 
 
+    data Date where
+      Date :: Number -> Number -> Number -> Date
+
+
+    data DateTime where
+      DateTime :: Date -> Time -> DateTime
+
+
+    data Expr a where
+      Literal :: a -> Expr a
+      Evaluated :: String -> Expr a
+
+
+    data FormField where
+      TextBox :: Expr String -> FormField
+      RadioButtons :: Expr String -> Expr [String] -> FormField
+      CheckBoxes :: Expr [Boolean] -> Expr [String] -> FormField
+      DropDown :: Expr [String] -> Expr String -> FormField
+      DatePicker :: Expr Date -> FormField
+      TimePicker :: Expr Date -> FormField
+      DateTimePicker :: Expr DateTime -> FormField
+
+
     data Inline where
       Str :: String -> Inline
       Entity :: String -> Inline
@@ -30,6 +53,7 @@
       Code :: Boolean -> String -> Inline
       Link :: [Inline] -> String -> Inline
       Image :: [Inline] -> String -> Inline
+      FormField :: String -> Boolean -> FormField -> Inline
 
 
     data ListType where
@@ -39,6 +63,10 @@
 
     data SlamDown where
       SlamDown :: [Block] -> SlamDown
+
+
+    data Time where
+      Time :: Number -> Number -> Time
 
 
 ### Type Class Instances
@@ -65,6 +93,18 @@
     instance showCodeAttr :: Show CodeBlockType
 
 
+    instance showDate :: Show Date
+
+
+    instance showDateTime :: Show DateTime
+
+
+    instance showExpr :: (Show a) => Show (Expr a)
+
+
+    instance showFormField :: Show FormField
+
+
     instance showInline :: Show Inline
 
 
@@ -72,6 +112,9 @@
 
 
     instance showSlamDown :: Show SlamDown
+
+
+    instance showTime :: Show Time
 
 
 ### Values

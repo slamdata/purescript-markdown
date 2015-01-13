@@ -50,18 +50,20 @@ data Inline
   | Code Boolean String
   | Link [Inline] String   
   | Image [Inline] String
+  | FormField String Boolean FormField
 
 instance showInline :: Show Inline where
-  show (Str s)          = "(Str " ++ show s ++ ")"
-  show (Entity s)       = "(Entity " ++ show s ++ ")"
-  show Space            = "Space"
-  show SoftBreak        = "SoftBreak"
-  show LineBreak        = "LineBreak"
-  show (Emph is)        = "(Emph " ++ show is ++ ")"
-  show (Strong is)      = "(Strong " ++ show is ++ ")"
-  show (Code e s)       = "(Code " ++ show e ++ " " ++ show s ++ ")"
-  show (Link is uri)    = "(Link " ++ show is ++ " " ++ show uri ++ ")"
-  show (Image is uri)   = "(Image " ++ show is ++ " " ++ show uri ++ ")"
+  show (Str s)           = "(Str " ++ show s ++ ")"
+  show (Entity s)        = "(Entity " ++ show s ++ ")"
+  show Space             = "Space"
+  show SoftBreak         = "SoftBreak"
+  show LineBreak         = "LineBreak"
+  show (Emph is)         = "(Emph " ++ show is ++ ")"
+  show (Strong is)       = "(Strong " ++ show is ++ ")"
+  show (Code e s)        = "(Code " ++ show e ++ " " ++ show s ++ ")"
+  show (Link is uri)     = "(Link " ++ show is ++ " " ++ show uri ++ ")"
+  show (Image is uri)    = "(Image " ++ show is ++ " " ++ show uri ++ ")"
+  show (FormField l r f) = "(FormField " ++ show l ++ " " ++ show r ++ " " ++ show f ++ ")"
    
 data ListType = Bullet String | Ordered String
 
@@ -82,6 +84,47 @@ data CodeBlockType
 instance showCodeAttr :: Show CodeBlockType where
   show Indented      = "Indented"
   show (Fenced eval info) = "(Fenced " ++ show eval ++ " " ++ show info ++ ")"
+ 
+data Expr a
+  = Literal a
+  | Evaluated String 
+
+instance showExpr :: (Show a) => Show (Expr a) where
+  show (Literal a)   = "(Literal " ++ show a ++ ")"
+  show (Evaluated s) = "(Evaluated " ++ show s ++ ")"
+ 
+data FormField
+  = TextBox        (Expr String)
+  | RadioButtons   (Expr String) (Expr [String])
+  | CheckBoxes     (Expr [Boolean]) (Expr [String])
+  | DropDown       (Expr [String]) (Expr String)
+  | DatePicker     (Expr Date)
+  | TimePicker     (Expr Date)
+  | DateTimePicker (Expr DateTime) 
+  
+instance showFormField :: Show FormField where
+  show (TextBox def) = "(TextBox " ++ show def ++ ")"
+  show (RadioButtons sel ls) = "(RadioButtons " ++ show sel ++ " " ++ show ls ++ ")"
+  show (CheckBoxes bs ls) = "(CheckBoxes " ++ show bs ++ " " ++ show ls ++ ")"
+  show (DropDown ls def) = "(DropDown " ++ show ls ++ " " ++ show def ++ ")"
+  show (DatePicker def) = "(DatePicker " ++ show def ++ ")"
+  show (TimePicker def) = "(TimePicker " ++ show def ++ ")"
+  show (DateTimePicker def) = "(DateTimePicker " ++ show def ++ ")"
+  
+data Date = Date Number Number Number
+
+instance showDate :: Show Date where
+  show (Date mm dd yyyy) = "(Date " ++ show mm ++ " " ++ show dd ++ " " ++ show yyyy ++ ")"
+
+data Time = Time Number Number
+
+instance showTime :: Show Time where
+  show (Time hh mm) = "(Time " ++ show hh ++ " " ++ show mm ++ ")"
+
+data DateTime = DateTime Date Time
+
+instance showDateTime :: Show DateTime where
+  show (DateTime dt tm) = "(DateTime " ++ show dt ++ " " ++ show tm ++ ")"
  
 everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
 everywhere b i (SlamDown bs) = SlamDown (map b' bs)
