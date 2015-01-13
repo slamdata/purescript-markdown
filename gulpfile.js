@@ -17,7 +17,12 @@ var paths = {
     docs: {
         'Text.Markdown.SlamDown': {
             dest: 'docs/README.md',
-            src: 'src/Text/Markdown/**/*.purs'
+            src: [
+              'src/Text/Markdown/SlamDown.purs',
+              'src/Text/Markdown/SlamDown/Parser.purs',
+              'src/Text/Markdown/SlamDown/Pretty.purs',
+              'src/Text/Markdown/SlamDown/Html.purs'
+            ]
         }
     },
     exampleSrc: 'example/Main.purs',

@@ -112,6 +112,22 @@
     everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
 
 
+## Module Text.Markdown.SlamDown.Parser
+
+### Values
+
+
+    parseMd :: String -> SlamDown
+
+
+## Module Text.Markdown.SlamDown.Pretty
+
+### Values
+
+
+    prettyPrintMd :: SlamDown -> String
+
+
 ## Module Text.Markdown.SlamDown.Html
 
 ### Types
@@ -130,50 +146,6 @@
 
 
     toHtml :: SlamDown -> [Html]
-
-
-## Module Text.Markdown.SlamDown.Parser
-
-### Values
-
-
-    parseMd :: String -> SlamDown
-
-
-## Module Text.Markdown.SlamDown.Pretty
-
-### Values
-
-
-    prettyPrintMd :: SlamDown -> String
-
-
-## Module Text.Markdown.SlamDown.Parser.Inline
-
-### Values
-
-
-    parseInlines :: [String] -> [Inline]
-
-
-## Module Text.Markdown.SlamDown.Parser.Utils
-
-### Values
-
-
-    flags :: R.RegexFlags
-
-
-    isEmailAddress :: String -> Boolean
-
-
-    isWhitespace :: String -> Boolean
-
-
-    trim :: String -> String
-
-
-    trimEnd :: String -> String
 
 
 
