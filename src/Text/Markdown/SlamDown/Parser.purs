@@ -1,7 +1,8 @@
 module Text.Markdown.SlamDown.Parser (parseMd) where
 
-import Data.Array (map, span, drop)
-import Data.Foldable (all)
+import Data.Maybe
+import Data.Array (last, map, span, drop)
+import Data.Foldable (any, all)
 
 import qualified Data.Char as S
 import qualified Data.String as S
@@ -69,8 +70,11 @@ splitATXHeader s =
       contents = S.drop (level + 1) s
   in { level: level, contents: contents } 
 
-isSetextHeader :: String -> Boolean
-isSetextHeader s = S.length s >= 1 && (allChars ((==) "=") s || allChars ((==) "-") s)
+-- Takes the last parsed container as an argument
+-- to avoid parsing a rule as a header
+isSetextHeader :: String -> Maybe Container -> Boolean
+isSetextHeader s (Just (CText _)) = S.length s >= 1 && any (\c -> allChars ((==) c) s) ["=", "-"]
+isSetextHeader _ _ = false
 
 setextLevel :: String -> Number
 setextLevel s | S.take 1 s == "=" = 1
@@ -187,27 +191,27 @@ splitCodeFence indent fence ss =
 min :: Number -> Number -> Number
 min n m = if n < m then n else m
 
-parseContainers :: [String] -> [Container]
-parseContainers [] = []
-parseContainers (s : ss) 
+parseContainers :: [Container] -> [String] -> [Container]
+parseContainers acc [] = acc
+parseContainers acc (s : ss)
   | allChars isSpace s = 
-      CBlank : parseContainers ss
-  | isRule (removeNonIndentingSpaces s) = 
-      CRule : parseContainers ss
+      parseContainers (acc ++ [CBlank]) ss
   | isATXHeader (removeNonIndentingSpaces s) = 
       let o = splitATXHeader (removeNonIndentingSpaces s)
-      in CATXHeader o.level o.contents : parseContainers ss
-  | isSetextHeader (removeNonIndentingSpaces (trimEnd s)) =
-      CSetextHeader (setextLevel (removeNonIndentingSpaces (trimEnd s))) : parseContainers ss
+      in parseContainers (acc ++ [CATXHeader o.level o.contents]) ss
+  | isSetextHeader (removeNonIndentingSpaces (trimEnd s)) (last acc) =
+      parseContainers (acc ++ [CSetextHeader (setextLevel (removeNonIndentingSpaces (trimEnd s)))]) ss
+  | isRule (removeNonIndentingSpaces s) = 
+      parseContainers (acc ++ [CRule]) ss
   | isBlockquoteLine s =
       let o = splitBlockquote (s : ss)
-      in CBlockquote (parseContainers o.blockquoteLines) : parseContainers o.otherLines
+      in parseContainers (acc ++ [CBlockquote (parseContainers [] o.blockquoteLines)]) o.otherLines
   | isListItemLine s =
       let o = splitListItem (s : ss)
-      in CListItem o.listType (parseContainers o.listItemLines) : parseContainers o.otherLines
+      in parseContainers (acc ++ [CListItem o.listType (parseContainers [] o.listItemLines)]) o.otherLines
   | isIndentedChunk s =
       let o = splitIndentedChunks (s : ss)
-      in CCodeBlockIndented o.codeLines : parseContainers o.otherLines
+      in parseContainers (acc ++ [CCodeBlockIndented o.codeLines]) o.otherLines
   | isCodeFence (removeNonIndentingSpaces s) =
       let s1   = removeNonIndentingSpaces s
           eval = isEvaluatedCode s1
@@ -215,8 +219,8 @@ parseContainers (s : ss)
           info = codeFenceInfo s2
           ch   = codeFenceChar s2
           o    = splitCodeFence (countLeadingSpaces s) ch ss
-      in CCodeBlockFenced eval info o.codeLines : parseContainers o.otherLines
-  | otherwise = CText s : parseContainers ss
+      in parseContainers (acc ++ [CCodeBlockFenced eval info o.codeLines]) o.otherLines
+  | otherwise = parseContainers (acc ++ [CText s]) ss
 
 isTextContainer :: Container -> Boolean
 isTextContainer (CText _) = true
@@ -264,6 +268,6 @@ tabsToSpaces = S.replace "\t" "    "
 parseMd :: String -> SlamDown
 parseMd s = 
   let lines = S.split "\n" $ S.replace "\r" "" $ tabsToSpaces s
-      ctrs  = parseContainers lines
+      ctrs  = parseContainers [] lines
       bs    = parseBlocks ctrs
   in SlamDown bs
