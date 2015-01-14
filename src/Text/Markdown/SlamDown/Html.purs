@@ -5,6 +5,7 @@ module Text.Markdown.SlamDown.Html
   , toHtml
   ) where
     
+import Data.Maybe (maybe)
 import Data.Array (map, concatMap, zipWith)
 import Data.String (joinWith)
 import Data.Foldable (foldMap)
@@ -60,7 +61,10 @@ toHtml (SlamDown bs) = map renderBlock bs
   renderInline (Emph is) = Open "em" [] (map renderInline is)
   renderInline (Strong is) = Open "strong" [] (map renderInline is)
   renderInline (Code _ c) = Open "code" [] [Text c]
-  renderInline (Link body url) = Open "a" [Attribute "href" url] (map renderInline body)
+  renderInline (Link body tgt) = Open "a" [Attribute "href" (href tgt)] (map renderInline body)
+    where
+    href (InlineLink url) = url
+    href (ReferenceLink tgt) = maybe "" ((<>) "#") tgt
   renderInline (Image body url) = Open "img" [Attribute "src" url] (map renderInline body)
   renderInline (FormField label req el) = Open "label" [Attribute "for" label] $ Text label : requiredLabel (renderFormElement label el)
     where

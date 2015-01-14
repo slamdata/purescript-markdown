@@ -40,9 +40,14 @@
       Emph :: [Inline] -> Inline
       Strong :: [Inline] -> Inline
       Code :: Boolean -> String -> Inline
-      Link :: [Inline] -> String -> Inline
+      Link :: [Inline] -> LinkTarget -> Inline
       Image :: [Inline] -> String -> Inline
       FormField :: String -> Boolean -> FormField -> Inline
+
+
+    data LinkTarget where
+      InlineLink :: String -> LinkTarget
+      ReferenceLink :: Maybe String -> LinkTarget
 
 
     data ListType where
@@ -92,6 +97,9 @@
 
 
     instance showInline :: Show Inline
+
+
+    instance showLinkTarget :: Show LinkTarget
 
 
     instance showListType :: Show ListType

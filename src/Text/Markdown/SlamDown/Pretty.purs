@@ -1,5 +1,6 @@
 module Text.Markdown.SlamDown.Pretty (prettyPrintMd) where
     
+import Data.Maybe (fromMaybe)
 import Data.Array (concatMap, map, zipWith, (..))    
 
 import qualified Data.String as S
@@ -66,7 +67,10 @@ prettyPrintInline (Emph is) = "*" <> prettyPrintInlines is <> "*"
 prettyPrintInline (Strong is) = "**" <> prettyPrintInlines is <> "**"
 prettyPrintInline (Code e s) = bang <> "`" <> s <> "`"
   where bang = if e then "!" else ""
-prettyPrintInline (Link is url) = "[" <> prettyPrintInlines is <> "](" <> url <> ")"
+prettyPrintInline (Link is tgt) = "[" <> prettyPrintInlines is <> "]" <> printTarget tgt
+  where
+  printTarget (InlineLink url) = parens url
+  printTarget (ReferenceLink tgt) = squares (fromMaybe "" tgt)
 prettyPrintInline (Image is url) = "![" <> prettyPrintInlines is <> "](" <> url <> ")"
 prettyPrintInline (FormField l r e) = l <> star <> " = " <> prettyPrintFormElement e
   where star = if r then "*" else" "
@@ -102,3 +106,6 @@ parens s = "(" <> s <> ")"
 
 braces :: String -> String
 braces s = "{" <> s <> "}"
+
+squares :: String -> String
+squares s = "[" <> s <> "]"

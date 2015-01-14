@@ -48,7 +48,7 @@ data Inline
   | Emph [Inline]  
   | Strong [Inline] 
   | Code Boolean String
-  | Link [Inline] String   
+  | Link [Inline] LinkTarget   
   | Image [Inline] String
   | FormField String Boolean FormField
 
@@ -61,7 +61,7 @@ instance showInline :: Show Inline where
   show (Emph is)         = "(Emph " ++ show is ++ ")"
   show (Strong is)       = "(Strong " ++ show is ++ ")"
   show (Code e s)        = "(Code " ++ show e ++ " " ++ show s ++ ")"
-  show (Link is uri)     = "(Link " ++ show is ++ " " ++ show uri ++ ")"
+  show (Link is tgt)     = "(Link " ++ show is ++ " " ++ show tgt ++ ")"
   show (Image is uri)    = "(Image " ++ show is ++ " " ++ show uri ++ ")"
   show (FormField l r f) = "(FormField " ++ show l ++ " " ++ show r ++ " " ++ show f ++ ")"
    
@@ -84,6 +84,14 @@ data CodeBlockType
 instance showCodeAttr :: Show CodeBlockType where
   show Indented      = "Indented"
   show (Fenced eval info) = "(Fenced " ++ show eval ++ " " ++ show info ++ ")"
+ 
+data LinkTarget
+  = InlineLink String
+  | ReferenceLink (Maybe String)
+
+instance showLinkTarget :: Show LinkTarget where
+  show (InlineLink uri)    = "(InlineLink " ++ show uri ++ ")"
+  show (ReferenceLink tgt) = "(ReferenceLink " ++ show tgt ++ ")"
  
 data Expr a
   = Literal a

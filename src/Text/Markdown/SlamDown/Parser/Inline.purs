@@ -106,13 +106,19 @@ inlines = many inline2 <* eof
     return <<< Code eval <<< trim <<< trimEnd $ contents
         
   link :: Parser String Inline
-  link = Link <$> linkLabel <*> linkUrl
+  link = Link <$> linkLabel <*> linkTarget
     where
     linkLabel :: Parser String [Inline]
     linkLabel = string "[" *> manyTill (inline0 <|> other) (string "]")
     
-    linkUrl :: Parser String String
-    linkUrl = S.joinWith "" <$> (string "(" *> manyTill char (string ")"))
+    linkTarget :: Parser String LinkTarget
+    linkTarget = inlineLink <|> referenceLink
+    
+    inlineLink :: Parser String LinkTarget
+    inlineLink = InlineLink <<< S.joinWith "" <$> (string "(" *> manyTill char (string ")"))
+    
+    referenceLink :: Parser String LinkTarget
+    referenceLink = ReferenceLink <$> optionMaybe (S.joinWith "" <$> (string "[" *> manyTill char (string "]")))
         
   image :: Parser String Inline
   image = Image <$> imageLabel <*> imageUrl
@@ -127,7 +133,7 @@ inlines = many inline2 <* eof
   autolink = do
     string "<"
     url <- S.joinWith "" <$> (char `many1Till` string ">")
-    return $ Link [Str (autoLabel url)] url
+    return $ Link [Str (autoLabel url)] (InlineLink url)
     where
     autoLabel :: String -> String
     autoLabel s | isEmailAddress s = "mailto:" <> s

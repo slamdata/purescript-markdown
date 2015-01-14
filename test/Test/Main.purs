@@ -2,12 +2,16 @@ module Test.Main where
 
 import Debug.Trace
 
+import Data.Maybe
+
 import qualified Data.Char as S
 import qualified Data.String as S
 
 import Data.Traversable (traverse)
 
 import Control.Monad.Eff   
+
+import Control.Monad.Eff.Random
 import Control.Monad.Trampoline
     
 import Text.Markdown.SlamDown
@@ -145,7 +149,8 @@ main = do
   
   trace "Some random documents:"
   
-  let docs = runTrampoline $ sample 10 (prettyPrintMd <$> arbitrary)
+  seed <- random
+  let docs = runTrampoline $ sample' 10 (GenState { size: 10, seed: seed }) (prettyPrintMd <$> arbitrary)
   traverse trace docs
   
   quickCheck' 1000 \sd -> 
@@ -221,7 +226,11 @@ inlines = oneOf inlines0 [ one <$> link
                   ]
   
   link :: Gen Inline
-  link = Link <$> inlines0 <*> alphaNum
+  link = Link <$> inlines0 <*> linkTarget
+  
+  linkTarget :: Gen LinkTarget
+  linkTarget = oneOf (InlineLink <$> alphaNum)
+                     [ ReferenceLink <<< Just <$> alphaNum ]
   
   formField :: Gen Inline
   formField = FormField <$> alphaNum
