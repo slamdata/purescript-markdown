@@ -8,46 +8,27 @@ Direct comments / questions to [@jdegoes](http://twitter.com/jdegoes) on Twitter
 
 ## Usage
 
-*This is a proposed API and is subject to change.*
 
 ```purescript
+import Text.Markdown.SlamDown
+import Text.Markdown.SlamDown.Parser
+
 -- parsing
 case parseMd "# foo" of 
-  Header1 (Text "foo") -> trace "matched!"
-  _                    -> trace "did not match!"
+  SlamDown [Header 1 (Text "foo")] -> trace "matched!"
+  _                                -> trace "did not match!"
+
+import Text.Markdown.SlamDown.Pretty 
 
 -- rendering
-(trace <<< renderMd <<< parseMd) "# foo"
+(trace <<< prettyPrintMd <<< parseMd) "# foo"
 ```
 
 ### API
 
-*This is a proposed API and is subject to change.*
-
-```purescript
-parseMd :: String -> SlamDown
-
-class RenderMarkdown a
-  renderMd :: SlamDown -> a
-
-instance renderMarkdownString :: RenderMarkdown String
-
-data SlamDown = ...
-
-instance eqSlamDown :: Eq SlamDown
-
-instance ordSlamDown :: Ord SlamDown
-
-instance showSlamDown :: Show SlamDown
-
-instance semigroupSlamDown :: Semigroup SlamDown
-
-instance monoidSlamDown :: Monoid SlamDown
-```
+See the [module documentation](docs/README.md).
 
 ### Tests
-
-*This is a proposed test suite and is subject to change.*
 
 The tests use [purescript-strongcheck](http://github.com/purescript-contrib/purescript-strongcheck) to verify that an arbitrary `SlamDown` document can be rendered as a `String` and then parsed to a `SlamDown` equal to the original.
 
@@ -104,6 +85,8 @@ Code evaluation may be used for inline or block-level fenced code.
 If an info-string is specified, the evaluation must use the specified language or error. If no info-string is specified, the default language understood by the Markdown application is used.
 
 **Note**: This library does not provide any support for evaluation of code, and the code snippets are treated as completely opaque, but the documentation does define *semantics* for how these blocks interact with other elements and with the rendering of the document.
+
+Code evaluation is provided by the `eval` function, which takes an evaluation function, and replaces code blocks and inline code with the evaluated content. More general evaluation functions (for example, evaluating _form elements_ can be constructed using the `everywhere` function to traverse the `SlamDown` ADT).
 
 ### Form Elements
 

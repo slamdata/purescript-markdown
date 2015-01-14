@@ -16,10 +16,16 @@ var paths = {
     dest: '',
     docs: {
         'Text.Markdown.SlamDown': {
-            dest: 'README.md',
-            src: 'src/Text/Markdown/SlamDown.purs'
+            dest: 'docs/README.md',
+            src: [
+              'src/Text/Markdown/SlamDown.purs',
+              'src/Text/Markdown/SlamDown/Parser.purs',
+              'src/Text/Markdown/SlamDown/Pretty.purs',
+              'src/Text/Markdown/SlamDown/Html.purs'
+            ]
         }
     },
+    exampleSrc: 'example/Main.purs',
     test: 'test/**/*.purs'
 };
 
@@ -38,7 +44,6 @@ function compile (compiler, src, opts) {
     });
     return gulp.src(src.concat(paths.bowerSrc))
         .pipe(psc)
-        .pipe(gulp.dest(paths.dest))
         .pipe(jsValidate());
 };
 
@@ -64,10 +69,12 @@ function sequence () {
 
 gulp.task('browser', function() {
     return compile(purescript.psc, [paths.src].concat(paths.bowerSrc), {})
+        .pipe(gulp.dest('example'))
 });
 
 gulp.task('make', function() {
     return compile(purescript.pscMake, [paths.src].concat(paths.bowerSrc), {})
+        .pipe(gulp.dest(paths.dest))
 });
 
 gulp.task('test', function() {
@@ -75,7 +82,7 @@ gulp.task('test', function() {
         .pipe(run('node').exec());
 });
 
-gulp.task('docs-Test.StrongCheck', docs('Text.Markdown.SlamDown'));
+gulp.task('Text.Markdown.SlamDown', docs('Text.Markdown.SlamDown'));
 
 gulp.task('docs', ['Text.Markdown.SlamDown']);
 
@@ -87,4 +94,4 @@ gulp.task('watch-make', function() {
     gulp.watch(paths.src, sequence('make', 'docs'));
 });
 
-gulp.task('default', sequence('make', 'docs'));
+gulp.task('default', sequence('make', 'docs', 'browser'));
