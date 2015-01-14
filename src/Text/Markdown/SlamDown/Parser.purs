@@ -107,7 +107,7 @@ isOrderedListMarker s =
   let n    = S.count (isDigit <<< S.charString) s
       next = S.take 1 (S.drop n s)
       ls   = countLeadingSpaces (S.drop (n + 1) s) 
-  in n > 0 && (next == "." || next == ")") && ls > 0 && ls < 5
+  in n > 0 && (next == "." || next == ")") && ls > 0
 
 listItemType :: String -> ListType
 listItemType s
@@ -117,9 +117,9 @@ listItemType s
 
 listItemIndent :: String -> Number
 listItemIndent s 
-  | isBulleted s = 1 + countLeadingSpaces (S.drop 1 s)
+  | isBulleted s = 1 + min 4 (countLeadingSpaces (S.drop 1 s))
   | otherwise = let n = S.count (isDigit <<< S.charString) s
-                in n + 1 + countLeadingSpaces (S.drop (n + 1) s)
+                in n + 1 + min 4 (countLeadingSpaces (S.drop (n + 1) s))
 
 isListItemLine :: String -> Boolean
 isListItemLine s = 
@@ -184,8 +184,8 @@ splitCodeFence indent fence ss =
   removeIndentTo :: String -> String
   removeIndentTo s = S.drop (min indent (countLeadingSpaces s)) s
 
-  min :: Number -> Number -> Number
-  min n m = if n < m then n else m
+min :: Number -> Number -> Number
+min n m = if n < m then n else m
 
 parseContainers :: [String] -> [Container]
 parseContainers [] = []
