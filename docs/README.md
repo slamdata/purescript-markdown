@@ -11,6 +11,7 @@
       Blockquote :: [Block] -> Block
       List :: ListType -> [[Block]] -> Block
       CodeBlock :: CodeBlockType -> [String] -> Block
+      LinkReference :: String -> String -> Block
       Rule :: Block
 
 

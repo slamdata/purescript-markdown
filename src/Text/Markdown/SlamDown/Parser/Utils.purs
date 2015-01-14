@@ -6,6 +6,14 @@ import qualified Data.Char as S
 import qualified Data.String as S
 import qualified Data.String.Regex as R
 
+import Control.Apply ((<*), (*>))
+
+import Text.Parsing.Parser
+import Text.Parsing.Parser.Combinators (skipMany)
+import Text.Parsing.Parser.String (string, satisfy)
+
+import Text.Markdown.SlamDown
+
 isWhitespace :: String -> Boolean
 isWhitespace = R.test wsRegex
   where
@@ -20,11 +28,11 @@ isEmailAddress = R.test wsEmail
 
 flags :: R.RegexFlags
 flags = { unicode: false
-     , sticky: false
-     , multiline: false
-     , ignoreCase: false
-     , global: false 
-     }
+        , sticky: false
+        , multiline: false
+        , ignoreCase: false
+        , global: false 
+        }
     
 trim :: String -> String
 trim = S.dropWhile (isWhitespace <<< S.charString)
@@ -34,3 +42,15 @@ trimEnd = reverseString <<< trim <<< reverseString
   where
   reverseString :: String -> String
   reverseString = S.fromCharArray <<< reverse <<< S.toCharArray
+     
+parens :: forall a. Parser String a -> Parser String a
+parens p = string "(" *> skipSpaces *> p <* skipSpaces <* string ")"
+
+braces :: forall a. Parser String a -> Parser String a
+braces p = string "{" *> skipSpaces *> p <* skipSpaces <* string "}"
+
+squares :: forall a. Parser String a -> Parser String a
+squares p = string "[" *> skipSpaces *> p <* skipSpaces <* string "]"
+
+skipSpaces :: Parser String Unit
+skipSpaces = skipMany (satisfy ((==) " "))

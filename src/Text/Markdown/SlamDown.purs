@@ -29,15 +29,17 @@ data Block
   | Blockquote [Block]  
   | List ListType [[Block]]  
   | CodeBlock CodeBlockType [String] 
+  | LinkReference String String
   | Rule
 
 instance showBlock :: Show Block where
-  show (Paragraph is)   = "(Paragraph " ++ show is ++ ")"
-  show (Header n is)    = "(Header " ++ show n ++ " " ++ show is ++ ")"
-  show (Blockquote bs)  = "(Blockquote " ++ show bs ++ ")"
-  show (List lt bss)    = "(List " ++ show lt ++ " " ++ show bss ++ ")"
-  show (CodeBlock ca s) = "(CodeBlock " ++ show ca ++ " " ++ show s ++ ")"
-  show Rule             = "Rule"
+  show (Paragraph is)        = "(Paragraph " ++ show is ++ ")"
+  show (Header n is)         = "(Header " ++ show n ++ " " ++ show is ++ ")"
+  show (Blockquote bs)       = "(Blockquote " ++ show bs ++ ")"
+  show (List lt bss)         = "(List " ++ show lt ++ " " ++ show bss ++ ")"
+  show (CodeBlock ca s)      = "(CodeBlock " ++ show ca ++ " " ++ show s ++ ")"
+  show (LinkReference l uri) = "(LinkReference " ++ show l ++ " " ++ show uri ++ ")"
+  show Rule                  = "Rule"
 
 data Inline
   = Str String 

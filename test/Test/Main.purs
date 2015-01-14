@@ -198,6 +198,7 @@ blocks = oneOf (smallArrayOf block0)
                  [ Header <$> chooseInt 1 6 <*> (one <$> simpleText)
                  , CodeBlock <$> (Fenced <$> elements true [false] <*> alphaNum)
                              <*> smallArrayOf alphaNum
+                 , LinkReference <$> alphaNum <*> alphaNum
                  , pure Rule
                  ]
                  

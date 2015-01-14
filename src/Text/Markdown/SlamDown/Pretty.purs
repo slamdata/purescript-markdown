@@ -52,6 +52,7 @@ prettyPrintBlock (CodeBlock (Fenced eval info) ss) = [bang <> "```" <> info] <> 
   where
   bang | eval = "!"
        | otherwise = ""
+prettyPrintBlock (LinkReference l url) = [squares l <> ": " <> url]
 prettyPrintBlock Rule = ["***"]
 
 prettyPrintInlines :: [Inline] -> String

@@ -233,14 +233,3 @@ inlines = many inline2 <* eof
             <|> pure (Str "\\")
        else pure (Str c)
        
-  parens :: forall a. Parser String a -> Parser String a
-  parens p = string "(" *> skipSpaces *> p <* skipSpaces <* string ")"
-  
-  braces :: forall a. Parser String a -> Parser String a
-  braces p = string "{" *> skipSpaces *> p <* skipSpaces <* string "}"
-  
-  squares :: forall a. Parser String a -> Parser String a
-  squares p = string "[" *> skipSpaces *> p <* skipSpaces <* string "]"
-  
-  skipSpaces :: Parser String Unit
-  skipSpaces = skipMany (satisfy ((==) " "))

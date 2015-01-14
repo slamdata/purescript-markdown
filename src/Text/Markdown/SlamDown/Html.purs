@@ -50,6 +50,7 @@ toHtml (SlamDown bs) = map renderBlock bs
     el (Bullet _)  = "ul"
     el (Ordered _) = "ol"
   renderBlock (CodeBlock _ ss) = Open "pre" [] [Open "code" [] [Text (joinWith "\n" ss)]]
+  renderBlock (LinkReference l url) = Open "p" [] [Text (l <> ": "), Open "a" [Attribute "name" l, Attribute "id" l, Attribute "href" url] [Text url]]
   renderBlock Rule = Closed "hr"
   
   renderInline :: Inline -> Html

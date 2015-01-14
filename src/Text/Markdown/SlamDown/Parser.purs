@@ -1,6 +1,7 @@
 module Text.Markdown.SlamDown.Parser (parseMd) where
 
 import Data.Maybe
+import Data.Maybe.Unsafe (fromJust)
 import Data.Array (last, map, span, drop)
 import Data.Foldable (any, all)
 
@@ -10,6 +11,7 @@ import qualified Data.String as S
 import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Parser.Utils
 import Text.Markdown.SlamDown.Parser.Inline
+import Text.Markdown.SlamDown.Parser.References
 
 data Container 
   = CText String
@@ -21,6 +23,7 @@ data Container
   | CListItem ListType [Container]
   | CCodeBlockFenced Boolean String [String]
   | CCodeBlockIndented [String]
+  | CLinkReference Block
 
 isSpace :: String -> Boolean
 isSpace " "  = true
@@ -188,6 +191,9 @@ splitCodeFence indent fence ss =
   removeIndentTo :: String -> String
   removeIndentTo s = S.drop (min indent (countLeadingSpaces s)) s
 
+isLinkReference :: String -> Boolean
+isLinkReference s = S.take 1 s == "[" && isJust (parseLinkReference s)
+
 min :: Number -> Number -> Number
 min n m = if n < m then n else m
 
@@ -220,6 +226,10 @@ parseContainers acc (s : ss)
           ch   = codeFenceChar s2
           o    = splitCodeFence (countLeadingSpaces s) ch ss
       in parseContainers (acc ++ [CCodeBlockFenced eval info o.codeLines]) o.otherLines
+  | isLinkReference (removeNonIndentingSpaces s) =
+      let s1 = removeNonIndentingSpaces s
+          b  = fromJust $ parseLinkReference s1
+      in parseContainers (acc ++ [CLinkReference b]) ss
   | otherwise = parseContainers (acc ++ [CText s]) ss
 
 isTextContainer :: Container -> Boolean
@@ -259,6 +269,8 @@ parseBlocks (CCodeBlockIndented ss : cs) =
   CodeBlock Indented ss : parseBlocks cs
 parseBlocks (CCodeBlockFenced eval info ss : cs) =
   CodeBlock (Fenced eval info) ss : parseBlocks cs
+parseBlocks (CLinkReference b : cs) =
+  b : parseBlocks cs
 parseBlocks (_ : cs) = 
   parseBlocks cs
 
