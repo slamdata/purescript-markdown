@@ -1,6 +1,6 @@
 # purescript-markdown
 
-A Purescript library for parsing SlamData's dialect of Markdown, called *SlamDown*.
+A Purescript library for parsing SlamData's dialect of Markdown, called *SlamDown*, which is mostly a safe, clean subset of CommonMark.
 
 ## Usage
 
