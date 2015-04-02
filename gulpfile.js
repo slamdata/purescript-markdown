@@ -2,6 +2,7 @@
 
 var gulp        = require('gulp')
   , purescript  = require('gulp-purescript')
+  , browserify  = require('gulp-browserify')
   , run         = require('gulp-run')
   , runSequence = require('run-sequence')
   , jsValidate  = require('gulp-jsvalidate')
@@ -33,6 +34,10 @@ var options = {
     test: {
         main: 'Test.Main',
         output: 'output/test.js'
+    }, 
+    example: {
+        main: 'Main',
+        modules: ['Main']
     }
 };
 
@@ -68,7 +73,8 @@ function sequence () {
 }
 
 gulp.task('browser', function() {
-    return compile(purescript.psc, [paths.src].concat(paths.bowerSrc), {})
+    return compile(purescript.psc, [paths.src, paths.exampleSrc].concat(paths.bowerSrc), options.example)
+        .pipe(browserify({}))
         .pipe(gulp.dest('example'))
 });
 

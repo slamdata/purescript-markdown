@@ -2,159 +2,274 @@
 
 ## Module Text.Markdown.SlamDown
 
-### Types
+#### `SlamDown`
+
+``` purescript
+data SlamDown
+  = SlamDown [Block]
+```
 
 
-    data Block where
-      Paragraph :: [Inline] -> Block
-      Header :: Number -> [Inline] -> Block
-      Blockquote :: [Block] -> Block
-      List :: ListType -> [[Block]] -> Block
-      CodeBlock :: CodeBlockType -> [String] -> Block
-      LinkReference :: String -> String -> Block
-      Rule :: Block
+#### `showSlamDown`
+
+``` purescript
+instance showSlamDown :: Show SlamDown
+```
 
 
-    data CodeBlockType where
-      Indented :: CodeBlockType
-      Fenced :: Boolean -> String -> CodeBlockType
+#### `eqSlamDown`
+
+``` purescript
+instance eqSlamDown :: Eq SlamDown
+```
 
 
-    data Expr a where
-      Literal :: a -> Expr a
-      Evaluated :: String -> Expr a
+#### `ordSlamDown`
+
+``` purescript
+instance ordSlamDown :: Ord SlamDown
+```
 
 
-    data FormField where
-      TextBox :: TextBoxType -> Expr String -> FormField
-      RadioButtons :: Expr String -> Expr [String] -> FormField
-      CheckBoxes :: Expr [Boolean] -> Expr [String] -> FormField
-      DropDown :: Expr [String] -> Expr String -> FormField
+#### `semigroupSlamDown`
+
+``` purescript
+instance semigroupSlamDown :: Semigroup SlamDown
+```
 
 
-    data Inline where
-      Str :: String -> Inline
-      Entity :: String -> Inline
-      Space :: Inline
-      SoftBreak :: Inline
-      LineBreak :: Inline
-      Emph :: [Inline] -> Inline
-      Strong :: [Inline] -> Inline
-      Code :: Boolean -> String -> Inline
-      Link :: [Inline] -> LinkTarget -> Inline
-      Image :: [Inline] -> String -> Inline
-      FormField :: String -> Boolean -> FormField -> Inline
+#### `monoidSlamDown`
+
+``` purescript
+instance monoidSlamDown :: Monoid SlamDown
+```
 
 
-    data LinkTarget where
-      InlineLink :: String -> LinkTarget
-      ReferenceLink :: Maybe String -> LinkTarget
+#### `Block`
+
+``` purescript
+data Block
+  = Paragraph [Inline]
+  | Header Number [Inline]
+  | Blockquote [Block]
+  | List ListType [[Block]]
+  | CodeBlock CodeBlockType [String]
+  | LinkReference String String
+  | Rule 
+```
 
 
-    data ListType where
-      Bullet :: String -> ListType
-      Ordered :: String -> ListType
+#### `showBlock`
+
+``` purescript
+instance showBlock :: Show Block
+```
 
 
-    data SlamDown where
-      SlamDown :: [Block] -> SlamDown
+#### `Inline`
+
+``` purescript
+data Inline
+  = Str String
+  | Entity String
+  | Space 
+  | SoftBreak 
+  | LineBreak 
+  | Emph [Inline]
+  | Strong [Inline]
+  | Code Boolean String
+  | Link [Inline] LinkTarget
+  | Image [Inline] String
+  | FormField String Boolean FormField
+```
 
 
-    data TextBoxType where
-      PlainText :: TextBoxType
-      Date :: TextBoxType
-      Time :: TextBoxType
-      DateTime :: TextBoxType
+#### `showInline`
+
+``` purescript
+instance showInline :: Show Inline
+```
 
 
-### Type Class Instances
+#### `ListType`
+
+``` purescript
+data ListType
+  = Bullet String
+  | Ordered String
+```
 
 
-    instance eqListType :: Eq ListType
+#### `showListType`
+
+``` purescript
+instance showListType :: Show ListType
+```
 
 
-    instance eqSlamDown :: Eq SlamDown
+#### `eqListType`
+
+``` purescript
+instance eqListType :: Eq ListType
+```
 
 
-    instance monoidSlamDown :: Monoid SlamDown
+#### `CodeBlockType`
+
+``` purescript
+data CodeBlockType
+  = Indented 
+  | Fenced Boolean String
+```
 
 
-    instance ordSlamDown :: Ord SlamDown
+#### `showCodeAttr`
+
+``` purescript
+instance showCodeAttr :: Show CodeBlockType
+```
 
 
-    instance semigroupSlamDown :: Semigroup SlamDown
+#### `LinkTarget`
+
+``` purescript
+data LinkTarget
+  = InlineLink String
+  | ReferenceLink (Maybe String)
+```
 
 
-    instance showBlock :: Show Block
+#### `showLinkTarget`
+
+``` purescript
+instance showLinkTarget :: Show LinkTarget
+```
 
 
-    instance showCodeAttr :: Show CodeBlockType
+#### `Expr`
+
+``` purescript
+data Expr a
+  = Literal a
+  | Evaluated String
+```
 
 
-    instance showExpr :: (Show a) => Show (Expr a)
+#### `showExpr`
+
+``` purescript
+instance showExpr :: (Show a) => Show (Expr a)
+```
 
 
-    instance showFormField :: Show FormField
+#### `FormField`
+
+``` purescript
+data FormField
+  = TextBox TextBoxType (Expr String)
+  | RadioButtons (Expr String) (Expr [String])
+  | CheckBoxes (Expr [Boolean]) (Expr [String])
+  | DropDown (Expr [String]) (Expr String)
+```
 
 
-    instance showInline :: Show Inline
+#### `showFormField`
+
+``` purescript
+instance showFormField :: Show FormField
+```
 
 
-    instance showLinkTarget :: Show LinkTarget
+#### `TextBoxType`
+
+``` purescript
+data TextBoxType
+  = PlainText 
+  | Date 
+  | Time 
+  | DateTime 
+```
 
 
-    instance showListType :: Show ListType
+#### `showTextBoxType`
+
+``` purescript
+instance showTextBoxType :: Show TextBoxType
+```
 
 
-    instance showSlamDown :: Show SlamDown
+#### `everywhere`
+
+``` purescript
+everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
+```
 
 
-    instance showTextBoxType :: Show TextBoxType
+#### `eval`
 
+``` purescript
+eval :: (Maybe String -> [String] -> String) -> SlamDown -> SlamDown
+```
 
-### Values
-
-
-    eval :: (Maybe String -> [String] -> String) -> SlamDown -> SlamDown
-
-
-    everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
 
 
 ## Module Text.Markdown.SlamDown.Parser
 
-### Values
+#### `parseMd`
 
+``` purescript
+parseMd :: String -> SlamDown
+```
 
-    parseMd :: String -> SlamDown
 
 
 ## Module Text.Markdown.SlamDown.Pretty
 
-### Values
+#### `prettyPrintMd`
 
+``` purescript
+prettyPrintMd :: SlamDown -> String
+```
 
-    prettyPrintMd :: SlamDown -> String
 
 
 ## Module Text.Markdown.SlamDown.Html
 
-### Types
 
+This module defines functions for rendering Markdown to HTML.
 
-    data Html
+#### `SlamDownEvent`
 
+``` purescript
+data SlamDownEvent
+  = FormValueChanged String String
+```
 
-### Values
+The type of events which can be raised by SlamDown forms
 
+#### `markdownToHtml`
 
-    markdownToHtml :: String -> String
+``` purescript
+markdownToHtml :: String -> String
+```
 
+Convert Markdown to HTML
 
-    renderHtml :: Html -> String
+#### `renderHTML`
 
+``` purescript
+renderHTML :: SlamDown -> String
+```
 
-    toHtml :: SlamDown -> [Html]
+Render the SlamDown AST to a HTML `String`
+
+#### `renderHalogen`
+
+``` purescript
+renderHalogen :: forall p i f node. (Applicative f, H.HTMLRepr node) => SlamDown -> [node p (f SlamDownEvent)]
+```
+
+Render the SlamDown AST to an arbitrary Halogen HTML representation
 
 
 
