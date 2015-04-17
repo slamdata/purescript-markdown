@@ -9,6 +9,8 @@ import Control.Monad.Eff
 
 import DOM
 
+import Control.Alternative
+
 import Halogen
 import Halogen.Signal
 import Halogen.Component
@@ -35,22 +37,22 @@ data Input
   = DocumentChanged String
   | FormFieldChanged SlamDownEvent
 
-ui :: forall p m node eff. (Applicative m, H.HTMLRepr node) => Component p m node Input Input
+ui :: forall p f eff. (Alternative f) => Component p f Input Input
 ui = component (render <$> stateful (State "") update)
   where
-  render :: State -> node p (m Input)
+  render :: State -> H.HTML p (f Input)
   render (State md) = 
     H.div [ A.class_ (A.className "container") ]
           [ H.h2_ [ H.text "Markdown" ]
           , H.div_ [ H.textarea [ A.class_ (A.className "form-control")
                                 , A.value md
-                                , A.onInput (pure <<< pure <<< DocumentChanged) 
+                                , A.onInput (A.input DocumentChanged) 
                                 ] [] ]
           , H.h2_ [ H.text "HTML Output" ]
           , H.div [ A.class_ (A.className "well") ] (output md)
           ] 
           
-  output :: String -> [node p (m Input)]
+  output :: String -> [H.HTML p (f Input)]
   output md = rmap (FormFieldChanged <$>) <$> renderHalogen (parseMd md)
           
   update :: State -> Input -> State
