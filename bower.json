@@ -22,7 +22,7 @@
     "purescript-foldable-traversable": "~0.3.1",
     "purescript-parsing": "~0.3.1",
     "purescript-strings": "~0.4.5",
-    "purescript-halogen": "git@github.com:slamdata/purescript-halogen.git#master"
+    "purescript-halogen": "~0.4.0"
   },
   "devDependencies": {
     "purescript-strongcheck": "~0.6.0"
