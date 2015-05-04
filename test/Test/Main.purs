@@ -4,6 +4,7 @@ import Debug.Trace
 
 import Data.Maybe
 
+import qualified Data.Array as A
 import qualified Data.Char as S
 import qualified Data.String as S
 
@@ -179,23 +180,20 @@ smallArrayOf g = do
 instance arbSlamDown :: Arbitrary SlamDown where
   arbitrary = SlamDown <$> blocks
   
-one :: forall a. a -> [a]  
-one a = [a]      
-  
 three :: forall a. a -> a -> a -> [a] 
 three a b c = [a, b, c]  
   
   
 blocks :: Gen [Block]
 blocks = oneOf (smallArrayOf block0)
-               [ one <$> bq
-               , one <$> list
-               , one <$> cb
+               [ A.singleton <$> bq
+               , A.singleton <$> list
+               , A.singleton <$> cb
                ]
   where
   block0 :: Gen Block
   block0 = oneOf (Paragraph <$> inlines) 
-                 [ Header <$> chooseInt 1 6 <*> (one <$> simpleText)
+                 [ Header <$> chooseInt 1 6 <*> (A.singleton <$> simpleText)
                  , CodeBlock <$> (Fenced <$> elements true [false] <*> alphaNum)
                              <*> smallArrayOf alphaNum
                  , LinkReference <$> alphaNum <*> alphaNum
@@ -203,7 +201,7 @@ blocks = oneOf (smallArrayOf block0)
                  ]
                  
   bq :: Gen Block
-  bq = Blockquote <$> (one <$> block0)
+  bq = Blockquote <$> (A.singleton <$> block0)
   
   cb :: Gen Block
   cb = CodeBlock Indented <$> smallArrayOf alphaNum
@@ -214,16 +212,16 @@ blocks = oneOf (smallArrayOf block0)
               <*> tinyArrayOf (tinyArrayOf block0)
 
 inlines :: Gen [Inline]
-inlines = oneOf inlines0 [ one <$> link 
-                         , one <$> formField 
+inlines = oneOf inlines0 [ A.singleton <$> link
+                         , A.singleton <$> formField
                          ]
   where
   inlines0 :: Gen [Inline]
-  inlines0 = oneOf (one <$> simpleText)
+  inlines0 = oneOf (A.singleton <$> simpleText)
                   [ three <$> simpleText 
                           <*> elements Space [SoftBreak, LineBreak] 
                           <*> simpleText
-                  , one <$> (Code <$> elements true [false] <*> alphaNum)
+                  , A.singleton <$> (Code <$> elements true [false] <*> alphaNum)
                   ]
   
   link :: Gen Inline
@@ -249,4 +247,3 @@ alphaNum :: Gen String
 alphaNum = do
   len <- chooseInt 5 10
   S.fromCharArray <$> vectorOf len (elements (S.fromCharCode 97) (S.toCharArray "qwertyuioplkjhgfdszxcvbnm123457890"))
-  

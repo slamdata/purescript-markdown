@@ -9,7 +9,6 @@ module Text.Markdown.SlamDown.Html
   , renderHalogen
   ) where
     
-import Data.Void
 import Data.Maybe
 import Data.Array (map, concatMap, zipWith)
 import Data.String (joinWith)
@@ -40,18 +39,18 @@ markdownToHtml = renderHTML <<< parseMd
 renderHTML :: SlamDown -> String
 renderHTML = foldMap renderHTMLToString <<< renderHalogen_
   where
-  renderHalogen_ :: SlamDown -> [H.HTML Void (Maybe SlamDownEvent)]
+  renderHalogen_ :: SlamDown -> [H.HTML (Maybe SlamDownEvent)]
   renderHalogen_ = renderHalogen
   
 -- | Render the SlamDown AST to an arbitrary Halogen HTML representation
-renderHalogen :: forall p f. (Alternative f) => SlamDown -> [H.HTML p (f SlamDownEvent)]
+renderHalogen :: forall f. (Alternative f) => SlamDown -> [H.HTML (f SlamDownEvent)]
 renderHalogen (SlamDown bs) = map renderBlock bs
   where
-  renderBlock :: Block -> H.HTML p (f SlamDownEvent)
+  renderBlock :: Block -> H.HTML (f SlamDownEvent)
   renderBlock (Paragraph is) = H.p_ (map renderInline is)
   renderBlock (Header level is) = h_ level (map renderInline is)
     where
-    h_ :: forall a. Number -> [H.HTML p (f a)] -> H.HTML p (f a)
+    h_ :: forall a. Number -> [H.HTML (f a)] -> H.HTML (f a)
     h_ 1 = H.h1_
     h_ 2 = H.h2_
     h_ 3 = H.h3_
@@ -61,10 +60,10 @@ renderHalogen (SlamDown bs) = map renderBlock bs
   renderBlock (Blockquote bs) = H.blockquote_ (map renderBlock bs)
   renderBlock (List lt bss) = el_ lt (map item bss)
     where
-    item :: [Block] -> H.HTML p (f SlamDownEvent)
+    item :: [Block] -> H.HTML (f SlamDownEvent)
     item bs = H.li_ (map renderBlock bs)
     
-    el_ :: forall a. ListType -> [H.HTML p (f a)] -> H.HTML p (f a)
+    el_ :: forall a. ListType -> [H.HTML (f a)] -> H.HTML (f a)
     el_ (Bullet _)  = H.ul_
     el_ (Ordered _) = H.ol_
   renderBlock (CodeBlock _ ss) = H.pre_ [ H.code_ [ H.text (joinWith "\n" ss) ] ]
@@ -73,7 +72,7 @@ renderHalogen (SlamDown bs) = map renderBlock bs
                                            ]
   renderBlock Rule = H.hr_ []
   
-  renderInline :: Inline -> H.HTML p (f SlamDownEvent)
+  renderInline :: Inline -> H.HTML (f SlamDownEvent)
   renderInline (Str s) = H.text s 
   renderInline (Entity s) = H.text s
   renderInline Space = H.text " "
@@ -92,7 +91,7 @@ renderHalogen (SlamDown bs) = map renderBlock bs
     requiredLabel els | req = H.text "*" : els
                       | otherwise = els
                         
-  renderFormElement :: String -> FormField -> [H.HTML p (f SlamDownEvent)]
+  renderFormElement :: String -> FormField -> [H.HTML (f SlamDownEvent)]
   renderFormElement label (TextBox _ (Literal value)) = 
     [ H.input [ A.type_ "text"
               , A.id_ label
