@@ -3,12 +3,15 @@ module Main where
 import Data.Void
 import Data.Tuple
 import Data.Either
-import Data.Bifunctor (rmap)
-
-import Control.Monad.Eff
 
 import DOM
 
+import Data.DOM.Simple.Document
+import Data.DOM.Simple.Element
+import Data.DOM.Simple.Types
+import Data.DOM.Simple.Window
+
+import Control.Monad.Eff
 import Control.Alternative
 
 import Halogen
@@ -24,12 +27,11 @@ import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Html
 import Text.Markdown.SlamDown.Parser
 
-foreign import appendToBody
-  "function appendToBody(node) {\
-  \  return function() {\
-  \    document.body.appendChild(node);\
-  \  };\
-  \}" :: forall eff. Node -> Eff (dom :: DOM | eff) Node
+appendToBody :: forall eff. HTMLElement -> Eff (dom :: DOM | eff) Unit
+appendToBody e = do
+  w <- document globalWindow
+  b <- body w 
+  appendChild b e
   
 data State = State String
 
@@ -37,10 +39,10 @@ data Input
   = DocumentChanged String
   | FormFieldChanged SlamDownEvent
 
-ui :: forall p f eff. (Alternative f) => Component p f Input Input
-ui = component (render <$> stateful (State "") update)
+ui :: forall f eff. (Alternative f) => Component f Input Input
+ui = render <$> stateful (State "") update
   where
-  render :: State -> H.HTML p (f Input)
+  render :: State -> H.HTML (f Input)
   render (State md) = 
     H.div [ A.class_ (A.className "container") ]
           [ H.h2_ [ H.text "Markdown" ]
@@ -52,8 +54,8 @@ ui = component (render <$> stateful (State "") update)
           , H.div [ A.class_ (A.className "well") ] (output md)
           ] 
           
-  output :: String -> [H.HTML p (f Input)]
-  output md = rmap (FormFieldChanged <$>) <$> renderHalogen (parseMd md)
+  output :: String -> [H.HTML (f Input)]
+  output md = ((FormFieldChanged <$>) <$>) <$> renderHalogen (parseMd md)
           
   update :: State -> Input -> State
   update (State _) (DocumentChanged md) = State md
