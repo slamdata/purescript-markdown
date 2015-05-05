@@ -266,7 +266,7 @@ Render the SlamDown AST to a HTML `String`
 #### `renderHalogen`
 
 ``` purescript
-renderHalogen :: forall p f. (Alternative f) => SlamDown -> [H.HTML p (f SlamDownEvent)]
+renderHalogen :: forall f. (Alternative f) => SlamDown -> [H.HTML (f SlamDownEvent)]
 ```
 
 Render the SlamDown AST to an arbitrary Halogen HTML representation
