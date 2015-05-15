@@ -33,17 +33,17 @@ appendToBody e = do
   b <- body w 
   appendChild b e
   
-data State = State String
+data State = State String SlamDownState
 
 data Input 
   = DocumentChanged String
   | FormFieldChanged SlamDownEvent
 
 ui :: forall f eff. (Alternative f) => Component f Input Input
-ui = render <$> stateful (State "") update
+ui = render <$> stateful (State "" emptySlamDownState) update
   where
   render :: State -> H.HTML (f Input)
-  render (State md) = 
+  render (State md form) = 
     H.div [ A.class_ (A.className "container") ]
           [ H.h2_ [ H.text "Markdown" ]
           , H.div_ [ H.textarea [ A.class_ (A.className "form-control")
@@ -51,15 +51,17 @@ ui = render <$> stateful (State "") update
                                 , A.onInput (A.input DocumentChanged) 
                                 ] [] ]
           , H.h2_ [ H.text "HTML Output" ]
-          , H.div [ A.class_ (A.className "well") ] (output md)
+          , H.div [ A.class_ (A.className "well") ] (output md form)
+          , H.h2_ [ H.text "Form State" ]
+          , H.pre_ [ H.code_ [ H.text (show form) ] ]
           ] 
           
-  output :: String -> [H.HTML (f Input)]
-  output md = ((FormFieldChanged <$>) <$>) <$> renderHalogen (parseMd md)
+  output :: String -> SlamDownState -> [H.HTML (f Input)]
+  output md form = ((FormFieldChanged <$>) <$>) <$> renderHalogen form (parseMd md)
           
   update :: State -> Input -> State
-  update (State _) (DocumentChanged md) = State md
-  update s _ = s
+  update (State _ form) (DocumentChanged md) = State md form
+  update (State s form) (FormFieldChanged e) = State s (applySlamDownEvent form e)
 
 main = do
   Tuple node driver <- runUI ui

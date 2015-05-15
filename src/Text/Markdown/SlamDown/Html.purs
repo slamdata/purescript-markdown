@@ -1,7 +1,10 @@
 -- | This module defines functions for rendering Markdown to HTML.
 
 module Text.Markdown.SlamDown.Html 
-  ( SlamDownEvent(..)
+  ( SlamDownEvent()
+  , SlamDownState()
+  , emptySlamDownState
+  , applySlamDownEvent
   
   , markdownToHtml
   
@@ -10,10 +13,13 @@ module Text.Markdown.SlamDown.Html
   ) where
     
 import Data.Maybe
-import Data.Array (map, concatMap, zipWith)
+import Data.Array (concat, map, concatMap, zipWith)
 import Data.String (joinWith)
 import Data.Foldable (foldMap)
 import Data.Identity
+
+import qualified Data.Map as M
+import qualified Data.Set as S
 
 import Control.Alternative
 
@@ -28,23 +34,58 @@ import qualified Halogen.HTML.Attributes as A
 import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Forms as E
 
+data FormFieldValue 
+  = SingleValue String
+  | MultipleValues (S.Set String)
+
+instance showFormFieldValue :: Show FormFieldValue where
+  show (SingleValue s) = "(SingleValue " ++ show s ++ ")"
+  show (MultipleValues ss) = "(MultipleValues " ++ show ss ++ ")"
+
+-- | The state of a SlamDown form - a mapping from input keys to values
+newtype SlamDownState = SlamDownState (M.Map String FormFieldValue)
+
+instance showSlamDownState :: Show SlamDownState where
+  show (SlamDownState m) = "(SlamDownState " ++ show m ++ ")"
+
+-- | The state of an empty form, in which all fields use their default values
+emptySlamDownState :: SlamDownState
+emptySlamDownState = SlamDownState M.empty
+
 -- | The type of events which can be raised by SlamDown forms
-data SlamDownEvent = FormValueChanged String String
+data SlamDownEvent 
+  = TextChanged String String
+  | CheckBoxChanged String String Boolean    
+    
+-- | Apply a `SlamDownEvent` to a `SlamDownState`.
+applySlamDownEvent :: SlamDownState -> SlamDownEvent -> SlamDownState
+applySlamDownEvent (SlamDownState m) (TextChanged key val) = 
+  SlamDownState (M.insert key (SingleValue val) m)
+applySlamDownEvent (SlamDownState m) (CheckBoxChanged key val checked) = 
+  SlamDownState (M.alter (Just <<< updateSet) key m)
+  where
+  updateSet :: Maybe FormFieldValue -> FormFieldValue
+  updateSet (Just (MultipleValues s)) 
+    | checked = MultipleValues (S.insert val s)
+    | otherwise = MultipleValues (S.delete val s) 
+  updateSet _ 
+    | checked = MultipleValues (S.singleton val)
+    | otherwise = MultipleValues S.empty
     
 -- | Convert Markdown to HTML
-markdownToHtml :: String -> String
-markdownToHtml = renderHTML <<< parseMd
+markdownToHtml :: SlamDownState -> String -> String
+markdownToHtml st = renderHTML st <<< parseMd
    
 -- | Render the SlamDown AST to a HTML `String`
-renderHTML :: SlamDown -> String
-renderHTML = foldMap renderHTMLToString <<< renderHalogen_
+renderHTML :: SlamDownState -> SlamDown -> String
+renderHTML st = foldMap renderHTMLToString <<< renderHalogen_
   where
   renderHalogen_ :: SlamDown -> [H.HTML (Maybe SlamDownEvent)]
-  renderHalogen_ = renderHalogen
+  renderHalogen_ = renderHalogen st
   
 -- | Render the SlamDown AST to an arbitrary Halogen HTML representation
-renderHalogen :: forall f. (Alternative f) => SlamDown -> [H.HTML (f SlamDownEvent)]
-renderHalogen (SlamDown bs) = map renderBlock bs
+renderHalogen :: forall f. (Alternative f) => SlamDownState -> SlamDown -> [H.HTML (f SlamDownEvent)]
+renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
   where
   renderBlock :: Block -> H.HTML (f SlamDownEvent)
   renderBlock (Paragraph is) = H.p_ (map renderInline is)
@@ -96,38 +137,55 @@ renderHalogen (SlamDown bs) = map renderBlock bs
     [ H.input [ A.type_ "text"
               , A.id_ label
               , A.name label
-              , A.value value
-              , E.onValueChanged (E.input (FormValueChanged label))
+              , A.value (lookupTextValue label value)
+              , E.onValueChanged (E.input (TextChanged label))
               ] [] ]
   renderFormElement label (RadioButtons (Literal def) (Literal ls)) = 
-    radio true def : map (radio false) ls
+    concatMap (\val -> radio (val == sel) val) (def : ls)
     where
     radio checked value =
-      H.input [ A.checked checked
-              , A.type_ "radio"
-              , A.id_ value
-              , A.name label
-              , A.value value
-              , E.onValueChanged (E.input (FormValueChanged label))
-              ]
-              [ H.label [ A.for value ] [ H.text value ] ]
+      [ H.input [ A.checked checked
+                , A.type_ "radio"
+                , A.id_ value
+                , A.name label
+                , A.value value
+                , E.onValueChanged (E.input (TextChanged label))
+                ] []
+      , H.label [ A.for value ] [ H.text value ] 
+      ]
+    sel = lookupTextValue label def
   renderFormElement label (CheckBoxes (Literal bs) (Literal ls)) = 
-    zipWith checkBox bs ls
+    concat $ zipWith checkBox (lookupMultipleValues label bs ls) ls
     where
     checkBox checked value =
-      H.input [ A.checked checked
-              , A.type_ "checkbox"
-              , A.id_ value
-              , A.name label
-              , A.value value
-              , E.onValueChanged (E.input (FormValueChanged label))
-              ]
-              [ H.label [ A.for value ] [ H.text value ] ]
+      [ H.input [ A.checked checked
+                , A.type_ "checkbox"
+                , A.id_ value
+                , A.name label
+                , A.value value
+                , E.onChecked (E.input (CheckBoxChanged label value))
+                ] []
+      , H.label [ A.for value ] [ H.text value ] 
+      ]
   renderFormElement label (DropDown (Literal ls) (Literal sel)) = 
     [ H.select [ A.id_ label
                , A.name label
-               , E.onValueChanged (E.input (FormValueChanged label))
+               , E.onValueChanged (E.input (TextChanged label))
                ] (map option ls) ]
     where
-    option value = H.option [ A.selected (value == sel), A.value value ] [ H.text value ]
+    sel' = lookupTextValue label sel
+    option value = H.option [ A.selected (value == sel'), A.value value ] [ H.text value ]
   renderFormElement _ _ = [ H.text "Unsupported form element" ]
+
+  lookupTextValue :: String -> String -> String
+  lookupTextValue key def = 
+    case M.lookup key m of
+      Just (SingleValue val) -> val
+      _ -> def
+      
+  lookupMultipleValues :: String -> [Boolean] -> [String] -> [Boolean]
+  lookupMultipleValues key def ls = 
+    case M.lookup key m of
+      Just (MultipleValues val) -> (`S.member` val) <$> ls
+      _ -> def
+ 
