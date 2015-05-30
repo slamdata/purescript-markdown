@@ -2,7 +2,7 @@
 
 module Text.Markdown.SlamDown.Html 
   ( SlamDownEvent()
-  , SlamDownState()
+  , SlamDownState(..)
   , emptySlamDownState
   , applySlamDownEvent
   
