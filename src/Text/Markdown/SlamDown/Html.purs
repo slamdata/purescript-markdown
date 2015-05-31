@@ -2,7 +2,8 @@
 
 module Text.Markdown.SlamDown.Html 
   ( SlamDownEvent()
-  , SlamDownState()
+  , SlamDownState(..)
+  , FormFieldValue(..)
   , emptySlamDownState
   , applySlamDownEvent
   
