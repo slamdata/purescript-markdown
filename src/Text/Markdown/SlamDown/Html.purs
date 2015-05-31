@@ -139,7 +139,7 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
               , A.id_ label
               , A.name label
               , A.value (lookupTextValue label value)
-              , E.onValueChanged (E.input (TextChanged label))
+              , E.onInput (E.input (TextChanged label))
               ] [] ]
   renderFormElement label (RadioButtons (Literal def) (Literal ls)) = 
     concatMap (\val -> radio (val == sel) val) (def : ls)
@@ -150,7 +150,7 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
                 , A.id_ value
                 , A.name label
                 , A.value value
-                , E.onValueChanged (E.input (TextChanged label))
+                , E.onInput (E.input (TextChanged label))
                 ] []
       , H.label [ A.for value ] [ H.text value ] 
       ]
@@ -171,7 +171,7 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
   renderFormElement label (DropDown (Literal ls) (Literal sel)) = 
     [ H.select [ A.id_ label
                , A.name label
-               , E.onValueChanged (E.input (TextChanged label))
+               , E.onInput (E.input (TextChanged label))
                ] (map option ls) ]
     where
     sel' = lookupTextValue label sel
@@ -189,4 +189,3 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
     case M.lookup key m of
       Just (MultipleValues val) -> (`S.member` val) <$> ls
       _ -> def
- 
