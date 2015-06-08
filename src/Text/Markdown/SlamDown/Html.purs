@@ -135,12 +135,17 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
                         
   renderFormElement :: String -> FormField -> [H.HTML (f SlamDownEvent)]
   renderFormElement label (TextBox t (Literal value)) =
-    [ H.input [ A.type_ "text"
+    [ H.input [ A.type_ type'
               , A.id_ label
               , A.name label
               , A.value (lookupTextValue label value)
               , E.onInput (E.input (TextChanged t label))
               ] [] ]
+    where type' = case t of
+            PlainText -> "text"
+            Date -> "date"
+            Time -> "time"
+            DateTime -> "datetime-local"
   renderFormElement label (RadioButtons (Literal def) (Literal ls)) = 
     concatMap (\val -> radio (val == sel) val) (def : ls)
     where
