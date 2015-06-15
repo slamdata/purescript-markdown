@@ -150,7 +150,7 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
                 , A.id_ value
                 , A.name label
                 , A.value value
-                , E.onInput (E.input (TextChanged label))
+                , E.onChange (E.input_ (TextChanged label value))
                 ] []
       , H.label [ A.for value ] [ H.text value ] 
       ]
