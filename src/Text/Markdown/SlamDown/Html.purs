@@ -19,7 +19,7 @@ import Data.String (joinWith)
 import Data.Foldable (foldMap)
 import Data.Identity
 
-import qualified Data.Map as M
+import qualified Data.StrMap as M
 import qualified Data.Set as S
 
 import Control.Alternative
@@ -36,15 +36,15 @@ import qualified Halogen.HTML.Events as E
 import qualified Halogen.HTML.Events.Forms as E
 
 data FormFieldValue 
-  = SingleValue String
+  = SingleValue TextBoxType String
   | MultipleValues (S.Set String)
 
 instance showFormFieldValue :: Show FormFieldValue where
-  show (SingleValue s) = "(SingleValue " ++ show s ++ ")"
+  show (SingleValue t s) = "(SingleValue " ++ show t ++ " " ++ show s ++ ")"
   show (MultipleValues ss) = "(MultipleValues " ++ show ss ++ ")"
 
 -- | The state of a SlamDown form - a mapping from input keys to values
-newtype SlamDownState = SlamDownState (M.Map String FormFieldValue)
+newtype SlamDownState = SlamDownState (M.StrMap FormFieldValue)
 
 instance showSlamDownState :: Show SlamDownState where
   show (SlamDownState m) = "(SlamDownState " ++ show m ++ ")"
@@ -55,13 +55,13 @@ emptySlamDownState = SlamDownState M.empty
 
 -- | The type of events which can be raised by SlamDown forms
 data SlamDownEvent 
-  = TextChanged String String
+  = TextChanged TextBoxType String String
   | CheckBoxChanged String String Boolean    
     
 -- | Apply a `SlamDownEvent` to a `SlamDownState`.
 applySlamDownEvent :: SlamDownState -> SlamDownEvent -> SlamDownState
-applySlamDownEvent (SlamDownState m) (TextChanged key val) = 
-  SlamDownState (M.insert key (SingleValue val) m)
+applySlamDownEvent (SlamDownState m) (TextChanged t key val) =
+  SlamDownState (M.insert key (SingleValue t val) m)
 applySlamDownEvent (SlamDownState m) (CheckBoxChanged key val checked) = 
   SlamDownState (M.alter (Just <<< updateSet) key m)
   where
@@ -134,13 +134,18 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
                       | otherwise = els
                         
   renderFormElement :: String -> FormField -> [H.HTML (f SlamDownEvent)]
-  renderFormElement label (TextBox _ (Literal value)) = 
-    [ H.input [ A.type_ "text"
+  renderFormElement label (TextBox t (Literal value)) =
+    [ H.input [ A.type_ type'
               , A.id_ label
               , A.name label
               , A.value (lookupTextValue label value)
-              , E.onInput (E.input (TextChanged label))
+              , E.onInput (E.input (TextChanged t label))
               ] [] ]
+    where type' = case t of
+            PlainText -> "text"
+            Date -> "date"
+            Time -> "time"
+            DateTime -> "datetime-local"
   renderFormElement label (RadioButtons (Literal def) (Literal ls)) = 
     concatMap (\val -> radio (val == sel) val) (def : ls)
     where
@@ -150,7 +155,7 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
                 , A.id_ value
                 , A.name label
                 , A.value value
-                , E.onChange (E.input_ (TextChanged label value))
+                , E.onChange (E.input_ (TextChanged PlainText label value))
                 ] []
       , H.label [ A.for value ] [ H.text value ] 
       ]
@@ -171,7 +176,7 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
   renderFormElement label (DropDown (Literal ls) (Literal sel)) = 
     [ H.select [ A.id_ label
                , A.name label
-               , E.onInput (E.input (TextChanged label))
+               , E.onInput (E.input (TextChanged PlainText label))
                ] (map option ls) ]
     where
     sel' = lookupTextValue label sel
@@ -181,7 +186,7 @@ renderHalogen (SlamDownState m) (SlamDown bs) = map renderBlock bs
   lookupTextValue :: String -> String -> String
   lookupTextValue key def = 
     case M.lookup key m of
-      Just (SingleValue val) -> val
+      Just (SingleValue _ val) -> val
       _ -> def
       
   lookupMultipleValues :: String -> [Boolean] -> [String] -> [Boolean]
