@@ -22,7 +22,7 @@ import Text.Markdown.SlamDown.Pretty
 
 ### API
 
-See the [module documentation](docs/README.md).
+See the [module documentation](docs/).
 
 ### Tests
 
