@@ -1,6 +1,5 @@
 {
   "name": "purescript-markdown",
-  "version": "0.0.1",
   "license": "MIT",
   "authors": [
     "John A. De Goes <john@degoes.net> (http://degoes.net)",
@@ -11,20 +10,18 @@
     "bower_components",
     "node_modules",
     "output",
-    "tests",
-    "tmp",
+    "test",
     "bower.json",
-    "Gruntfile.js",
     "gulpfile.js",
     "package.json"
   ],
   "dependencies": {
-    "purescript-foldable-traversable": "~0.3.1",
-    "purescript-parsing": "~0.3.1",
-    "purescript-strings": "~0.4.5",
-    "purescript-halogen": "master"
+    "purescript-foldable-traversable": "^0.3.1",
+    "purescript-parsing": "^0.3.1",
+    "purescript-strings": "^0.4.5",
+    "purescript-arrays": "^0.3.7"
   },
   "devDependencies": {
-    "purescript-strongcheck": "~0.9.0"
+    "purescript-strongcheck": "^0.9.0"
   }
 }
