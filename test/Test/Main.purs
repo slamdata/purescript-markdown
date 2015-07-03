@@ -146,6 +146,12 @@ main = do
   testDocument $ parseMd "start = __ - __ - ____ __ : __ (06-06-2015 12:00 PM)"
   testDocument $ parseMd "start = __ - __ - ____ __ : __ (!`...`)"
   testDocument $ parseMd "[zip code]* = __ (12345)"
+  testDocument $ parseMd "defaultless = __"
+  testDocument $ parseMd "city = {BOS, SFO, NYC}"
+  testDocument $ parseMd "start = __ - __ - ____"
+  testDocument $ parseMd "start = __ : __"
+  testDocument $ parseMd "start = __ - __ - ____ __ : __"
+  testDocument $ parseMd "zip* = ________"
 
   trace "All static tests passed!"
 
@@ -239,7 +245,7 @@ inlines = oneOf inlines0 [ A.singleton <$> link
 
   formElement :: Gen FormField
   formElement = TextBox <$> elements PlainText [Date, Time, DateTime]
-                        <*> (Literal <$> alphaNum)
+                        <*> (Just <<< Literal <$> alphaNum)
 
 simpleText :: Gen Inline
 simpleText = Str <$> alphaNum

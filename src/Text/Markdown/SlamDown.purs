@@ -9,26 +9,26 @@ data SlamDown = SlamDown [Block]
 
 instance showSlamDown :: Show SlamDown where
   show (SlamDown bs) = "(SlamDown " ++ show bs ++ ")"
-  
+
 instance eqSlamDown :: Eq SlamDown where
   (==) = (==) `on` show
   (/=) = (/=) `on` show
-  
+
 instance ordSlamDown :: Ord SlamDown where
-  compare = compare `on` show  
-  
+  compare = compare `on` show
+
 instance semigroupSlamDown :: Semigroup SlamDown where
   (<>) (SlamDown bs1) (SlamDown bs2) = SlamDown (bs1 <> bs2)
-  
+
 instance monoidSlamDown :: Monoid SlamDown where
   mempty = SlamDown []
 
 data Block
   = Paragraph [Inline]
-  | Header Number [Inline]   
-  | Blockquote [Block]  
-  | List ListType [[Block]]  
-  | CodeBlock CodeBlockType [String] 
+  | Header Number [Inline]
+  | Blockquote [Block]
+  | List ListType [[Block]]
+  | CodeBlock CodeBlockType [String]
   | LinkReference String String
   | Rule
 
@@ -42,15 +42,15 @@ instance showBlock :: Show Block where
   show Rule                  = "Rule"
 
 data Inline
-  = Str String 
-  | Entity String 
+  = Str String
+  | Entity String
   | Space
-  | SoftBreak  
-  | LineBreak  
-  | Emph [Inline]  
-  | Strong [Inline] 
+  | SoftBreak
+  | LineBreak
+  | Emph [Inline]
+  | Strong [Inline]
   | Code Boolean String
-  | Link [Inline] LinkTarget   
+  | Link [Inline] LinkTarget
   | Image [Inline] String
   | FormField String Boolean FormField
 
@@ -66,7 +66,7 @@ instance showInline :: Show Inline where
   show (Link is tgt)     = "(Link " ++ show is ++ " " ++ show tgt ++ ")"
   show (Image is uri)    = "(Image " ++ show is ++ " " ++ show uri ++ ")"
   show (FormField l r f) = "(FormField " ++ show l ++ " " ++ show r ++ " " ++ show f ++ ")"
-   
+
 data ListType = Bullet String | Ordered String
 
 instance showListType :: Show ListType where
@@ -79,14 +79,14 @@ instance eqListType :: Eq ListType where
   (==) _            _            = false
   (/=) x            y            = not (x == y)
 
-data CodeBlockType 
+data CodeBlockType
   = Indented
   | Fenced Boolean String
 
 instance showCodeAttr :: Show CodeBlockType where
   show Indented      = "Indented"
   show (Fenced eval info) = "(Fenced " ++ show eval ++ " " ++ show info ++ ")"
- 
+
 data LinkTarget
   = InlineLink String
   | ReferenceLink (Maybe String)
@@ -94,35 +94,35 @@ data LinkTarget
 instance showLinkTarget :: Show LinkTarget where
   show (InlineLink uri)    = "(InlineLink " ++ show uri ++ ")"
   show (ReferenceLink tgt) = "(ReferenceLink " ++ show tgt ++ ")"
- 
+
 data Expr a
   = Literal a
-  | Evaluated String 
+  | Evaluated String
 
 instance showExpr :: (Show a) => Show (Expr a) where
   show (Literal a)   = "(Literal " ++ show a ++ ")"
   show (Evaluated s) = "(Evaluated " ++ show s ++ ")"
- 
+
 data FormField
-  = TextBox        TextBoxType (Expr String)
+  = TextBox        TextBoxType (Maybe (Expr String))
   | RadioButtons   (Expr String) (Expr [String])
   | CheckBoxes     (Expr [Boolean]) (Expr [String])
-  | DropDown       (Expr [String]) (Expr String)
-  
+  | DropDown       (Expr [String]) (Maybe (Expr String))
+
 instance showFormField :: Show FormField where
   show (TextBox ty def) = "(TextBox " ++ show ty ++ " " ++ show def ++ ")"
   show (RadioButtons sel ls) = "(RadioButtons " ++ show sel ++ " " ++ show ls ++ ")"
   show (CheckBoxes bs ls) = "(CheckBoxes " ++ show bs ++ " " ++ show ls ++ ")"
   show (DropDown ls def) = "(DropDown " ++ show ls ++ " " ++ show def ++ ")"
- 
+
 data TextBoxType = PlainText | Date | Time | DateTime
 
 instance showTextBoxType :: Show TextBoxType where
-  show PlainText = "PlainText" 
-  show Date      = "Date" 
-  show Time      = "Time" 
-  show DateTime  = "DateTime" 
- 
+  show PlainText = "PlainText"
+  show Date      = "Date"
+  show Time      = "Time"
+  show DateTime  = "DateTime"
+
 everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
 everywhere b i (SlamDown bs) = SlamDown (map b' bs)
   where
@@ -132,7 +132,7 @@ everywhere b i (SlamDown bs) = SlamDown (map b' bs)
   b' (Blockquote bs) = b (Blockquote (map b' bs))
   b' (List lt bss) = b (List lt (map (map b') bss))
   b' other = b other
-  
+
   i' :: Inline -> Inline
   i' (Emph is)        = i (Emph (map i' is))
   i' (Strong is)      = i (Strong (map i' is))

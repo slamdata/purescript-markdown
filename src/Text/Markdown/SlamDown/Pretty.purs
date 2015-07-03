@@ -1,6 +1,6 @@
 module Text.Markdown.SlamDown.Pretty (prettyPrintMd) where
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (maybe, fromMaybe)
 import Data.Array (concatMap, map, zipWith, (..))
 
 import qualified Data.String as S
@@ -80,7 +80,7 @@ prettyPrintInline (FormField l r e) = esc l <> star <> " = " <> prettyPrintFormE
 
 prettyPrintFormElement :: FormField -> String
 prettyPrintFormElement (TextBox ty value) =
-  intro ty <> " (" <> prettyPrintExpr id id value <> ")"
+  intro ty <> maybe "" (\v -> " (" <> prettyPrintExpr id id v <> ")") value
   where
   intro PlainText = "______"
   intro Date      = "__ - __ - ____"
@@ -97,7 +97,7 @@ prettyPrintFormElement (CheckBoxes (Evaluated bs) (Evaluated ls)) =
   "[!`" <> bs <> "`] !`" <> ls <> "`"
 prettyPrintFormElement (DropDown lbls sel) =
   braces (prettyPrintExpr id (S.joinWith ", ") lbls) <>
-  parens (prettyPrintExpr id id sel)
+    maybe "" (\s -> parens (prettyPrintExpr id id s)) sel
 prettyPrintFormElement _ = "Unsupported form element"
 
 prettyPrintExpr :: forall a. (String -> String) -> (a -> String) -> Expr a -> String
