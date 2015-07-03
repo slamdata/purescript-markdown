@@ -10,39 +10,39 @@ import qualified Data.String as S
 
 import Data.Traversable (traverse)
 
-import Control.Monad.Eff   
+import Control.Monad.Eff
 
 import Control.Monad.Eff.Random
 import Control.Monad.Trampoline
-    
+
 import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Parser
 import Text.Markdown.SlamDown.Pretty
 
 import Test.StrongCheck
 import Test.StrongCheck.Gen
-   
-foreign import exitFailure 
+
+foreign import exitFailure
   "function exitFailure() {\
   \  process.exit();\
-  \}" :: forall eff a. Eff eff a   
-    
+  \}" :: forall eff a. Eff eff a
+
 testDocument :: forall eff. SlamDown -> Eff (trace :: Trace | eff) Unit
 testDocument sd = do
   trace "Original: "
   trace $ "  " <> show sd
-  
+
   let printed = prettyPrintMd sd
       parsed = parseMd printed
-  
+
   trace "Parsed: "
   trace $ "  " <> show parsed
-  
+
   if parsed == sd
     then trace "Test passed"
-    else do trace "Test failed" 
+    else do trace "Test failed"
             exitFailure
-    
+
 main = do
   testDocument $ parseMd "Paragraph"
   testDocument $ parseMd "Paragraph with spaces"
@@ -131,7 +131,7 @@ main = do
                          \\n\
                          \main = trace \"Hello World\"\n\
                          \~~~"
-  testDocument $ parseMd "name = __ (Phil Freeman)"
+  testDocument $ parseMd "name* = __ (Phil Freeman)"
   testDocument $ parseMd "name = __ (!`name`)"
   testDocument $ parseMd "sex* = (x) male () female () other"
   testDocument $ parseMd "sex* = (!`def`) !`others`"
@@ -145,45 +145,46 @@ main = do
   testDocument $ parseMd "start = __ : __ (!`...`)"
   testDocument $ parseMd "start = __ - __ - ____ __ : __ (06-06-2015 12:00 PM)"
   testDocument $ parseMd "start = __ - __ - ____ __ : __ (!`...`)"
-  
+  testDocument $ parseMd "[zip code]* = __ (12345)"
+
   trace "All static tests passed!"
-  
+
   trace "Some random documents:"
-  
+
   seed <- random
   let docs = runTrampoline $ sample' 10 (GenState { size: 10, seed: seed }) (prettyPrintMd <$> arbitrary)
   traverse trace docs
-  
-  quickCheck' 1000 \sd -> 
+
+  quickCheck' 1000 \sd ->
     let printed = prettyPrintMd sd
         parsed = parseMd printed
     in parsed == sd <?> "Pretty printer and parser incompatible for document: " <>
                         "\nOriginal: " <> show sd <>
-                        "\nPrinted: " <> printed <> 
+                        "\nPrinted: " <> printed <>
                         "\nParsed: " <> show parsed
-  
+
 deferGen :: forall a. (Unit -> Gen a) -> Gen a
 deferGen g = do
   u <- pure unit
-  g u   
+  g u
 
 tinyArrayOf :: forall a. Gen a -> Gen [a]
 tinyArrayOf g = do
   len <- chooseInt 0 1
-  vectorOf len g  
-  
+  vectorOf len g
+
 smallArrayOf :: forall a. Gen a -> Gen [a]
 smallArrayOf g = do
   len <- chooseInt 1 2
-  vectorOf len g  
-  
+  vectorOf len g
+
 instance arbSlamDown :: Arbitrary SlamDown where
   arbitrary = SlamDown <$> blocks
-  
-three :: forall a. a -> a -> a -> [a] 
-three a b c = [a, b, c]  
-  
-  
+
+three :: forall a. a -> a -> a -> [a]
+three a b c = [a, b, c]
+
+
 blocks :: Gen [Block]
 blocks = oneOf (smallArrayOf block0)
                [ A.singleton <$> bq
@@ -192,20 +193,20 @@ blocks = oneOf (smallArrayOf block0)
                ]
   where
   block0 :: Gen Block
-  block0 = oneOf (Paragraph <$> inlines) 
+  block0 = oneOf (Paragraph <$> inlines)
                  [ Header <$> chooseInt 1 6 <*> (A.singleton <$> simpleText)
                  , CodeBlock <$> (Fenced <$> elements true [false] <*> alphaNum)
                              <*> smallArrayOf alphaNum
                  , LinkReference <$> alphaNum <*> alphaNum
                  , pure Rule
                  ]
-                 
+
   bq :: Gen Block
   bq = Blockquote <$> (A.singleton <$> block0)
-  
+
   cb :: Gen Block
   cb = CodeBlock Indented <$> smallArrayOf alphaNum
-  
+
   list :: Gen Block
   list = List <$> oneOf (Bullet <$> elements "-" ["+", "*"])
                         [ Ordered <$> elements ")" ["."] ]
@@ -218,26 +219,26 @@ inlines = oneOf inlines0 [ A.singleton <$> link
   where
   inlines0 :: Gen [Inline]
   inlines0 = oneOf (A.singleton <$> simpleText)
-                  [ three <$> simpleText 
-                          <*> elements Space [SoftBreak, LineBreak] 
+                  [ three <$> simpleText
+                          <*> elements Space [SoftBreak, LineBreak]
                           <*> simpleText
                   , A.singleton <$> (Code <$> elements true [false] <*> alphaNum)
                   ]
-  
+
   link :: Gen Inline
   link = Link <$> inlines0 <*> linkTarget
-  
+
   linkTarget :: Gen LinkTarget
   linkTarget = oneOf (InlineLink <$> alphaNum)
                      [ ReferenceLink <<< Just <$> alphaNum ]
-  
+
   formField :: Gen Inline
   formField = FormField <$> alphaNum
-                        <*> elements true [false] 
+                        <*> elements true [false]
                         <*> formElement
-  
+
   formElement :: Gen FormField
-  formElement = TextBox <$> elements PlainText [Date, Time, DateTime] 
+  formElement = TextBox <$> elements PlainText [Date, Time, DateTime]
                         <*> (Literal <$> alphaNum)
 
 simpleText :: Gen Inline

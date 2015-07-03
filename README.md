@@ -130,7 +130,7 @@ city = {!`...`} (!`...`)
 
 If code evaluation is used to produce the set of choices, the snippet must evaluate to a list of labels. If code evaluation is used to produce the default choice, the snippet must evaluate to a label.
 
-### Date
+#### Date
 
 ```
 start = __ - __ - ____ (2015-06-06)
@@ -140,7 +140,7 @@ start = __ - __ - ____ (!`...`)
 
 If code evaluation is used to produce the default, the snippet must evaluate to a date.
 
-### Time
+#### Time
 
 ```
 start = __ : __ (22:32)
@@ -150,7 +150,7 @@ start = __ : __ (!`...`)
 
 If code evaluation is used to produce the default, the snippet must evaluate to a time.
 
-### DateTime
+#### DateTime
 
 ```
 start = __ - __ - ____ __ : __ (2015-06-06T12:00)
@@ -163,6 +163,13 @@ If code evaluation is used to produce the default, the snippet must evaluate to 
 #### Required Fields
 
 ```
-zip code* = ________
+zip* = ________ (12345)
 ```
 
+#### Fields with spaces in the label
+
+```
+[first name] = ________ (default)
+
+[zip code]* = ________ (12345)
+```
