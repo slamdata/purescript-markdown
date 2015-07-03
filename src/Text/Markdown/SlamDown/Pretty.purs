@@ -1,7 +1,7 @@
 module Text.Markdown.SlamDown.Pretty (prettyPrintMd) where
-    
+
 import Data.Maybe (fromMaybe)
-import Data.Array (concatMap, map, zipWith, (..))    
+import Data.Array (concatMap, map, zipWith, (..))
 
 import qualified Data.String as S
 
@@ -9,7 +9,7 @@ import Text.Markdown.SlamDown
 
 unlines :: [String] -> String
 unlines = S.joinWith "\n"
-    
+
 prettyPrintMd :: SlamDown -> String
 prettyPrintMd (SlamDown bs) = unlines $ concatMap prettyPrintBlock bs
 
@@ -30,20 +30,20 @@ prettyPrintBlock :: Block -> [String]
 prettyPrintBlock (Paragraph is) = [prettyPrintInlines is, ""]
 prettyPrintBlock (Header n is) = [replicateS n "#" <> " " <> prettyPrintInlines is]
 prettyPrintBlock (Blockquote bs) = overLines ((<>) "> ") (concatMap prettyPrintBlock bs)
-prettyPrintBlock (List lt bss) = concatMap listItem bss 
+prettyPrintBlock (List lt bss) = concatMap listItem bss
   where
   listItem :: [Block] -> [String]
-  listItem bs = 
+  listItem bs =
     let ss = concatMap prettyPrintBlock bs
     in addMarker (concatMap lines ss)
 
   addMarker :: [String] -> [String]
   addMarker [] = []
-  addMarker (s : ss) = 
+  addMarker (s : ss) =
     let m   = prettyPrintMarker lt
         len = S.length m
     in (m <> " " <> s) : overLines (indent (len + 1)) ss
-    
+
   prettyPrintMarker :: ListType -> String
   prettyPrintMarker (Bullet s) = s
   prettyPrintMarker (Ordered s) = "1" <> s
@@ -59,10 +59,10 @@ prettyPrintInlines :: [Inline] -> String
 prettyPrintInlines is = S.joinWith "" (map prettyPrintInline is)
 
 prettyPrintInline :: Inline -> String
-prettyPrintInline (Str s) = s 
-prettyPrintInline (Entity s) = s 
+prettyPrintInline (Str s) = s
+prettyPrintInline (Entity s) = s
 prettyPrintInline Space = " "
-prettyPrintInline SoftBreak = "\n"  
+prettyPrintInline SoftBreak = "\n"
 prettyPrintInline LineBreak = "  \n"
 prettyPrintInline (Emph is) = "*" <> prettyPrintInlines is <> "*"
 prettyPrintInline (Strong is) = "**" <> prettyPrintInlines is <> "**"
@@ -73,28 +73,30 @@ prettyPrintInline (Link is tgt) = "[" <> prettyPrintInlines is <> "]" <> printTa
   printTarget (InlineLink url) = parens url
   printTarget (ReferenceLink tgt) = squares (fromMaybe "" tgt)
 prettyPrintInline (Image is url) = "![" <> prettyPrintInlines is <> "](" <> url <> ")"
-prettyPrintInline (FormField l r e) = l <> star <> " = " <> prettyPrintFormElement e
-  where star = if r then "*" else" "
-  
+prettyPrintInline (FormField l r e) = esc l <> star <> " = " <> prettyPrintFormElement e
+  where
+  esc s = if S.indexOf " " s > -1 then "[" ++ s ++ "]" else s
+  star = if r then "*" else" "
+
 prettyPrintFormElement :: FormField -> String
-prettyPrintFormElement (TextBox ty value) = 
+prettyPrintFormElement (TextBox ty value) =
   intro ty <> " (" <> prettyPrintExpr id id value <> ")"
   where
   intro PlainText = "______"
   intro Date      = "__ - __ - ____"
   intro Time      = "__ : __"
   intro DateTime  = "__ - __ - ____ __ : __"
-prettyPrintFormElement (RadioButtons def lbls) = 
-  prettyPrintExpr parens ((<>) "(x) ") def <> " " <> 
+prettyPrintFormElement (RadioButtons def lbls) =
+  prettyPrintExpr parens ((<>) "(x) ") def <> " " <>
   prettyPrintExpr id (S.joinWith " " <<< map ((<>) "() ")) lbls
-prettyPrintFormElement (CheckBoxes (Literal bs) (Literal ls)) = 
+prettyPrintFormElement (CheckBoxes (Literal bs) (Literal ls)) =
   S.joinWith " " (zipWith checkBox bs ls)
   where
   checkBox b l = (if b then "[x] " else "[] ") <> l
-prettyPrintFormElement (CheckBoxes (Evaluated bs) (Evaluated ls)) = 
+prettyPrintFormElement (CheckBoxes (Evaluated bs) (Evaluated ls)) =
   "[!`" <> bs <> "`] !`" <> ls <> "`"
-prettyPrintFormElement (DropDown lbls sel) = 
-  braces (prettyPrintExpr id (S.joinWith ", ") lbls) <> 
+prettyPrintFormElement (DropDown lbls sel) =
+  braces (prettyPrintExpr id (S.joinWith ", ") lbls) <>
   parens (prettyPrintExpr id id sel)
 prettyPrintFormElement _ = "Unsupported form element"
 
