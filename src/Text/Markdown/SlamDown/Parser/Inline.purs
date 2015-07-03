@@ -163,7 +163,7 @@ inlines = many inline2 <* eof
             <|> try dropDown
     where
     textBox :: TextBoxType -> Parser String Unit -> Parser String FormField
-    textBox ty p = TextBox ty <$> (p *> skipSpaces *> parens (expr id (manyOf ((/=) ")"))))
+    textBox ty p = TextBox ty <$> (p *> skipSpaces *> optionMaybe (parens (expr id (manyOf ((/=) ")")))))
 
     plainText :: Parser String Unit
     plainText = und
@@ -210,8 +210,7 @@ inlines = many inline2 <* eof
     dropDown :: Parser String FormField
     dropDown = do
       ls <- braces $ expr id $ (try (skipSpaces *> someOf isAlphaNum)) `sepBy` (skipSpaces *> string ",")
-      skipSpaces
-      sel <- parens $ expr id $ someOf isAlphaNum
+      sel <- optionMaybe $ skipSpaces *> (parens $ expr id $ someOf isAlphaNum)
       return $ DropDown ls sel
 
     expr :: forall a. (forall e. Parser String e -> Parser String e) ->

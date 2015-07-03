@@ -166,10 +166,10 @@ instance showExpr :: (Show a) => Show (Expr a)
 
 ``` purescript
 data FormField
-  = TextBox TextBoxType (Expr String)
+  = TextBox TextBoxType (Maybe (Expr String))
   | RadioButtons (Expr String) (Expr [String])
   | CheckBoxes (Expr [Boolean]) (Expr [String])
-  | DropDown (Expr [String]) (Expr String)
+  | DropDown (Expr [String]) (Maybe (Expr String))
 ```
 
 

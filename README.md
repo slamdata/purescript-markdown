@@ -93,6 +93,8 @@ Although the suggested syntax has been modified to be more consistent (with resp
 #### Text Input
 
 ```
+name = ________
+
 name = ________ (default)
 
 name = ________ (!`...`)
@@ -123,6 +125,8 @@ If code evaluation is used to produce the values, then the first snippet must ev
 #### Dropdowns
 
 ```
+city = {BOS, SFO, NYC}
+
 city = {BOS, SFO, NYC} (NYC)
 
 city = {!`...`} (!`...`)
@@ -133,6 +137,8 @@ If code evaluation is used to produce the set of choices, the snippet must evalu
 #### Date
 
 ```
+start = __ - __ - ____
+
 start = __ - __ - ____ (2015-06-06)
 
 start = __ - __ - ____ (!`...`)
@@ -143,6 +149,8 @@ If code evaluation is used to produce the default, the snippet must evaluate to 
 #### Time
 
 ```
+start = __ : __
+
 start = __ : __ (22:32)
 
 start = __ : __ (!`...`)
@@ -153,6 +161,8 @@ If code evaluation is used to produce the default, the snippet must evaluate to 
 #### DateTime
 
 ```
+start = __ - __ - ____ __ : __
+
 start = __ - __ - ____ __ : __ (2015-06-06T12:00)
 
 start = __ - __ - ____ __ : __ (!`...`)
