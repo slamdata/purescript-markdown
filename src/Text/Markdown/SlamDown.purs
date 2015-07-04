@@ -1,9 +1,14 @@
 module Text.Markdown.SlamDown where
 
-import Data.Array (map)
-import Data.Maybe
-import Data.Monoid
+import Control.Bind ((<=<))
+
+import Data.Array (map, concat)
 import Data.Function (on)
+import Data.Identity (runIdentity)
+import Data.Maybe (Maybe(..))
+import Data.Monoid (Monoid, mempty)
+import Data.Foldable (foldl, mconcat)
+import Data.Traversable (Traversable, traverse)
 
 data SlamDown = SlamDown [Block]
 
@@ -123,22 +128,65 @@ instance showTextBoxType :: Show TextBoxType where
   show Time      = "Time"
   show DateTime  = "DateTime"
 
-everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
-everywhere b i (SlamDown bs) = SlamDown (map b' bs)
+everywhereM :: forall m. (Monad m) => (Block -> m Block) -> (Inline -> m Inline) -> SlamDown -> m SlamDown
+everywhereM b i (SlamDown bs) = SlamDown <$> traverse b' bs
   where
-  b' :: Block -> Block
-  b' (Paragraph is) = b (Paragraph (map i' is))
-  b' (Header n is) = b (Header n (map i' is))
-  b' (Blockquote bs) = b (Blockquote (map b' bs))
-  b' (List lt bss) = b (List lt (map (map b') bss))
+  b' :: Block -> m Block
+  b' (Paragraph is) = (Paragraph <$> traverse i' is) >>= b
+  b' (Header n is) = (Header n <$> traverse i' is) >>= b
+  b' (Blockquote bs) = (Blockquote <$> traverse b' bs) >>= b
+  b' (List lt bss) = (List lt <$> traverse (traverse b') bss) >>= b
   b' other = b other
 
-  i' :: Inline -> Inline
-  i' (Emph is)        = i (Emph (map i' is))
-  i' (Strong is)      = i (Strong (map i' is))
-  i' (Link is uri)    = i (Link (map i' is) uri)
-  i' (Image is uri)   = i (Image (map i' is) uri)
+  i' :: Inline -> m Inline
+  i' (Emph is) = (Emph <$> traverse i' is) >>= i
+  i' (Strong is) = (Strong <$> traverse i' is) >>= i
+  i' (Link is uri) = (flip Link uri <$> traverse i' is) >>= i
+  i' (Image is uri) = (flip Image uri <$> traverse i' is) >>= i
   i' other = i other
+
+everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
+everywhere b i = runIdentity <<< everywhereM (pure <<< b) (pure <<< i)
+
+everywhereTopDownM :: forall m. (Monad m) => (Block -> m Block) -> (Inline -> m Inline) -> SlamDown -> m SlamDown
+everywhereTopDownM b i (SlamDown bs) = SlamDown <$> traverse (b' <=< b) bs
+  where
+  b' :: Block -> m Block
+  b' (Paragraph is) = Paragraph <$> traverse (i' <=< i) is
+  b' (Header n is) = Header n <$> traverse (i' <=< i) is
+  b' (Blockquote bs) = Blockquote <$> traverse (b' <=< b) bs
+  b' (List ty bss) = List ty <$> traverse (traverse (b' <=< b)) bss
+  b' other = b other
+
+  i' :: Inline -> m Inline
+  i' (Emph is) = Emph <$> traverse (i' <=< i) is
+  i' (Strong is) = Strong <$> traverse (i' <=< i) is
+  i' (Link is uri) = flip Link uri <$> traverse (i' <=< i) is
+  i' (Image is uri) = flip Image uri <$> traverse (i' <=< i) is
+  i' other = i other
+
+everywhereTopDown :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
+everywhereTopDown b i = runIdentity <<< everywhereTopDownM (pure <<< b) (pure <<< i)
+
+everythingM :: forall m r. (Monad m, Monoid r) => (Block -> m r) -> (Inline -> m r) -> SlamDown -> m r
+everythingM b i (SlamDown bs) = mconcat <$> traverse b' bs
+  where
+  b' :: Block -> m r
+  b' x@(Paragraph is) = b x >>= \r -> foldl (<>) r <$> traverse i' is
+  b' x@(Header _ is) = b x >>= \r -> foldl (<>) r <$> traverse i' is
+  b' x@(Blockquote bs) = b x >>= \r -> foldl (<>) r <$> traverse b' bs
+  b' x@(List _ bss) = b x >>= \r -> foldl (<>) r <<< concat <$> traverse (\bs -> traverse b' bs) bss
+  b' x = b x
+
+  i' :: Inline -> m r
+  i' x@(Emph is) = i x >>= \r -> foldl (<>) r <$> traverse i' is
+  i' x@(Strong is) = i x >>= \r -> foldl (<>) r <$> traverse i' is
+  i' x@(Link is _) = i x >>= \r -> foldl (<>) r <$> traverse i' is
+  i' x@(Image is _) = i x >>= \r -> foldl (<>) r <$> traverse i' is
+  i' x = i x
+
+everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown -> r
+everything b i = runIdentity <<< everythingM (pure <<< b) (pure <<< i)
 
 eval :: (Maybe String -> [String] -> String) -> SlamDown -> SlamDown
 eval f = everywhere b i
