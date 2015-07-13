@@ -120,10 +120,11 @@ instance showFormField :: Show FormField where
   show (CheckBoxes bs ls) = "(CheckBoxes " ++ show bs ++ " " ++ show ls ++ ")"
   show (DropDown ls def) = "(DropDown " ++ show ls ++ " " ++ show def ++ ")"
 
-data TextBoxType = PlainText | Date | Time | DateTime
+data TextBoxType = PlainText | Numeric | Date | Time | DateTime
 
 instance showTextBoxType :: Show TextBoxType where
   show PlainText = "PlainText"
+  show Numeric   = "Numeric"
   show Date      = "Date"
   show Time      = "Time"
   show DateTime  = "DateTime"
