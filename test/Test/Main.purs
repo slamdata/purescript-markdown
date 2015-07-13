@@ -152,6 +152,7 @@ main = do
   testDocument $ parseMd "start = __ : __"
   testDocument $ parseMd "start = __ - __ - ____ __ : __"
   testDocument $ parseMd "zip* = ________"
+  testDocument $ parseMd "[numeric field] = #______"
 
   trace "All static tests passed!"
 

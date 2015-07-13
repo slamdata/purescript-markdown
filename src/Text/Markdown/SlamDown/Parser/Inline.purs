@@ -157,6 +157,7 @@ inlines = many inline2 <* eof
   formElement = try (textBox DateTime dateTime)
             <|> try (textBox Date date)
             <|> try (textBox Time time)
+            <|> try (textBox Numeric numeric)
             <|> try (textBox PlainText plainText)
             <|> try radioButtons
             <|> try checkBoxes
@@ -164,9 +165,6 @@ inlines = many inline2 <* eof
     where
     textBox :: TextBoxType -> Parser String Unit -> Parser String FormField
     textBox ty p = TextBox ty <$> (p *> skipSpaces *> optionMaybe (parens (expr id (manyOf ((/=) ")")))))
-
-    plainText :: Parser String Unit
-    plainText = und
 
     und :: Parser String Unit
     und = void $ someOf ((==) "_")
@@ -176,6 +174,15 @@ inlines = many inline2 <* eof
 
     colon :: Parser String Unit
     colon = void $ string ":"
+
+    hash :: Parser String Unit
+    hash = void $ string "#"
+
+    plainText :: Parser String Unit
+    plainText = und
+
+    numeric :: Parser String Unit
+    numeric = hash *> und
 
     date :: Parser String Unit
     date = und *> skipSpaces *> dash *> skipSpaces *> und *> skipSpaces *> dash *> skipSpaces *> und

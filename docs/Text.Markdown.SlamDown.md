@@ -185,6 +185,7 @@ instance showFormField :: Show FormField
 ``` purescript
 data TextBoxType
   = PlainText 
+  | Numeric 
   | Date 
   | Time 
   | DateTime 

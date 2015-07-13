@@ -102,6 +102,18 @@ name = ________ (!`...`)
 
 If code evaluation is used to produce the default, then the snippet must evaluate to textual content.
 
+#### Numeric Input
+
+```
+age = #________
+
+age = #________ (29)
+
+age = #________ (!`...`)
+```
+
+If code evaluation is used to produce the default, then the snippet must evaluate to numeric content.
+
 #### Radio Buttons
 
 ```

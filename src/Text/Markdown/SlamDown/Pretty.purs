@@ -83,6 +83,7 @@ prettyPrintFormElement (TextBox ty value) =
   intro ty <> maybe "" (\v -> " (" <> prettyPrintExpr id id v <> ")") value
   where
   intro PlainText = "______"
+  intro Numeric   = "#______"
   intro Date      = "__ - __ - ____"
   intro Time      = "__ : __"
   intro DateTime  = "__ - __ - ____ __ : __"
