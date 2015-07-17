@@ -1,51 +1,72 @@
-"use strict";
+'use strict'
 
-var gulp = require("gulp");
-var purescript = require("gulp-purescript");
-var jsvalidate = require("gulp-jsvalidate");
-var run = require("gulp-run");
-var rimraf = require("rimraf");
+var gulp = require('gulp'),
+    purescript = require('gulp-purescript'),
+    run = require('gulp-run'),
+    runSequence = require('run-sequence');
 
-gulp.task("clean-docs", function (cb) {
-  rimraf("docs", cb);
+
+
+function sequence () {
+    var args = [].slice.apply(arguments);
+    return function() {
+        runSequence.apply(null, args);
+    };
+}
+
+var sources = [
+    'src/**/*.purs',
+    'bower_components/purescript-*/src/**/*.purs'
+];
+var foreigns = [
+    'src/**/*.js',
+    'bower_components/purescript-*/src/**/*.js'
+];
+
+var testSources = [
+    'test/src/**/*.purs'
+];
+var testForeigns = [
+    'test/src/**/*.js'
+];
+
+gulp.task('docs', function() {
+    return purescript.pscDocs({
+        src: sources,
+        docgen: {
+            "Text.Markdown.SlamDown": "docs/Text/Markdown/SlamDown.md",
+            "Text.Markdown.SlamDown.Parser": "docs/Text/Markdown/SlamDown/Parser.md",
+            "Text.Markdown.SlamDown.Pretty": "docs/Text/Markdown/SlamDown/Pretty.md"
+        }
+    });
 });
 
-gulp.task("clean-output", function (cb) {
-  rimraf("output", cb);
+
+gulp.task('make', function() {
+    return purescript.psc({
+        src: sources,
+        ffi: foreigns
+    });
 });
 
-gulp.task("clean", ["clean-docs", "clean-output"]);
-
-gulp.task("make", function() {
-  return gulp.src(["src/**/*.purs", "bower_components/purescript-*/src/**/*.purs"])
-    .pipe(purescript.pscMake());
+gulp.task('test-make', function() {
+    return purescript.psc({
+        src: sources.concat(testSources),
+        ffi: foreigns.concat(testForeigns)
+    });
 });
 
-gulp.task("test", function() {
-  return gulp.src(["src/**/*.purs", "test/**/*.purs", "bower_components/purescript-*/src/**/*.purs"])
-    .pipe(purescript.psc({ main: "Test.Main", output: "test.js" }))
-    .pipe(run("node"));
+gulp.task('test-bundle',['test-make'], function () {
+    return purescript.pscBundle({
+        src: 'output/**/*.js',
+        main: 'Test.Main',
+        output: 'dist/test.js'
+    });
 });
 
-gulp.task("jsvalidate", ["make"], function () {
-  return gulp.src("output/**/*.js")
-    .pipe(jsvalidate());
+gulp.task('test', ['test-bundle'], function() {
+    run('node dist/test.js').exec();
 });
 
-var docTasks = [];
 
-var docTask = function(name) {
-  var taskName = "docs-" + name.toLowerCase();
-  gulp.task(taskName, ["clean-docs"], function () {
-    return gulp.src("src/" + name.replace(/\./g, "/") + ".purs")
-      .pipe(purescript.pscDocs())
-      .pipe(gulp.dest("docs/" + name + ".md"));
-  });
-  docTasks.push(taskName);
-};
-
-["Text.Markdown.SlamDown", "Text.Markdown.SlamDown.Parser", "Text.Markdown.SlamDown.Pretty"].forEach(docTask);
-
-gulp.task("docs", docTasks);
-
-gulp.task("default", ["jsvalidate", "docs", "make", "test"]);
+gulp.task('default', sequence('make', 'docs'));

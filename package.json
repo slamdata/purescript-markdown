@@ -6,12 +6,12 @@
   "contributors": [
     "John A. De Goes <john@degoes.net> (http://degoes.net)"
   ],
-  "devDependencies": {
-    "gulp": "^3.8.11",
-    "gulp-jsvalidate": "^1.0.1",
-    "gulp-purescript": "^0.4.0",
-    "gulp-run": "^1.6.7",
-    "purescript": "0.6.10",
-    "rimraf": "^2.3.3"
+  "devDependencies": {},
+  "dependencies": {
+    "gulp": "^3.9.0",
+    "gulp-purescript": "^0.5.0",
+    "gulp-run": "^1.6.8",
+    "purescript": "^0.7.1",
+    "run-sequence": "^1.1.1"
   }
 }

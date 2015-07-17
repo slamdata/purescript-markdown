@@ -1,5 +1,6 @@
 module Text.Markdown.SlamDown.Parser.Utils where
 
+import Prelude
 import Data.Array (reverse)
     
 import qualified Data.Char as S
@@ -14,8 +15,8 @@ import Text.Parsing.Parser.String (string, satisfy)
 
 import Text.Markdown.SlamDown
 
-isWhitespace :: String -> Boolean
-isWhitespace = R.test wsRegex
+isWhitespace :: Char -> Boolean
+isWhitespace = R.test wsRegex <<< S.fromChar
   where
   wsRegex :: R.Regex
   wsRegex = R.regex "^\\s$" flags
@@ -35,7 +36,7 @@ flags = { unicode: false
         }
     
 trim :: String -> String
-trim = S.dropWhile (isWhitespace <<< S.charString)
+trim = S.dropWhile isWhitespace
 
 trimEnd :: String -> String
 trimEnd = reverseString <<< trim <<< reverseString
@@ -53,4 +54,4 @@ squares :: forall a. Parser String a -> Parser String a
 squares p = string "[" *> skipSpaces *> p <* skipSpaces <* string "]"
 
 skipSpaces :: Parser String Unit
-skipSpaces = skipMany (satisfy ((==) " "))
+skipSpaces = skipMany (satisfy (\x -> S.fromChar x == " "))
