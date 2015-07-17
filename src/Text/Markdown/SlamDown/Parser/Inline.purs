@@ -1,7 +1,8 @@
 module Text.Markdown.SlamDown.Parser.Inline (parseInlines) where
 
+import Prelude
 import Data.Either
-import Data.Array (map, take)
+import Data.List (List(..), take, many, some, singleton, fromList)
 import Data.Foldable (elem)
 import Data.Tuple
 
@@ -10,37 +11,34 @@ import Text.Markdown.SlamDown.Parser.Utils
 
 import Text.Parsing.Parser
 import Text.Parsing.Parser.Combinators
-import Text.Parsing.Parser.String (eof, satisfy, string, char, noneOf)
+import Text.Parsing.Parser.String (eof, satisfy, string, anyChar, noneOf)
 
 import qualified Data.String as S
 
 import Control.Apply ((<*), (*>))
 import Control.Alt ((<|>))
-import Control.Alternative (many, some)
-import Control.Lazy (fix1)
+import Control.Lazy (fix)
 
-foreign import error
-  "function error(s) {\
-  \  throw new Error(s);\
-  \}" :: forall a. String -> a
+foreign import error :: forall a. String -> a
 
-parseInlines :: [String] -> [Inline]
-parseInlines s = consolidate $ throwOnError $ runParser (S.joinWith "\n" s) inlines
+parseInlines :: List String -> List Inline
+parseInlines s = consolidate $ throwOnError $ runParser (S.joinWith "\n" $ fromList s) inlines
   where
   throwOnError :: forall e a. (Show e) => Either e a -> a
   throwOnError (Left e) = error (show e)
   throwOnError (Right a) = a
 
-consolidate :: [Inline] -> [Inline]
-consolidate [] = []
-consolidate (Str s1 : Str s2 : is) = consolidate (Str (s1 <> s2) : is)
-consolidate (i : is) = i : consolidate is
+consolidate :: List Inline -> List Inline
+consolidate Nil = Nil
+consolidate (Cons (Str s1) (Cons (Str s2) is)) =
+  consolidate (Cons (Str (s1 <> s2)) is)
+consolidate (Cons i is) = Cons i $ consolidate is
 
-inlines :: Parser String [Inline]
+inlines :: Parser String (List Inline)
 inlines = many inline2 <* eof
   where
   inline0 :: Parser String Inline
-  inline0 = fix1 \p -> alphaNumStr
+  inline0 = fix \p -> alphaNumStr
      <|> space
      <|> strongEmph p
      <|> strong p
@@ -62,13 +60,14 @@ inlines = many inline2 <* eof
   alphaNumStr :: Parser String Inline
   alphaNumStr = Str <$> someOf isAlphaNum
 
-  isAlphaNum :: String -> Boolean
-  isAlphaNum s =
+  isAlphaNum :: Char -> Boolean
+  isAlphaNum c =
     (s >= "a" && s <= "z") ||
     (s >= "A" && s <= "Z") ||
     (s >= "0" && s <= "9")
+    where s = S.fromChar c
 
-  emphasis :: Parser String Inline -> ([Inline] -> Inline) -> String -> Parser String Inline
+  emphasis :: Parser String Inline -> (List Inline -> Inline) -> String -> Parser String Inline
   emphasis p f s = do
     string s
     f <$> manyTill p (string s)
@@ -82,75 +81,80 @@ inlines = many inline2 <* eof
   strongEmph :: Parser String Inline -> Parser String Inline
   strongEmph p = emphasis p f "***" <|> emphasis p f "___"
     where
-    f is = Strong [Emph is]
+    f is = Strong $ singleton $ Emph is
 
   space :: Parser String Inline
-  space = toSpace <$> some (satisfy isWhitespace)
+  space = (toSpace <<< (S.fromChar <$>)) <$> some (satisfy isWhitespace)
     where
-    toSpace cs | "\n" `elem` cs = case take 2 cs of
-                                    [" ", " "] -> LineBreak
-                                    _ -> SoftBreak
-               | otherwise = Space
+    toSpace cs
+      | "\n" `elem` cs =
+        case take 2 cs of
+          (Cons " " (Cons " " Nil)) -> LineBreak
+          _ -> SoftBreak
+      | otherwise = Space
 
-  someOf :: (String -> Boolean) -> Parser String String
-  someOf p = S.joinWith "" <$> some (satisfy p)
-
-  manyOf :: (String -> Boolean) -> Parser String String
-  manyOf p = S.joinWith "" <$> many (satisfy p)
+  someOf :: (Char -> Boolean) -> Parser String String
+  someOf p = (S.fromCharArray <<< fromList) <$> some (satisfy p) 
+               
+  manyOf :: (Char -> Boolean) -> Parser String String
+  manyOf p = (S.fromCharArray <<< fromList) <$> many (satisfy p) 
+ 
 
   code :: Parser String Inline
   code = do
     eval <- option false (string "!" *> pure true)
-    ticks <- someOf ((==) "`")
-    contents <- S.joinWith "" <$> manyTill char (string ticks)
+    ticks <- someOf (\x -> S.fromChar x == "`")
+    contents <- (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
     return <<< Code eval <<< trim <<< trimEnd $ contents
+
 
   link :: Parser String Inline
   link = Link <$> linkLabel <*> linkTarget
     where
-    linkLabel :: Parser String [Inline]
+    linkLabel :: Parser String (List Inline)
     linkLabel = string "[" *> manyTill (inline0 <|> other) (string "]")
-
+    
     linkTarget :: Parser String LinkTarget
     linkTarget = inlineLink <|> referenceLink
-
+    
     inlineLink :: Parser String LinkTarget
-    inlineLink = InlineLink <<< S.joinWith "" <$> (string "(" *> manyTill char (string ")"))
-
+    inlineLink = InlineLink <<< S.fromCharArray <<< fromList <$> (string "(" *> manyTill anyChar (string ")"))
+    
     referenceLink :: Parser String LinkTarget
-    referenceLink = ReferenceLink <$> optionMaybe (S.joinWith "" <$> (string "[" *> manyTill char (string "]")))
-
+    referenceLink = ReferenceLink <$> optionMaybe ((S.fromCharArray <<< fromList) <$> (string "[" *> manyTill anyChar (string "]")))
+        
   image :: Parser String Inline
   image = Image <$> imageLabel <*> imageUrl
     where
-    imageLabel :: Parser String [Inline]
+    imageLabel :: Parser String (List Inline)
     imageLabel = string "![" *> manyTill (inline1 <|> other) (string "]")
-
+    
     imageUrl :: Parser String String
-    imageUrl = S.joinWith "" <$> (string "(" *> manyTill char (string ")"))
-
+    imageUrl = S.fromCharArray <<< fromList <$> (string "(" *> manyTill anyChar (string ")"))
+        
   autolink :: Parser String Inline
   autolink = do
     string "<"
-    url <- S.joinWith "" <$> (char `many1Till` string ">")
-    return $ Link [Str (autoLabel url)] (InlineLink url)
+    url <- (S.fromCharArray <<< fromList) <$> (anyChar `many1Till` string ">")
+    return $ Link (singleton $ Str (autoLabel url)) (InlineLink url)
     where
     autoLabel :: String -> String
     autoLabel s | isEmailAddress s = "mailto:" <> s
                 | otherwise = s
-
+     
   entity :: Parser String Inline
   entity = do
     string "&"
-    s <- S.joinWith "" <$> (noneOf [";"] `many1Till` string ";")
+    s <- (S.fromCharArray <<< fromList) <$> (noneOf (S.toCharArray ";") `many1Till` string ";")
     return $ Entity $ "&" <> s <> ";"
 
+
   formField :: Parser String Inline
-  formField = FormField <$> label
-                        <*> (skipSpaces *> required)
+  formField = FormField <$> label 
+                        <*> (skipSpaces *> required) 
                         <*> (skipSpaces *> string "=" *> skipSpaces *> formElement)
     where
-    label = someOf isAlphaNum <|> (S.joinWith "" <$> (string "[" *> manyTill char (string "]")))
+    label = someOf isAlphaNum <|> (S.fromCharArray <<< fromList <$> (string "[" *> manyTill anyChar (string "]")))
     required = option false (string "*" *> pure true)
 
   formElement :: Parser String FormField
@@ -164,10 +168,15 @@ inlines = many inline2 <* eof
             <|> try dropDown
     where
     textBox :: TextBoxType -> Parser String Unit -> Parser String FormField
-    textBox ty p = TextBox ty <$> (p *> skipSpaces *> optionMaybe (parens (expr id (manyOf ((/=) ")")))))
+    textBox ty p = TextBox ty <$>
+                   (p *>
+                    skipSpaces *>
+                    optionMaybe
+                    (parens (expr id (manyOf
+                                      (\x -> S.fromChar x /= ")")))))
 
     und :: Parser String Unit
-    und = void $ someOf ((==) "_")
+    und = void $ someOf (\x -> S.fromChar x == "_")
 
     dash :: Parser String Unit
     dash = void $ string "-"
@@ -227,15 +236,15 @@ inlines = many inline2 <* eof
     evaluated :: forall a. Parser String (Expr a)
     evaluated = do
       string "!"
-      ticks <- someOf ((==) "`")
-      Evaluated <$> S.joinWith "" <$> manyTill char (string ticks)
+      ticks <- someOf (\x -> S.fromChar x == "`")
+      Evaluated <$> (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
 
   other :: Parser String Inline
   other = do
-    c <- char
+    c <- S.fromChar <$> anyChar
     if c == "\\"
-       then Str <$> char
-            <|> (satisfy ((==) "\n") *> pure LineBreak)
+       then (Str <<< S.fromChar) <$> anyChar
+            <|> (satisfy (\x -> S.fromChar x == "\n") *> pure LineBreak)
             <|> pure (Str "\\")
        else pure (Str c)
 

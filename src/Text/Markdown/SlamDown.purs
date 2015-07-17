@@ -1,8 +1,9 @@
 module Text.Markdown.SlamDown where
 
+import Prelude
 import Control.Bind ((<=<))
 
-import Data.Array (map, concat)
+import Data.List (List(..), concat, singleton)
 import Data.Function (on)
 import Data.Identity (runIdentity)
 import Data.Maybe (Maybe(..))
@@ -10,30 +11,29 @@ import Data.Monoid (Monoid, mempty)
 import Data.Foldable (foldl, mconcat)
 import Data.Traversable (Traversable, traverse)
 
-data SlamDown = SlamDown [Block]
+data SlamDown = SlamDown (List Block)
 
 instance showSlamDown :: Show SlamDown where
   show (SlamDown bs) = "(SlamDown " ++ show bs ++ ")"
 
 instance eqSlamDown :: Eq SlamDown where
-  (==) = (==) `on` show
-  (/=) = (/=) `on` show
+  eq = (==) `on` show
 
 instance ordSlamDown :: Ord SlamDown where
   compare = compare `on` show
 
 instance semigroupSlamDown :: Semigroup SlamDown where
-  (<>) (SlamDown bs1) (SlamDown bs2) = SlamDown (bs1 <> bs2)
+  append (SlamDown bs1) (SlamDown bs2) = SlamDown (bs1 <> bs2)
 
 instance monoidSlamDown :: Monoid SlamDown where
-  mempty = SlamDown []
+  mempty = SlamDown mempty
 
 data Block
-  = Paragraph [Inline]
-  | Header Number [Inline]
-  | Blockquote [Block]
-  | List ListType [[Block]]
-  | CodeBlock CodeBlockType [String]
+  = Paragraph (List Inline)
+  | Header Int (List Inline)
+  | Blockquote (List Block)
+  | Lst ListType (List (List Block))
+  | CodeBlock CodeBlockType (List String)
   | LinkReference String String
   | Rule
 
@@ -41,7 +41,7 @@ instance showBlock :: Show Block where
   show (Paragraph is)        = "(Paragraph " ++ show is ++ ")"
   show (Header n is)         = "(Header " ++ show n ++ " " ++ show is ++ ")"
   show (Blockquote bs)       = "(Blockquote " ++ show bs ++ ")"
-  show (List lt bss)         = "(List " ++ show lt ++ " " ++ show bss ++ ")"
+  show (Lst lt bss)         = "(List " ++ show lt ++ " " ++ show bss ++ ")"
   show (CodeBlock ca s)      = "(CodeBlock " ++ show ca ++ " " ++ show s ++ ")"
   show (LinkReference l uri) = "(LinkReference " ++ show l ++ " " ++ show uri ++ ")"
   show Rule                  = "Rule"
@@ -52,11 +52,11 @@ data Inline
   | Space
   | SoftBreak
   | LineBreak
-  | Emph [Inline]
-  | Strong [Inline]
+  | Emph (List Inline)
+  | Strong (List Inline)
   | Code Boolean String
-  | Link [Inline] LinkTarget
-  | Image [Inline] String
+  | Link (List Inline) LinkTarget
+  | Image (List Inline) String
   | FormField String Boolean FormField
 
 instance showInline :: Show Inline where
@@ -79,10 +79,10 @@ instance showListType :: Show ListType where
   show (Ordered s)  = "(Ordered " ++ show s ++ ")"
 
 instance eqListType :: Eq ListType where
-  (==) (Bullet s1)  (Bullet s2)  = s1 == s2
-  (==) (Ordered s1) (Ordered s2) = s1 == s2
-  (==) _            _            = false
-  (/=) x            y            = not (x == y)
+  eq (Bullet s1)  (Bullet s2)  = s1 == s2
+  eq (Ordered s1) (Ordered s2) = s1 == s2
+  eq _            _            = false
+
 
 data CodeBlockType
   = Indented
@@ -110,9 +110,9 @@ instance showExpr :: (Show a) => Show (Expr a) where
 
 data FormField
   = TextBox        TextBoxType (Maybe (Expr String))
-  | RadioButtons   (Expr String) (Expr [String])
-  | CheckBoxes     (Expr [Boolean]) (Expr [String])
-  | DropDown       (Expr [String]) (Maybe (Expr String))
+  | RadioButtons   (Expr String) (Expr (List String))
+  | CheckBoxes     (Expr (List Boolean)) (Expr (List String))
+  | DropDown       (Expr (List String)) (Maybe (Expr String))
 
 instance showFormField :: Show FormField where
   show (TextBox ty def) = "(TextBox " ++ show ty ++ " " ++ show def ++ ")"
@@ -136,7 +136,7 @@ everywhereM b i (SlamDown bs) = SlamDown <$> traverse b' bs
   b' (Paragraph is) = (Paragraph <$> traverse i' is) >>= b
   b' (Header n is) = (Header n <$> traverse i' is) >>= b
   b' (Blockquote bs) = (Blockquote <$> traverse b' bs) >>= b
-  b' (List lt bss) = (List lt <$> traverse (traverse b') bss) >>= b
+  b' (Lst lt bss) = (Lst lt <$> traverse (traverse b') bss) >>= b
   b' other = b other
 
   i' :: Inline -> m Inline
@@ -156,7 +156,7 @@ everywhereTopDownM b i (SlamDown bs) = SlamDown <$> traverse (b' <=< b) bs
   b' (Paragraph is) = Paragraph <$> traverse (i' <=< i) is
   b' (Header n is) = Header n <$> traverse (i' <=< i) is
   b' (Blockquote bs) = Blockquote <$> traverse (b' <=< b) bs
-  b' (List ty bss) = List ty <$> traverse (traverse (b' <=< b)) bss
+  b' (Lst ty bss) = Lst ty <$> traverse (traverse (b' <=< b)) bss
   b' other = b other
 
   i' :: Inline -> m Inline
@@ -176,7 +176,7 @@ everythingM b i (SlamDown bs) = mconcat <$> traverse b' bs
   b' x@(Paragraph is) = b x >>= \r -> foldl (<>) r <$> traverse i' is
   b' x@(Header _ is) = b x >>= \r -> foldl (<>) r <$> traverse i' is
   b' x@(Blockquote bs) = b x >>= \r -> foldl (<>) r <$> traverse b' bs
-  b' x@(List _ bss) = b x >>= \r -> foldl (<>) r <<< concat <$> traverse (\bs -> traverse b' bs) bss
+  b' x@(Lst _ bss) = b x >>= \r -> foldl (<>) r <<< concat <$> traverse (\bs -> traverse b' bs) bss
   b' x = b x
 
   i' :: Inline -> m r
@@ -189,13 +189,14 @@ everythingM b i (SlamDown bs) = mconcat <$> traverse b' bs
 everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown -> r
 everything b i = runIdentity <<< everythingM (pure <<< b) (pure <<< i)
 
-eval :: (Maybe String -> [String] -> String) -> SlamDown -> SlamDown
+eval :: (Maybe String -> List String -> String) -> SlamDown -> SlamDown
 eval f = everywhere b i
   where
   b :: Block -> Block
-  b (CodeBlock (Fenced true info) code) = CodeBlock (Fenced false info) [f (Just info) code]
+  b (CodeBlock (Fenced true info) code) = CodeBlock (Fenced false info) $
+                                          singleton $ f (Just info) code
   b other = other
 
   i :: Inline -> Inline
-  i (Code true code) = Code false (f Nothing [code])
+  i (Code true code) = Code false (f Nothing $ singleton code)
   i other = other

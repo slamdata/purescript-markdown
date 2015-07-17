@@ -1,70 +1,38 @@
-# Module Documentation
-
 ## Module Text.Markdown.SlamDown
 
 #### `SlamDown`
 
 ``` purescript
 data SlamDown
-  = SlamDown [Block]
+  = SlamDown (List Block)
 ```
 
-
-#### `showSlamDown`
-
+##### Instances
 ``` purescript
 instance showSlamDown :: Show SlamDown
-```
-
-
-#### `eqSlamDown`
-
-``` purescript
 instance eqSlamDown :: Eq SlamDown
-```
-
-
-#### `ordSlamDown`
-
-``` purescript
 instance ordSlamDown :: Ord SlamDown
-```
-
-
-#### `semigroupSlamDown`
-
-``` purescript
 instance semigroupSlamDown :: Semigroup SlamDown
-```
-
-
-#### `monoidSlamDown`
-
-``` purescript
 instance monoidSlamDown :: Monoid SlamDown
 ```
-
 
 #### `Block`
 
 ``` purescript
 data Block
-  = Paragraph [Inline]
-  | Header Number [Inline]
-  | Blockquote [Block]
-  | List ListType [[Block]]
-  | CodeBlock CodeBlockType [String]
+  = Paragraph (List Inline)
+  | Header Int (List Inline)
+  | Blockquote (List Block)
+  | Lst ListType (List (List Block))
+  | CodeBlock CodeBlockType (List String)
   | LinkReference String String
-  | Rule 
+  | Rule
 ```
 
-
-#### `showBlock`
-
+##### Instances
 ``` purescript
 instance showBlock :: Show Block
 ```
-
 
 #### `Inline`
 
@@ -72,24 +40,21 @@ instance showBlock :: Show Block
 data Inline
   = Str String
   | Entity String
-  | Space 
-  | SoftBreak 
-  | LineBreak 
-  | Emph [Inline]
-  | Strong [Inline]
+  | Space
+  | SoftBreak
+  | LineBreak
+  | Emph (List Inline)
+  | Strong (List Inline)
   | Code Boolean String
-  | Link [Inline] LinkTarget
-  | Image [Inline] String
+  | Link (List Inline) LinkTarget
+  | Image (List Inline) String
   | FormField String Boolean FormField
 ```
 
-
-#### `showInline`
-
+##### Instances
 ``` purescript
 instance showInline :: Show Inline
 ```
-
 
 #### `ListType`
 
@@ -99,36 +64,24 @@ data ListType
   | Ordered String
 ```
 
-
-#### `showListType`
-
+##### Instances
 ``` purescript
 instance showListType :: Show ListType
-```
-
-
-#### `eqListType`
-
-``` purescript
 instance eqListType :: Eq ListType
 ```
-
 
 #### `CodeBlockType`
 
 ``` purescript
 data CodeBlockType
-  = Indented 
+  = Indented
   | Fenced Boolean String
 ```
 
-
-#### `showCodeAttr`
-
+##### Instances
 ``` purescript
 instance showCodeAttr :: Show CodeBlockType
 ```
-
 
 #### `LinkTarget`
 
@@ -138,13 +91,10 @@ data LinkTarget
   | ReferenceLink (Maybe String)
 ```
 
-
-#### `showLinkTarget`
-
+##### Instances
 ``` purescript
 instance showLinkTarget :: Show LinkTarget
 ```
-
 
 #### `Expr`
 
@@ -154,50 +104,41 @@ data Expr a
   | Evaluated String
 ```
 
-
-#### `showExpr`
-
+##### Instances
 ``` purescript
 instance showExpr :: (Show a) => Show (Expr a)
 ```
-
 
 #### `FormField`
 
 ``` purescript
 data FormField
   = TextBox TextBoxType (Maybe (Expr String))
-  | RadioButtons (Expr String) (Expr [String])
-  | CheckBoxes (Expr [Boolean]) (Expr [String])
-  | DropDown (Expr [String]) (Maybe (Expr String))
+  | RadioButtons (Expr String) (Expr (List String))
+  | CheckBoxes (Expr (List Boolean)) (Expr (List String))
+  | DropDown (Expr (List String)) (Maybe (Expr String))
 ```
 
-
-#### `showFormField`
-
+##### Instances
 ``` purescript
 instance showFormField :: Show FormField
 ```
-
 
 #### `TextBoxType`
 
 ``` purescript
 data TextBoxType
-  = PlainText 
-  | Numeric 
-  | Date 
-  | Time 
-  | DateTime 
+  = PlainText
+  | Numeric
+  | Date
+  | Time
+  | DateTime
 ```
 
-
-#### `showTextBoxType`
-
+##### Instances
 ``` purescript
 instance showTextBoxType :: Show TextBoxType
 ```
-
 
 #### `everywhereM`
 
@@ -205,13 +146,11 @@ instance showTextBoxType :: Show TextBoxType
 everywhereM :: forall m. (Monad m) => (Block -> m Block) -> (Inline -> m Inline) -> SlamDown -> m SlamDown
 ```
 
-
 #### `everywhere`
 
 ``` purescript
 everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
 ```
-
 
 #### `everywhereTopDownM`
 
@@ -219,13 +158,11 @@ everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
 everywhereTopDownM :: forall m. (Monad m) => (Block -> m Block) -> (Inline -> m Inline) -> SlamDown -> m SlamDown
 ```
 
-
 #### `everywhereTopDown`
 
 ``` purescript
 everywhereTopDown :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
 ```
-
 
 #### `everythingM`
 
@@ -233,20 +170,16 @@ everywhereTopDown :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamD
 everythingM :: forall m r. (Monad m, Monoid r) => (Block -> m r) -> (Inline -> m r) -> SlamDown -> m r
 ```
 
-
 #### `everything`
 
 ``` purescript
 everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown -> r
 ```
 
-
 #### `eval`
 
 ``` purescript
-eval :: (Maybe String -> [String] -> String) -> SlamDown -> SlamDown
+eval :: (Maybe String -> List String -> String) -> SlamDown -> SlamDown
 ```
-
-
 
 
