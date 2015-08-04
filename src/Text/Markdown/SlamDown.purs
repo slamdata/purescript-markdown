@@ -129,6 +129,14 @@ instance showTextBoxType :: Show TextBoxType where
   show Time      = "Time"
   show DateTime  = "DateTime"
 
+instance eqTextBoxType :: Eq TextBoxType where
+  eq PlainText PlainText = true
+  eq Numeric Numeric = true
+  eq Date Date = true
+  eq Time Time = true
+  eq DateTime DateTime = true
+  eq _ _ = false
+
 everywhereM :: forall m. (Monad m) => (Block -> m Block) -> (Inline -> m Inline) -> SlamDown -> m SlamDown
 everywhereM b i (SlamDown bs) = SlamDown <$> traverse b' bs
   where
