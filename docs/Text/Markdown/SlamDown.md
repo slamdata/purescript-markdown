@@ -138,6 +138,7 @@ data TextBoxType
 ##### Instances
 ``` purescript
 instance showTextBoxType :: Show TextBoxType
+instance eqTextBoxType :: Eq TextBoxType
 ```
 
 #### `everywhereM`
