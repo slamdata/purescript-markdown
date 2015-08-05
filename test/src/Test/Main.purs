@@ -1,6 +1,7 @@
 module Test.Main where
 
-import Prelude 
+import Prelude
+import Data.Either (Either(..))
 import Data.Maybe
 import Data.List
 
@@ -9,21 +10,22 @@ import qualified Data.Char as S
 import qualified Data.String as S
 
 import Data.Traversable (traverse)
+import qualified Data.Validation as V
 
-import Control.Monad.Eff   
+import Control.Monad.Eff
 import Control.Monad.Eff.Console
 import Control.Monad.Eff.Random
 import Control.Monad.Trampoline
-    
+
 import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Parser
 import Text.Markdown.SlamDown.Pretty
 
 import Test.StrongCheck
 import Test.StrongCheck.Gen
-   
+
 foreign import inPhantom :: forall e. Eff e Unit -> Eff e Unit
-    
+
 testDocument :: forall eff. SlamDown -> Eff _ Unit
 testDocument sd = do
   log "Original: "
@@ -37,7 +39,16 @@ testDocument sd = do
 
   assert (parsed == sd <?> "Test failed")
 
-static :: Eff _ Unit 
+testValidations :: forall eff. Eff _ Unit
+testValidations = do
+  let validate = V.runV Left Right <<< validateSlamDown <<< parseMd
+
+  assert (validate "welp = __:__ (not-a-time)" == Left ["Invalid text box: Expected Time"])
+  assert (validate "welp = #__ (not-a-number)" == Left ["Invalid text box: Expected Numeric"])
+  assert (validate "welp = __-__-__ __:__ (hi)" == Left ["Invalid text box: Expected DateTime"])
+  assert (validate "city = {BOS, SFO, NYC} (NOPE)" == Left ["Invalid dropdown"])
+
+static :: Eff _ Unit
 static = do
   testDocument $ parseMd "Paragraph"
   testDocument $ parseMd "Paragraph with spaces"
@@ -256,7 +267,8 @@ alphaNum = do
   S.fromCharArray <$> vectorOf len (elements (S.fromCharCode 97) $ toList (S.toCharArray "qwertyuioplkjhgfdszxcvbnm123457890"))
 
 
-main :: Eff _ Unit 
+main :: Eff _ Unit
 main = inPhantom do
-  static 
+  static
   generated
+  testValidations
