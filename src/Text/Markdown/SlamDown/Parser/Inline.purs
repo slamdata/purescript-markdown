@@ -1,4 +1,8 @@
-module Text.Markdown.SlamDown.Parser.Inline (parseInlines) where
+module Text.Markdown.SlamDown.Parser.Inline
+  ( parseInlines
+  , validateTextOfType
+  )
+  where
 
 import Prelude
 import Data.Either
@@ -47,9 +51,6 @@ isNumeric c =
   where
     s = S.fromChar c
 
-numStr :: Parser String String
-numStr = someOf isNumeric
-
 dash :: Parser String Unit
 dash = void $ string "-"
 
@@ -95,6 +96,15 @@ parseTextOfType kit = go
       skipSpaces
       time <- go Time
       pure $ date ++ " " ++ time
+
+validateTextOfType :: TextBoxType -> String -> Either ParseError String
+validateTextOfType ty txt = runParser txt $ parseTextOfType kit ty
+  where
+    kit =
+      { plainText : manyOf \_ -> true
+      , numeric : someOf isNumeric
+      , numericPrefix : optional hash
+      }
 
 inlines :: Parser String (List Inline)
 inlines = many inline2 <* eof
