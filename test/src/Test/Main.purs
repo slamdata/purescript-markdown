@@ -42,11 +42,20 @@ testDocument sd = do
 testValidations :: forall eff. Eff _ Unit
 testValidations = do
   let validate = V.runV Left Right <<< validateSlamDown <<< parseMd
+  let document =
+        "welp = __:__ (not-a-time)\n\
+        \welp = #__ (not-a-number)\n\
+        \welp = __-__-__ __:__ (hi)\n\
+        \city = {BOS, SFO, NYC} (NOPE)"
 
-  assert (validate "welp = __:__ (not-a-time)" == Left ["Invalid text box: Expected Time"])
-  assert (validate "welp = #__ (not-a-number)" == Left ["Invalid text box: Expected Numeric"])
-  assert (validate "welp = __-__-__ __:__ (hi)" == Left ["Invalid text box: Expected DateTime"])
-  assert (validate "city = {BOS, SFO, NYC} (NOPE)" == Left ["Invalid dropdown"])
+  let expectedErrors =
+        [ "Invalid text box: Expected Time"
+        , "Invalid text box: Expected Numeric"
+        , "Invalid text box: Expected DateTime"
+        , "Invalid dropdown"
+        ]
+
+  assert $ validate document == Left expectedErrors
 
 static :: Eff _ Unit
 static = do
