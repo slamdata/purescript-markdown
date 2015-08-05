@@ -17,7 +17,8 @@
   ],
   "dependencies": {
     "purescript-base": "~0.1.0",
-    "purescript-parsing": "~0.4.0"
+    "purescript-parsing": "~0.4.0",
+    "purescript-validation": "~0.2.0"
   },
   "devDependencies": {
     "purescript-strongcheck": "~0.10.0"

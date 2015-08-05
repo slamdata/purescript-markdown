@@ -1,4 +1,9 @@
-module Text.Markdown.SlamDown.Parser (parseMd) where
+module Text.Markdown.SlamDown.Parser
+  ( parseMd
+  , validateBlock
+  , validateSlamDown
+  )
+  where
 
 import Prelude
 import Data.Maybe
@@ -6,16 +11,18 @@ import Data.Maybe.Unsafe (fromJust)
 import Data.Foldable (any, all)
 import Data.List (List(..), toList, reverse, last, span, drop, singleton)
 import Data.Monoid (mempty)
+import Data.Traversable (traverse)
+import qualified Data.Validation as V
 
 import qualified Data.Char as S
 import qualified Data.String as S
-    
+
 import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Parser.Utils
 import Text.Markdown.SlamDown.Parser.Inline
 import Text.Markdown.SlamDown.Parser.References
 
-data Container 
+data Container
   = CText String
   | CBlank
   | CRule
@@ -282,11 +289,23 @@ parseBlocks (Cons (CLinkReference b) cs) =
 parseBlocks (Cons _ cs) =
   parseBlocks cs
 
+validateBlock :: Block -> V.V (Array String) Block
+validateBlock b =
+  case b of
+    Paragraph inls -> Paragraph <$> traverse validateInline inls
+    Header i inls -> Header i <$> traverse validateInline inls
+    Blockquote bls -> Blockquote <$> traverse validateBlock bls
+    Lst lt blss -> Lst lt <$> traverse (traverse validateBlock) blss
+    _ -> pure b
+
+validateSlamDown :: SlamDown -> V.V (Array String) SlamDown
+validateSlamDown (SlamDown bls) = SlamDown <$> traverse validateBlock bls
+
 tabsToSpaces :: String -> String
 tabsToSpaces = S.replace "\t" "    "
 
 parseMd :: String -> SlamDown
-parseMd s = 
+parseMd s =
   let lines = toList $ S.split "\n" $ S.replace "\r" "" $ tabsToSpaces s
       ctrs  = parseContainers mempty lines
       bs    = parseBlocks ctrs
