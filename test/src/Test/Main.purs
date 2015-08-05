@@ -28,15 +28,11 @@ foreign import inPhantom :: forall e. Eff e Unit -> Eff e Unit
 
 testDocument :: forall eff. SlamDown -> Eff _ Unit
 testDocument sd = do
-  log "Original: "
-  log $ "  " <> show sd
-  
+
   let printed = prettyPrintMd sd
       parsed = parseMd printed
-  
-  log "Parsed: "
-  log $ "  " <> show parsed
 
+  log $ "Original: \n   " <> show sd <> "\nParsed:\n   " <> show parsed
   assert (parsed == sd <?> "Test failed")
 
 testValidations :: forall eff. Eff _ Unit
