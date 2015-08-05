@@ -2,6 +2,7 @@ module Text.Markdown.SlamDown.Parser.Inline
   ( parseInlines
   , validateTextOfType
   , validateFormField
+  , validateInline
   )
   where
 
@@ -13,7 +14,9 @@ import Data.Either
 import Data.List (List(..), take, many, some, singleton, fromList, length)
 import Data.Foldable (elem)
 import Data.Maybe (Maybe(..), maybe)
+import Data.Traversable (traverse)
 import Data.Tuple
+import qualified Data.Validation as V
 
 import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Parser.Utils
@@ -101,11 +104,11 @@ parseTextOfType kit tbt = go tbt <?> show tbt
       time <- go Time
       pure $ date ++ " " ++ time
 
-validateTextOfType :: TextBoxType -> String -> Either String String
+validateTextOfType :: TextBoxType -> String -> V.V (Array String) String
 validateTextOfType tbt txt =
   case runParser txt $ parseTextOfType kit tbt of
-    Left (ParseError err) -> Left err.message
-    Right res -> Right res
+    Left (ParseError err) -> V.invalid [err.message]
+    Right res -> pure res
   where
     kit =
       { plainText : manyOf \_ -> true
@@ -113,29 +116,32 @@ validateTextOfType tbt txt =
       , numericPrefix : optional hash
       }
 
-validateFormField :: FormField -> Either String FormField
+validateFormField :: FormField -> V.V (Array String) FormField
 validateFormField field =
   case field of
     TextBox tbt (Just (Literal def)) ->
-      case validateTextOfType tbt def of
-        Left err -> Left $ "Invalid text box: " ++ err
-        Right val -> Right $ TextBox tbt (Just (Literal val))
-    RadioButtons (Literal sel) (Literal ls) ->
-      if sel `elem` ls then
-        Right field
-      else
-        Left "Invalid radio buttons"
-    CheckBoxes (Literal bs) (Literal ls) ->
-      if length bs == length ls then
-        Right field
-      else
-        Left "Invalid checkboxes"
-    DropDown (Literal ls) (Just (Literal def)) ->
-      if def `elem` ls then
-         Right field
-      else
-        Left "Invalid dropdown"
-    _ -> Right field
+      V.runV
+        (V.invalid <<< map ("Invalid text box: " ++))
+        (pure <<< TextBox tbt <<< Just <<< Literal)
+        (validateTextOfType tbt def)
+    RadioButtons (Literal sel) (Literal ls) | not (sel `elem` ls) ->
+      V.invalid ["Invalid radio buttons"]
+    CheckBoxes (Literal bs) (Literal ls) | length bs /= length ls ->
+      V.invalid ["Invalid checkboxes"]
+    DropDown (Literal ls) (Just (Literal def)) | not (def `elem` ls) ->
+      V.invalid ["Invalid dropdown"]
+    _ -> pure field
+
+validateInline :: Inline -> V.V (Array String) Inline
+validateInline inl =
+  case inl of
+    Emph inls -> Emph <$> traverse validateInline inls
+    Strong inls -> Strong <$> traverse validateInline inls
+    Link inls targ -> Link <$> traverse validateInline inls <*> pure targ
+    Image inls str -> Image <$> traverse validateInline inls <*> pure str
+    FormField str b ff -> FormField str b <$> validateFormField ff
+    _ -> pure inl
+
 
 inlines :: Parser String (List Inline)
 inlines = many inline2 <* eof
