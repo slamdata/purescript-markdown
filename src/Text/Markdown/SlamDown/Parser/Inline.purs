@@ -290,9 +290,10 @@ inlines = many inline2 <* eof
 
     radioButtons :: Parser String FormField
     radioButtons = do
-      def <- expr parens $ string "(x)" *> skipSpaces *> someOf isAlphaNum
+      let item = someOf \c -> not $ c `elem` ['(',')',' ','!','`']
+      def <- expr parens $ string "(x)" *> skipSpaces *> item
       skipSpaces
-      ls <- expr id $ many (try (skipSpaces *> string "()" *> skipSpaces *> someOf isAlphaNum))
+      ls <- expr id $ many (try (skipSpaces *> string "()" *> skipSpaces *> item))
       return $ RadioButtons def ls
 
     checkBoxes :: Parser String FormField
@@ -300,10 +301,11 @@ inlines = many inline2 <* eof
       where
       literalCheckBoxes = do
         ls <- some $ try do
+          let item = someOf \c -> not $ c `elem` ['[',']',' ','!','`']
           skipSpaces
           b <- (string "[x]" *> pure true) <|> (string "[]" *> pure false)
           skipSpaces
-          l <- someOf isAlphaNum
+          l <- item
           return $ Tuple b l
         return $ CheckBoxes (Literal (map fst ls)) (Literal (map snd ls))
 
@@ -311,8 +313,9 @@ inlines = many inline2 <* eof
 
     dropDown :: Parser String FormField
     dropDown = do
-      ls <- braces $ expr id $ (try (skipSpaces *> someOf isAlphaNum)) `sepBy` (skipSpaces *> string ",")
-      sel <- optionMaybe $ skipSpaces *> (parens $ expr id $ someOf isAlphaNum)
+      let item = someOf \c -> not $ c `elem` ['{','}',',',' ','!','`','(',')']
+      ls <- braces $ expr id $ (try (skipSpaces *> item)) `sepBy` (skipSpaces *> string ",")
+      sel <- optionMaybe $ skipSpaces *> (parens $ expr id $ item)
       return $ DropDown ls sel
 
     expr :: forall a. (forall e. Parser String e -> Parser String e) ->
