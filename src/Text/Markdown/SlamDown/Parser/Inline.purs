@@ -1,14 +1,18 @@
 module Text.Markdown.SlamDown.Parser.Inline
   ( parseInlines
   , validateTextOfType
+  , validateFormField
   )
   where
 
 import Prelude
+
+import Control.Monad.Writer.Trans (WriterT(..))
+
 import Data.Either
-import Data.List (List(..), take, many, some, singleton, fromList)
+import Data.List (List(..), take, many, some, singleton, fromList, length)
 import Data.Foldable (elem)
-import Data.Maybe (maybe)
+import Data.Maybe (Maybe(..), maybe)
 import Data.Tuple
 
 import Text.Markdown.SlamDown
@@ -70,7 +74,7 @@ type TextParserKit
     }
 
 parseTextOfType :: TextParserKit -> TextBoxType -> Parser String String
-parseTextOfType kit = go
+parseTextOfType kit tbt = go tbt <?> show tbt
   where
     go PlainText = kit.plainText
     go Numeric = do
@@ -97,14 +101,41 @@ parseTextOfType kit = go
       time <- go Time
       pure $ date ++ " " ++ time
 
-validateTextOfType :: TextBoxType -> String -> Either ParseError String
-validateTextOfType ty txt = runParser txt $ parseTextOfType kit ty
+validateTextOfType :: TextBoxType -> String -> Either String String
+validateTextOfType tbt txt =
+  case runParser txt $ parseTextOfType kit tbt of
+    Left (ParseError err) -> Left err.message
+    Right res -> Right res
   where
     kit =
       { plainText : manyOf \_ -> true
       , numeric : someOf isNumeric
       , numericPrefix : optional hash
       }
+
+validateFormField :: FormField -> Either String FormField
+validateFormField field =
+  case field of
+    TextBox tbt (Just (Literal def)) ->
+      case validateTextOfType tbt def of
+        Left err -> Left $ "Invalid text box: " ++ err
+        Right val -> Right $ TextBox tbt (Just (Literal val))
+    RadioButtons (Literal sel) (Literal ls) ->
+      if sel `elem` ls then
+        Right field
+      else
+        Left "Invalid radio buttons"
+    CheckBoxes (Literal bs) (Literal ls) ->
+      if length bs == length ls then
+        Right field
+      else
+        Left "Invalid checkboxes"
+    DropDown (Literal ls) (Just (Literal def)) ->
+      if def `elem` ls then
+         Right field
+      else
+        Left "Invalid dropdown"
+    _ -> Right field
 
 inlines :: Parser String (List Inline)
 inlines = many inline2 <* eof
