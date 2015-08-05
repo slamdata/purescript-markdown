@@ -289,18 +289,6 @@ parseBlocks (Cons (CLinkReference b) cs) =
 parseBlocks (Cons _ cs) =
   parseBlocks cs
 
-{-
-
-data Block
-  = Paragraph (List Inline)
-  | Header Int (List Inline)
-  | Blockquote (List Block)
-  | Lst ListType (List (List Block))
-  | CodeBlock CodeBlockType (List String)
-  | LinkReference String String
-  | Rule
--}
-
 validateBlock :: Block -> V.V (Array String) Block
 validateBlock b =
   case b of
