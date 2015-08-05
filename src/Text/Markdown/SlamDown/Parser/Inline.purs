@@ -4,6 +4,7 @@ import Prelude
 import Data.Either
 import Data.List (List(..), take, many, some, singleton, fromList)
 import Data.Foldable (elem)
+import Data.Maybe (maybe)
 import Data.Tuple
 
 import Text.Markdown.SlamDown
@@ -33,6 +34,67 @@ consolidate Nil = Nil
 consolidate (Cons (Str s1) (Cons (Str s2) is)) =
   consolidate (Cons (Str (s1 <> s2)) is)
 consolidate (Cons i is) = Cons i $ consolidate is
+
+someOf :: (Char -> Boolean) -> Parser String String
+someOf p = (S.fromCharArray <<< fromList) <$> some (satisfy p)
+
+manyOf :: (Char -> Boolean) -> Parser String String
+manyOf p = (S.fromCharArray <<< fromList) <$> many (satisfy p)
+
+isNumeric :: Char -> Boolean
+isNumeric c =
+  s >= "0" && s <= "9"
+  where
+    s = S.fromChar c
+
+numStr :: Parser String String
+numStr = someOf isNumeric
+
+dash :: Parser String Unit
+dash = void $ string "-"
+
+colon :: Parser String Unit
+colon = void $ string ":"
+
+dot :: Parser String Unit
+dot = void $ string "."
+
+hash :: Parser String Unit
+hash = void $ string "#"
+
+type TextParserKit
+  = { plainText :: Parser String String
+    , numeric :: Parser String String
+    , numericPrefix :: Parser String Unit
+    }
+
+parseTextOfType :: TextParserKit -> TextBoxType -> Parser String String
+parseTextOfType kit = go
+  where
+    go PlainText = kit.plainText
+    go Numeric = do
+      kit.numericPrefix
+      m <- kit.numeric
+      skipSpaces
+      n <- optionMaybe $ dot *> skipSpaces *> kit.numeric
+      pure $ m ++ maybe "" (":" ++) n
+    go Time = do
+      hh <- kit.numeric
+      skipSpaces *> colon
+      mm <- kit.numeric
+      pure $ hh ++ ":" ++ mm
+    go Date = do
+      m <- kit.numeric
+      skipSpaces *> dash *> skipSpaces
+      d <- kit.numeric
+      skipSpaces *> dash *> skipSpaces
+      y <- kit.numeric
+      pure $ m ++ "-" ++ d ++ "-" ++ y
+    go DateTime = do
+      date <- go Date
+      skipSpaces
+      time <- go Time
+      pure $ date ++ " " ++ time
 
 inlines :: Parser String (List Inline)
 inlines = many inline2 <* eof
@@ -93,13 +155,6 @@ inlines = many inline2 <* eof
           _ -> SoftBreak
       | otherwise = Space
 
-  someOf :: (Char -> Boolean) -> Parser String String
-  someOf p = (S.fromCharArray <<< fromList) <$> some (satisfy p) 
-               
-  manyOf :: (Char -> Boolean) -> Parser String String
-  manyOf p = (S.fromCharArray <<< fromList) <$> many (satisfy p) 
- 
-
   code :: Parser String Inline
   code = do
     eval <- option false (string "!" *> pure true)
@@ -158,49 +213,33 @@ inlines = many inline2 <* eof
     required = option false (string "*" *> pure true)
 
   formElement :: Parser String FormField
-  formElement = try (textBox DateTime dateTime)
-            <|> try (textBox Date date)
-            <|> try (textBox Time time)
-            <|> try (textBox Numeric numeric)
-            <|> try (textBox PlainText plainText)
+  formElement = try (textBox DateTime)
+            <|> try (textBox Date)
+            <|> try (textBox Time)
+            <|> try (textBox Numeric)
+            <|> try (textBox PlainText)
             <|> try radioButtons
             <|> try checkBoxes
             <|> try dropDown
     where
-    textBox :: TextBoxType -> Parser String Unit -> Parser String FormField
-    textBox ty p = TextBox ty <$>
-                   (p *>
-                    skipSpaces *>
-                    optionMaybe
-                    (parens (expr id (manyOf
-                                      (\x -> S.fromChar x /= ")")))))
 
-    und :: Parser String Unit
-    und = void $ someOf (\x -> S.fromChar x == "_")
+    templateParserKit :: TextParserKit
+    templateParserKit =
+      { numericPrefix : hash
+      , plainText : und
+      , numeric : und
+      }
 
-    dash :: Parser String Unit
-    dash = void $ string "-"
+    textBox :: TextBoxType -> Parser String FormField
+    textBox ty =
+      TextBox ty <$>
+        (parseTextOfType templateParserKit ty *>
+         skipSpaces *>
+         optionMaybe
+         (parens (expr id (manyOf (\x -> S.fromChar x /= ")")))))
 
-    colon :: Parser String Unit
-    colon = void $ string ":"
-
-    hash :: Parser String Unit
-    hash = void $ string "#"
-
-    plainText :: Parser String Unit
-    plainText = und
-
-    numeric :: Parser String Unit
-    numeric = hash *> und
-
-    date :: Parser String Unit
-    date = und *> skipSpaces *> dash *> skipSpaces *> und *> skipSpaces *> dash *> skipSpaces *> und
-
-    time :: Parser String Unit
-    time = und *> skipSpaces *> colon *> skipSpaces *> und
-
-    dateTime :: Parser String Unit
-    dateTime = date *> skipSpaces *> time
+    und :: Parser String String
+    und = someOf (\x -> S.fromChar x == "_")
 
     radioButtons :: Parser String FormField
     radioButtons = do
