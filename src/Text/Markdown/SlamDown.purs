@@ -1,14 +1,15 @@
 module Text.Markdown.SlamDown where
 
 import Prelude
+
 import Control.Bind ((<=<))
 
-import Data.List (List(..), concat, singleton)
+import Data.Foldable (foldl, mconcat)
 import Data.Function (on)
 import Data.Identity (runIdentity)
+import Data.List (List(..), concat, singleton)
 import Data.Maybe (Maybe(..))
 import Data.Monoid (Monoid, mempty)
-import Data.Foldable (foldl, mconcat)
 import Data.Traversable (Traversable, traverse)
 
 data SlamDown = SlamDown (List Block)
