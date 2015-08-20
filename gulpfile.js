@@ -5,8 +5,6 @@ var gulp = require('gulp'),
     run = require('gulp-run'),
     runSequence = require('run-sequence');
 
-
-
 function sequence () {
     var args = [].slice.apply(arguments);
     return function() {
@@ -64,9 +62,10 @@ gulp.task('test-bundle',['test-make'], function () {
     });
 });
 
-gulp.task('test', ['test-bundle'], function() {
-    run('node dist/test.js').exec();
+gulp.task('test', ['test-bundle'], function(cb) {
+    // Need this verbosity setting here to prevent the test running from being
+    // cut off, strangely.
+    run('node dist/test.js', { verbosity: 3 }).exec(cb);
 });
-
 
 gulp.task('default', sequence('make', 'docs'));

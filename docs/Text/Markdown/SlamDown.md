@@ -183,4 +183,10 @@ everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown 
 eval :: (Maybe String -> List String -> String) -> SlamDown -> SlamDown
 ```
 
+#### `evalM`
+
+``` purescript
+evalM :: forall m. (Monad m) => (Maybe String -> List String -> m String) -> SlamDown -> m SlamDown
+```
+
 

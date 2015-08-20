@@ -6,15 +6,14 @@ module Text.Markdown.SlamDown.Parser
   where
 
 import Prelude
-import Data.Maybe
-import Data.Maybe.Unsafe (fromJust)
+
 import Data.Foldable (any, all)
 import Data.List (List(..), toList, reverse, last, span, drop, singleton)
+import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe.Unsafe (fromJust)
 import Data.Monoid (mempty)
 import Data.Traversable (traverse)
-import qualified Data.Validation as V
-
-import qualified Data.Char as S
+import Data.Validation (V())
 import qualified Data.String as S
 
 import Text.Markdown.SlamDown
@@ -55,7 +54,7 @@ allChars :: (String -> Boolean) -> String -> Boolean
 allChars p = all p <<< S.split ""
 
 removeNonIndentingSpaces :: String -> String
-removeNonIndentingSpaces s 
+removeNonIndentingSpaces s
   | S.count (isSpace <<< S.fromChar) s < 4 = S.dropWhile (isSpace <<< S.fromChar) s
   | otherwise = s
 
@@ -71,16 +70,16 @@ isRule s = allChars isRuleChar s &&
            allChars ((==) (S.take 1 s)) s
 
 isATXHeader :: String -> Boolean
-isATXHeader s = 
+isATXHeader s =
   let level = S.count (\c -> S.fromChar c == "#") s
       rest  = S.drop level s
   in level >= 1 && level <= 6 && S.take 1 rest == " "
 
 splitATXHeader :: String -> { level :: Int, contents :: String }
-splitATXHeader s = 
+splitATXHeader s =
   let level    = S.count (\c -> S.fromChar c == "#") s
       contents = S.drop (level + 1) s
-  in { level: level, contents: contents } 
+  in { level: level, contents: contents }
 
 -- Takes the last parsed container as an argument
 -- to avoid parsing a rule as a header
@@ -109,7 +108,7 @@ countLeadingSpaces :: String -> Int
 countLeadingSpaces = S.count (isSpace <<< S.fromChar)
 
 isBulleted :: String -> Boolean
-isBulleted s = 
+isBulleted s =
   let b  = S.take 1 s
       ls = countLeadingSpaces (S.drop 1 s)
   in isBullet b && ls > 0 && ls < 5
@@ -123,7 +122,7 @@ isOrderedListMarker :: String -> Boolean
 isOrderedListMarker s =
   let n    = S.count (isDigit <<< S.fromChar) s
       next = S.take 1 (S.drop n s)
-      ls   = countLeadingSpaces (S.drop (n + 1) s) 
+      ls   = countLeadingSpaces (S.drop (n + 1) s)
   in n > 0 && (next == "." || next == ")") && ls > 0
 
 listItemType :: String -> ListType
@@ -133,13 +132,13 @@ listItemType s
                 in Ordered (S.take 1 (S.drop n s))
 
 listItemIndent :: String -> Int
-listItemIndent s 
+listItemIndent s
   | isBulleted s = 1 + min 4 (countLeadingSpaces (S.drop 1 s))
   | otherwise = let n = S.count (isDigit <<< S.fromChar) s
                 in n + 1 + min 4 (countLeadingSpaces (S.drop (n + 1) s))
 
 isListItemLine :: String -> Boolean
-isListItemLine s = 
+isListItemLine s =
   let s' = removeNonIndentingSpaces s
   in isBulleted s' || isOrderedListMarker s'
 
@@ -157,7 +156,7 @@ splitListItem (Cons s ss) =
       listType = listItemType s1
   in { listType: listType
      , listItemLines: listItemLines
-     , otherLines: sp.rest 
+     , otherLines: sp.rest
      }
 
 isIndentedChunk :: String -> Boolean
@@ -179,7 +178,7 @@ isCodeFence s = isSimpleFence s || (isEvaluatedCode s && isSimpleFence (S.drop 1
   isSimpleFence s = S.count (isFenceChar <<< S.fromChar) s >= 3
 
 isEvaluatedCode :: String -> Boolean
-isEvaluatedCode s = S.take 1 s == "!" 
+isEvaluatedCode s = S.take 1 s == "!"
 
 isFenceChar :: String -> Boolean
 isFenceChar "~" = true
@@ -187,7 +186,7 @@ isFenceChar "`" = true
 isFenceChar _   = false
 
 codeFenceInfo :: String -> String
-codeFenceInfo = trimEnd <<< trim <<< S.dropWhile (isFenceChar <<< S.fromChar)
+codeFenceInfo = S.trim <<< S.dropWhile (isFenceChar <<< S.fromChar)
 
 codeFenceChar :: String -> String
 codeFenceChar = S.take 1
@@ -200,8 +199,8 @@ splitCodeFence indent fence ss =
       codeLines = map removeIndentTo sp.init
   in { codeLines: codeLines, otherLines: drop 1 sp.rest }
   where
-  isClosingFence :: String -> Boolean 
-  isClosingFence s = S.count (\c -> S.fromChar c == fence) (removeNonIndentingSpaces s) >= 3 
+  isClosingFence :: String -> Boolean
+  isClosingFence s = S.count (\c -> S.fromChar c == fence) (removeNonIndentingSpaces s) >= 3
 
   removeIndentTo :: String -> String
   removeIndentTo s = S.drop (min indent (countLeadingSpaces s)) s
@@ -215,18 +214,18 @@ min n m = if n < m then n else m
 parseContainers :: List Container -> List String -> List Container
 parseContainers acc Nil = reverse acc
 parseContainers acc (Cons s ss)
-  | allChars isSpace s = 
+  | allChars isSpace s =
       parseContainers (Cons CBlank acc) ss
-  | isATXHeader (removeNonIndentingSpaces s) = 
+  | isATXHeader (removeNonIndentingSpaces s) =
       let o = splitATXHeader (removeNonIndentingSpaces s)
       in parseContainers (Cons (CATXHeader o.level o.contents) acc) ss
-  | isSetextHeader (removeNonIndentingSpaces (trimEnd s)) (last acc) =
-      parseContainers (Cons (CSetextHeader $ setextLevel (removeNonIndentingSpaces (trimEnd s))) acc) ss
-  | isRule (removeNonIndentingSpaces s) = 
+  | isSetextHeader (removeNonIndentingSpaces (S.trim s)) (last acc) =
+      parseContainers (Cons (CSetextHeader $ setextLevel (removeNonIndentingSpaces (S.trim s))) acc) ss
+  | isRule (removeNonIndentingSpaces s) =
       parseContainers (Cons CRule acc) ss
   | isBlockquoteLine s =
       let o = splitBlockquote $ Cons s ss
-      in parseContainers (Cons (CBlockquote (parseContainers mempty o.blockquoteLines)) acc) o.otherLines 
+      in parseContainers (Cons (CBlockquote (parseContainers mempty o.blockquoteLines)) acc) o.otherLines
   | isListItemLine s =
       let o = splitListItem (Cons s ss)
       in parseContainers (Cons (CListItem o.listType $ parseContainers mempty o.listItemLines) acc) o.otherLines
@@ -245,7 +244,7 @@ parseContainers acc (Cons s ss)
       let s1 = removeNonIndentingSpaces s
           b  = fromJust $ parseLinkReference s1
       in parseContainers (Cons (CLinkReference b) acc) ss
-  | otherwise = parseContainers (Cons (CText s) acc) ss 
+  | otherwise = parseContainers (Cons (CText s) acc) ss
 
 isTextContainer :: Container -> Boolean
 isTextContainer (CText _) = true
@@ -272,7 +271,7 @@ parseBlocks (Cons (CText s) cs) =
 parseBlocks (Cons CRule cs) =
   Cons Rule $ parseBlocks cs
 parseBlocks (Cons (CATXHeader n s) cs) =
-  Cons (Header n (parseInlines $ singleton s)) $ parseBlocks cs 
+  Cons (Header n (parseInlines $ singleton s)) $ parseBlocks cs
 parseBlocks (Cons (CBlockquote cs) cs1) =
   Cons (Blockquote $ parseBlocks cs) $ parseBlocks cs1
 parseBlocks (Cons (CListItem lt cs) cs1) =
@@ -289,7 +288,7 @@ parseBlocks (Cons (CLinkReference b) cs) =
 parseBlocks (Cons _ cs) =
   parseBlocks cs
 
-validateBlock :: Block -> V.V (Array String) Block
+validateBlock :: Block -> V (Array String) Block
 validateBlock b =
   case b of
     Paragraph inls -> Paragraph <$> traverse validateInline inls
@@ -298,7 +297,7 @@ validateBlock b =
     Lst lt blss -> Lst lt <$> traverse (traverse validateBlock) blss
     _ -> pure b
 
-validateSlamDown :: SlamDown -> V.V (Array String) SlamDown
+validateSlamDown :: SlamDown -> V (Array String) SlamDown
 validateSlamDown (SlamDown bls) = SlamDown <$> traverse validateBlock bls
 
 tabsToSpaces :: String -> String

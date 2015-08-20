@@ -3,12 +3,12 @@ module Text.Markdown.SlamDown where
 import Prelude
 import Control.Bind ((<=<))
 
-import Data.List (List(..), concat, singleton)
+import Data.Foldable (foldl, mconcat)
 import Data.Function (on)
 import Data.Identity (runIdentity)
+import Data.List (List(..), concat, singleton)
 import Data.Maybe (Maybe(..))
 import Data.Monoid (Monoid, mempty)
-import Data.Foldable (foldl, mconcat)
 import Data.Traversable (Traversable, traverse)
 
 data SlamDown = SlamDown (List Block)
@@ -208,3 +208,15 @@ eval f = everywhere b i
   i :: Inline -> Inline
   i (Code true code) = Code false (f Nothing $ singleton code)
   i other = other
+
+evalM :: forall m. (Monad m) => (Maybe String -> List String -> m String) -> SlamDown -> m SlamDown
+evalM f = everywhereM b i
+  where
+  b :: Block -> m Block
+  b (CodeBlock (Fenced true info) code) =
+    CodeBlock (Fenced false info) <<< singleton <$> f (Just info) code
+  b other = pure $ other
+
+  i :: Inline -> m Inline
+  i (Code true code) = Code false <$> f Nothing (singleton code)
+  i other = pure $ other
