@@ -2,6 +2,7 @@ module Text.Markdown.SlamDown.Pretty (prettyPrintMd) where
 
 import Prelude
 
+import Data.Either (either)
 import Data.Foldable (fold)
 import Data.List (concatMap, zipWith, (..), toList, fromList, List(..), singleton)
 import Data.Maybe (fromMaybe, maybe)
@@ -97,7 +98,7 @@ prettyPrintFormElement (CheckBoxes (Literal bs) (Literal ls)) =
   joinWith " " $ fromList (zipWith checkBox bs ls)
   where
   checkBox b l = (if b then "[x] " else "[] ") <> l
-prettyPrintFormElement (CheckBoxes (Evaluated bs) (Evaluated ls)) =
+prettyPrintFormElement (CheckBoxes (Unevaluated bs) (Unevaluated ls)) =
   "[!`" <> bs <> "`] !`" <> ls <> "`"
 prettyPrintFormElement (DropDown lbls sel) =
   braces (prettyPrintExpr id (fromList >>> joinWith ", ") lbls) <>
@@ -106,7 +107,7 @@ prettyPrintFormElement _ = "Unsupported form element"
 
 prettyPrintExpr :: forall a. (String -> String) -> (a -> String) -> Expr a -> String
 prettyPrintExpr _    f (Literal a) = f a
-prettyPrintExpr wrap _ (Evaluated code) = wrap $ "!`" <> code <> "`"
+prettyPrintExpr wrap _ (Unevaluated c) = wrap $ "!`" <> c <> "`"
 
 parens :: String -> String
 parens s = "(" <> s <> ")"

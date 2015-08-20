@@ -101,7 +101,7 @@ instance showLinkTarget :: Show LinkTarget
 ``` purescript
 data Expr a
   = Literal a
-  | Evaluated String
+  | Unevaluated String
 ```
 
 ##### Instances
@@ -180,7 +180,22 @@ everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown 
 #### `eval`
 
 ``` purescript
-eval :: (Maybe String -> List String -> String) -> SlamDown -> SlamDown
+eval :: forall m. (Monad m) => (Maybe String -> List String -> m String) -> (TextBoxType -> String -> m String) -> (String -> m String) -> (String -> m (List String)) -> SlamDown -> m SlamDown
 ```
+
+Evaluates code blocks embedded within a SlamDown document.
+- The first function handles the evaluation of fenced code blocks and
+  inline code values. The first argument is the type associated with a
+  fenced code block, taken from the opening triple-backtick. The second
+  argument is each line of the code block. In the case of inline code the
+  first argument is always `Nothing` and the `List` will only contain one
+  item.
+- The second function handles code blocks used to provide a default value
+  for a text-based input.
+- The third function handles singular values used in determining the
+  selected value in a dropdown or collection of radio buttons.
+- The fourth function handles lists of values used for the list of options
+  in a dropdown, the list of values for checkboxes, and the list of
+  selected values for checkboxes.
 
 

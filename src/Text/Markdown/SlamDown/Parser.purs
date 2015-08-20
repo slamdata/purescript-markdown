@@ -145,10 +145,10 @@ isListItemLine s =
 isIndentedTo :: Int -> String -> Boolean
 isIndentedTo n s = countLeadingSpaces s >= n
 
-splitListItem :: List String -> { listType :: ListType
-                                , listItemLines :: List String
-                                , otherLines :: List String }
-splitListItem (Cons s ss) =
+splitListItem :: String -> List String -> { listType :: ListType
+                                          , listItemLines :: List String
+                                          , otherLines :: List String }
+splitListItem s ss =
   let s1 = removeNonIndentingSpaces s
       sp = span (isIndentedTo indent) ss
       indent = listItemIndent s1
@@ -227,7 +227,7 @@ parseContainers acc (Cons s ss)
       let o = splitBlockquote $ Cons s ss
       in parseContainers (Cons (CBlockquote (parseContainers mempty o.blockquoteLines)) acc) o.otherLines
   | isListItemLine s =
-      let o = splitListItem (Cons s ss)
+      let o = splitListItem s ss
       in parseContainers (Cons (CListItem o.listType $ parseContainers mempty o.listItemLines) acc) o.otherLines
   | isIndentedChunk s =
       let o = splitIndentedChunks (Cons s ss)
@@ -252,6 +252,7 @@ isTextContainer _ = false
 
 getCText :: Container -> String
 getCText (CText s) = s
+getCText _ = ""
 
 isListItem :: ListType -> Container -> Boolean
 isListItem lt1 (CListItem lt2 _) = lt1 == lt2
@@ -259,6 +260,7 @@ isListItem _ _ = false
 
 getCListItem :: Container -> List Container
 getCListItem (CListItem _ cs) = cs
+getCListItem _ = Nil
 
 parseBlocks :: List Container -> List Block
 parseBlocks Nil = Nil

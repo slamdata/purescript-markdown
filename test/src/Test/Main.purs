@@ -1,21 +1,21 @@
 module Test.Main where
 
 import Prelude
-import Data.Either (Either(..))
-import Data.Maybe
-import Data.List
-
-import qualified Data.Array as A
-import qualified Data.Char as C
-import qualified Data.String as S
-
-import Data.Traversable (traverse)
-import qualified Data.Validation as V
 
 import Control.Monad.Eff
 import Control.Monad.Eff.Console
 import Control.Monad.Eff.Random
 import Control.Monad.Trampoline
+
+import Data.Either (Either(..))
+import Data.List
+import Data.Maybe
+import Data.Traversable (traverse)
+import Data.Identity (runIdentity)
+import qualified Data.Array as A
+import qualified Data.Char as C
+import qualified Data.String as S
+import qualified Data.Validation as V
 
 import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Parser
@@ -132,7 +132,11 @@ static = do
                          \\n\
                          \main = log \"Hello World\"\n\
                          \~~~"
-  testDocument $ eval (\_ _ -> "Evaluated!")
+  testDocument $ runIdentity
+               $ eval (\_ _ -> pure "Evaluated code block!")
+                      (\_ _ -> pure "Evaluated textbox value!")
+                      (\_ -> pure "Evaluated value!")
+                      (\_ -> pure $ singleton "Evaluated list!")
                $ parseMd "Some evaluated fenced code:\n\
                          \\n\
                          \!~~~purescript\n\

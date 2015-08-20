@@ -306,7 +306,7 @@ inlines = many inline2 <* eof
           return $ Tuple b l
         return $ CheckBoxes (Literal (map fst ls)) (Literal (map snd ls))
 
-      evaluatedCheckBoxes = CheckBoxes <$> squares evaluated <*> (skipSpaces *> evaluated)
+      evaluatedCheckBoxes = CheckBoxes <$> squares unevaluated <*> (skipSpaces *> unevaluated)
 
     dropDown :: Parser String FormField
     dropDown = do
@@ -317,13 +317,13 @@ inlines = many inline2 <* eof
 
     expr :: forall a. (forall e. Parser String e -> Parser String e) ->
             Parser String a -> Parser String (Expr a)
-    expr f p = try (f evaluated) <|> Literal <$> p
+    expr f p = try (f unevaluated) <|> Literal <$> p
 
-    evaluated :: forall a. Parser String (Expr a)
-    evaluated = do
+    unevaluated :: forall a. Parser String (Expr a)
+    unevaluated = do
       string "!"
       ticks <- someOf (\x -> S.fromChar x == "`")
-      Evaluated <$> (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
+      Unevaluated <$> (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
 
   other :: Parser String Inline
   other = do
