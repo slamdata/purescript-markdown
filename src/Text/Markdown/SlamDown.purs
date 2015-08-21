@@ -1,14 +1,16 @@
 module Text.Markdown.SlamDown where
 
 import Prelude
+
 import Control.Bind ((<=<))
 
-import Data.List (List(..), concat, singleton)
+import Data.Either (Either(..))
+import Data.Foldable (foldl, mconcat, elem)
 import Data.Function (on)
 import Data.Identity (runIdentity)
-import Data.Maybe (Maybe(..))
+import Data.List (List(..), concat, singleton)
+import Data.Maybe (Maybe(..), isJust)
 import Data.Monoid (Monoid, mempty)
-import Data.Foldable (foldl, mconcat)
 import Data.Traversable (Traversable, traverse)
 
 data SlamDown = SlamDown (List Block)
@@ -90,7 +92,7 @@ data CodeBlockType
 
 instance showCodeAttr :: Show CodeBlockType where
   show Indented      = "Indented"
-  show (Fenced eval info) = "(Fenced " ++ show eval ++ " " ++ show info ++ ")"
+  show (Fenced evaluated info) = "(Fenced " ++ show evaluated ++ " " ++ show info ++ ")"
 
 data LinkTarget
   = InlineLink String
@@ -102,11 +104,11 @@ instance showLinkTarget :: Show LinkTarget where
 
 data Expr a
   = Literal a
-  | Evaluated String
+  | Unevaluated String
 
 instance showExpr :: (Show a) => Show (Expr a) where
   show (Literal a)   = "(Literal " ++ show a ++ ")"
-  show (Evaluated s) = "(Evaluated " ++ show s ++ ")"
+  show (Unevaluated e) = "(Unevaluated " ++ show e ++ ")"
 
 data FormField
   = TextBox        TextBoxType (Maybe (Expr String))
@@ -197,14 +199,41 @@ everythingM b i (SlamDown bs) = mconcat <$> traverse b' bs
 everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown -> r
 everything b i = runIdentity <<< everythingM (pure <<< b) (pure <<< i)
 
-eval :: (Maybe String -> List String -> String) -> SlamDown -> SlamDown
-eval f = everywhere b i
+eval :: forall m. (Monad m)
+      => { code :: String -> m String
+         , block :: String -> List String -> m String
+         , text :: TextBoxType -> String -> m String
+         , value :: String -> m String
+         , list :: String -> m (List String)
+         }
+      -> SlamDown
+      -> m SlamDown
+eval fs = everywhereM b i
   where
-  b :: Block -> Block
-  b (CodeBlock (Fenced true info) code) = CodeBlock (Fenced false info) $
-                                          singleton $ f (Just info) code
-  b other = other
 
-  i :: Inline -> Inline
-  i (Code true code) = Code false (f Nothing $ singleton code)
-  i other = other
+  b :: Block -> m Block
+  b (CodeBlock (Fenced true info) code) =
+    CodeBlock (Fenced false info) <<< singleton <$> fs.block info code
+  b other = pure $ other
+
+  i :: Inline -> m Inline
+  i (Code true code) = Code false <$> fs.code code
+  i (FormField l r field) = FormField l r <$> f field
+  i other = pure $ other
+
+  f :: FormField -> m FormField
+  f (TextBox ty val) = TextBox ty <$> traverse (evalExpr (fs.text ty)) val
+  f (RadioButtons sel opts) = RadioButtons <$> evalExpr fs.value sel <*> evalExpr fs.list opts
+  f (CheckBoxes sels vals) = do
+    vals' <- evalExpr fs.list vals
+    sels' <- evalExpr (\s -> fs.list s >>= pure <<< map (`elem` (getValues vals'))) sels
+    pure $ CheckBoxes sels' vals'
+  f (DropDown opts default) = DropDown <$> evalExpr fs.list opts <*> traverse (evalExpr fs.value) default
+
+  evalExpr :: forall a. (String -> m a) -> Expr a -> m (Expr a)
+  evalExpr _ (Literal a) = pure $ Literal a
+  evalExpr e (Unevaluated s) = Literal <$> e s
+
+  getValues :: forall a. Expr (List a) -> List a
+  getValues (Literal vs) = vs
+  getValues _ = Nil

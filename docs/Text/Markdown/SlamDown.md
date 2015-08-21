@@ -101,7 +101,7 @@ instance showLinkTarget :: Show LinkTarget
 ``` purescript
 data Expr a
   = Literal a
-  | Evaluated String
+  | Unevaluated String
 ```
 
 ##### Instances
@@ -180,7 +180,7 @@ everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown 
 #### `eval`
 
 ``` purescript
-eval :: (Maybe String -> List String -> String) -> SlamDown -> SlamDown
+eval :: forall m. (Monad m) => { code :: String -> m String, block :: String -> List String -> m String, text :: TextBoxType -> String -> m String, value :: String -> m String, list :: String -> m (List String) } -> SlamDown -> m SlamDown
 ```
 
 

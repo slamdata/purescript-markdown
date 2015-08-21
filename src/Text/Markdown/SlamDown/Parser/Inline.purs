@@ -8,28 +8,25 @@ module Text.Markdown.SlamDown.Parser.Inline
 
 import Prelude
 
-import Control.Monad.Writer.Trans (WriterT(..))
+import Control.Alt ((<|>))
+import Control.Apply ((<*), (*>))
+import Control.Lazy (fix)
 
-import Data.Either
-import Data.List (List(..), take, many, some, singleton, fromList, length)
+import Data.Either (Either(..))
 import Data.Foldable (elem)
+import Data.List (List(..), take, many, some, singleton, fromList, length)
 import Data.Maybe (Maybe(..), maybe)
 import Data.Traversable (traverse)
-import Data.Tuple
-import qualified Data.Validation as V
+import Data.Tuple (Tuple(..), fst, snd)
+import Data.Validation (V(), invalid, runV)
+import qualified Data.String as S
+
+import Text.Parsing.Parser (Parser(), ParseError(..), runParser)
+import Text.Parsing.Parser.Combinators (try, option, optional, optionMaybe, manyTill, many1Till, sepBy, (<?>))
+import Text.Parsing.Parser.String (eof, satisfy, string, anyChar, noneOf)
 
 import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Parser.Utils
-
-import Text.Parsing.Parser
-import Text.Parsing.Parser.Combinators
-import Text.Parsing.Parser.String (eof, satisfy, string, anyChar, noneOf)
-
-import qualified Data.String as S
-
-import Control.Apply ((<*), (*>))
-import Control.Alt ((<|>))
-import Control.Lazy (fix)
 
 foreign import error :: forall a. String -> a
 
@@ -104,10 +101,10 @@ parseTextOfType kit tbt = go tbt <?> show tbt
       time <- go Time
       pure $ date ++ " " ++ time
 
-validateTextOfType :: TextBoxType -> String -> V.V (Array String) String
+validateTextOfType :: TextBoxType -> String -> V (Array String) String
 validateTextOfType tbt txt =
   case runParser txt $ parseTextOfType kit tbt of
-    Left (ParseError err) -> V.invalid [err.message]
+    Left (ParseError err) -> invalid [err.message]
     Right res -> pure res
   where
     kit =
@@ -116,23 +113,23 @@ validateTextOfType tbt txt =
       , numericPrefix : optional hash
       }
 
-validateFormField :: FormField -> V.V (Array String) FormField
+validateFormField :: FormField -> V (Array String) FormField
 validateFormField field =
   case field of
     TextBox tbt (Just (Literal def)) ->
-      V.runV
-        (V.invalid <<< map ("Invalid text box: " ++))
+      runV
+        (invalid <<< map ("Invalid text box: " ++))
         (pure <<< TextBox tbt <<< Just <<< Literal)
         (validateTextOfType tbt def)
     RadioButtons (Literal sel) (Literal ls) | not (sel `elem` ls) ->
-      V.invalid ["Invalid radio buttons"]
+      invalid ["Invalid radio buttons"]
     CheckBoxes (Literal bs) (Literal ls) | length bs /= length ls ->
-      V.invalid ["Invalid checkboxes"]
+      invalid ["Invalid checkboxes"]
     DropDown (Literal ls) (Just (Literal def)) | not (def `elem` ls) ->
-      V.invalid ["Invalid dropdown"]
+      invalid ["Invalid dropdown"]
     _ -> pure field
 
-validateInline :: Inline -> V.V (Array String) Inline
+validateInline :: Inline -> V (Array String) Inline
 validateInline inl =
   case inl of
     Emph inls -> Emph <$> traverse validateInline inls
@@ -207,7 +204,7 @@ inlines = many inline2 <* eof
     eval <- option false (string "!" *> pure true)
     ticks <- someOf (\x -> S.fromChar x == "`")
     contents <- (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
-    return <<< Code eval <<< trim <<< trimEnd $ contents
+    return <<< Code eval <<< S.trim $ contents
 
 
   link :: Parser String Inline
@@ -215,25 +212,25 @@ inlines = many inline2 <* eof
     where
     linkLabel :: Parser String (List Inline)
     linkLabel = string "[" *> manyTill (inline0 <|> other) (string "]")
-    
+
     linkTarget :: Parser String LinkTarget
     linkTarget = inlineLink <|> referenceLink
-    
+
     inlineLink :: Parser String LinkTarget
     inlineLink = InlineLink <<< S.fromCharArray <<< fromList <$> (string "(" *> manyTill anyChar (string ")"))
-    
+
     referenceLink :: Parser String LinkTarget
     referenceLink = ReferenceLink <$> optionMaybe ((S.fromCharArray <<< fromList) <$> (string "[" *> manyTill anyChar (string "]")))
-        
+
   image :: Parser String Inline
   image = Image <$> imageLabel <*> imageUrl
     where
     imageLabel :: Parser String (List Inline)
     imageLabel = string "![" *> manyTill (inline1 <|> other) (string "]")
-    
+
     imageUrl :: Parser String String
     imageUrl = S.fromCharArray <<< fromList <$> (string "(" *> manyTill anyChar (string ")"))
-        
+
   autolink :: Parser String Inline
   autolink = do
     string "<"
@@ -243,7 +240,7 @@ inlines = many inline2 <* eof
     autoLabel :: String -> String
     autoLabel s | isEmailAddress s = "mailto:" <> s
                 | otherwise = s
-     
+
   entity :: Parser String Inline
   entity = do
     string "&"
@@ -252,8 +249,8 @@ inlines = many inline2 <* eof
 
 
   formField :: Parser String Inline
-  formField = FormField <$> label 
-                        <*> (skipSpaces *> required) 
+  formField = FormField <$> label
+                        <*> (skipSpaces *> required)
                         <*> (skipSpaces *> string "=" *> skipSpaces *> formElement)
     where
     label = someOf isAlphaNum <|> (S.fromCharArray <<< fromList <$> (string "[" *> manyTill anyChar (string "]")))
@@ -309,7 +306,7 @@ inlines = many inline2 <* eof
           return $ Tuple b l
         return $ CheckBoxes (Literal (map fst ls)) (Literal (map snd ls))
 
-      evaluatedCheckBoxes = CheckBoxes <$> squares evaluated <*> (skipSpaces *> evaluated)
+      evaluatedCheckBoxes = CheckBoxes <$> squares unevaluated <*> (skipSpaces *> unevaluated)
 
     dropDown :: Parser String FormField
     dropDown = do
@@ -320,13 +317,13 @@ inlines = many inline2 <* eof
 
     expr :: forall a. (forall e. Parser String e -> Parser String e) ->
             Parser String a -> Parser String (Expr a)
-    expr f p = try (f evaluated) <|> Literal <$> p
+    expr f p = try (f unevaluated) <|> Literal <$> p
 
-    evaluated :: forall a. Parser String (Expr a)
-    evaluated = do
+    unevaluated :: forall a. Parser String (Expr a)
+    unevaluated = do
       string "!"
       ticks <- someOf (\x -> S.fromChar x == "`")
-      Evaluated <$> (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
+      Unevaluated <$> (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
 
   other :: Parser String Inline
   other = do

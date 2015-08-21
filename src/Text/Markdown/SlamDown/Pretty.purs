@@ -1,19 +1,19 @@
 module Text.Markdown.SlamDown.Pretty (prettyPrintMd) where
 
 import Prelude
-import Data.Maybe (fromMaybe, maybe)
-import Data.List (concatMap, zipWith, (..), toList, fromList, List(..), singleton)
+
+import Data.Either (either)
 import Data.Foldable (fold)
+import Data.List (concatMap, zipWith, (..), toList, fromList, List(..), singleton)
+import Data.Maybe (fromMaybe, maybe)
 import Data.Monoid (mempty)
-
-
-import qualified Data.String as S
+import Data.String (split, indexOf, joinWith, length)
 
 import Text.Markdown.SlamDown
 
-unlines :: List String -> String 
-unlines lst = S.joinWith "\n" $ fromList lst
-    
+unlines :: List String -> String
+unlines lst = joinWith "\n" $ fromList lst
+
 prettyPrintMd :: SlamDown -> String
 prettyPrintMd (SlamDown bs) = unlines $ concatMap prettyPrintBlock bs
 
@@ -28,26 +28,26 @@ overLines f = map f <<< concatMap lines
 
 lines :: String -> List String
 lines "" = mempty
-lines s = toList $ S.split "\n" s
+lines s = toList $ split "\n" s
 
 prettyPrintBlock :: Block -> List String
 prettyPrintBlock (Paragraph is) = Cons (prettyPrintInlines is) (Cons "" Nil)
 prettyPrintBlock (Header n is) = singleton (replicateS n "#" <> " " <> prettyPrintInlines is)
 prettyPrintBlock (Blockquote bs) = overLines ((<>) "> ") (concatMap prettyPrintBlock bs)
-prettyPrintBlock (Lst lt bss) = concatMap listItem bss 
+prettyPrintBlock (Lst lt bss) = concatMap listItem bss
   where
   listItem :: List Block -> List String
-  listItem bs = 
+  listItem bs =
     let ss = concatMap prettyPrintBlock bs
     in addMarker (concatMap lines ss)
 
   addMarker :: List String -> List String
   addMarker Nil = Nil
-  addMarker (Cons s ss) = 
+  addMarker (Cons s ss) =
     let m   = prettyPrintMarker lt
-        len = S.length m
+        len = length m
     in Cons (m <> " " <> s) $ overLines (indent (len + 1)) ss
-    
+
   prettyPrintMarker :: ListType -> String
   prettyPrintMarker (Bullet s) = s
   prettyPrintMarker (Ordered s) = "1" <> s
@@ -60,13 +60,13 @@ prettyPrintBlock (LinkReference l url) = singleton $ squares l <> ": " <> url
 prettyPrintBlock Rule = singleton "***"
 
 prettyPrintInlines :: List Inline -> String
-prettyPrintInlines is = S.joinWith "" $ fromList $ (map prettyPrintInline is)
+prettyPrintInlines is = joinWith "" $ fromList $ (map prettyPrintInline is)
 
 prettyPrintInline :: Inline -> String
-prettyPrintInline (Str s) = s 
-prettyPrintInline (Entity s) = s 
+prettyPrintInline (Str s) = s
+prettyPrintInline (Entity s) = s
 prettyPrintInline Space = " "
-prettyPrintInline SoftBreak = "\n"  
+prettyPrintInline SoftBreak = "\n"
 prettyPrintInline LineBreak = "  \n"
 prettyPrintInline (Emph is) = "*" <> prettyPrintInlines is <> "*"
 prettyPrintInline (Strong is) = "**" <> prettyPrintInlines is <> "**"
@@ -80,8 +80,8 @@ prettyPrintInline (Image is url) = "![" <> prettyPrintInlines is <> "](" <> url 
 prettyPrintInline (FormField l r e) = esc l <> star <> " = " <> prettyPrintFormElement e
   where
   star = if r then "*" else" "
-  esc s = maybe s (const $ "[" <> s <> "]") $ S.indexOf " " s 
-  
+  esc s = maybe s (const $ "[" <> s <> "]") $ indexOf " " s
+
 prettyPrintFormElement :: FormField -> String
 prettyPrintFormElement (TextBox ty value) =
   intro ty <> maybe "" (\v -> " (" <> prettyPrintExpr id id v <> ")") value
@@ -91,23 +91,23 @@ prettyPrintFormElement (TextBox ty value) =
   intro Date      = "__ - __ - ____"
   intro Time      = "__ : __"
   intro DateTime  = "__ - __ - ____ __ : __"
-prettyPrintFormElement (RadioButtons def lbls) = 
-  prettyPrintExpr parens ((<>) "(x) ") def <> " " <> 
-  prettyPrintExpr id (S.joinWith " " <<< fromList <<< map ((<>) "() ")) lbls
-prettyPrintFormElement (CheckBoxes (Literal bs) (Literal ls)) = 
-  S.joinWith " " $ fromList (zipWith checkBox bs ls)
+prettyPrintFormElement (RadioButtons def lbls) =
+  prettyPrintExpr parens ((<>) "(x) ") def <> " " <>
+  prettyPrintExpr id (joinWith " " <<< fromList <<< map ((<>) "() ")) lbls
+prettyPrintFormElement (CheckBoxes (Literal bs) (Literal ls)) =
+  joinWith " " $ fromList (zipWith checkBox bs ls)
   where
   checkBox b l = (if b then "[x] " else "[] ") <> l
-prettyPrintFormElement (CheckBoxes (Evaluated bs) (Evaluated ls)) = 
+prettyPrintFormElement (CheckBoxes (Unevaluated bs) (Unevaluated ls)) =
   "[!`" <> bs <> "`] !`" <> ls <> "`"
-prettyPrintFormElement (DropDown lbls sel) = 
-  braces (prettyPrintExpr id (fromList >>> S.joinWith ", ") lbls) <>
+prettyPrintFormElement (DropDown lbls sel) =
+  braces (prettyPrintExpr id (fromList >>> joinWith ", ") lbls) <>
   maybe "" (\s -> parens (prettyPrintExpr id id s)) sel
 prettyPrintFormElement _ = "Unsupported form element"
 
 prettyPrintExpr :: forall a. (String -> String) -> (a -> String) -> Expr a -> String
 prettyPrintExpr _    f (Literal a) = f a
-prettyPrintExpr wrap _ (Evaluated code) = wrap $ "!`" <> code <> "`"
+prettyPrintExpr wrap _ (Unevaluated c) = wrap $ "!`" <> c <> "`"
 
 parens :: String -> String
 parens s = "(" <> s <> ")"
