@@ -133,10 +133,12 @@ static = do
                          \main = log \"Hello World\"\n\
                          \~~~"
   testDocument $ runIdentity
-               $ eval (\_ _ -> pure "Evaluated code block!")
-                      (\_ _ -> pure "Evaluated textbox value!")
-                      (\_ -> pure "Evaluated value!")
-                      (\_ -> pure $ singleton "Evaluated list!")
+               $ eval { block: \_ _ -> pure "Evaluated code block!"
+                      , code: \_ -> pure "Evaluated code value!"
+                      , text: \_ _ -> pure "Evaluated textbox value!"
+                      , value: \_ -> pure "Evaluated value!"
+                      , list: \_ -> pure $ singleton "Evaluated list!"
+                      }
                $ parseMd "Some evaluated fenced code:\n\
                          \\n\
                          \!~~~purescript\n\

@@ -199,48 +199,36 @@ everythingM b i (SlamDown bs) = mconcat <$> traverse b' bs
 everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown -> r
 everything b i = runIdentity <<< everythingM (pure <<< b) (pure <<< i)
 
--- | Evaluates code blocks embedded within a SlamDown document.
--- | - The first function handles the evaluation of fenced code blocks and
--- |   inline code values. The first argument is the type associated with a
--- |   fenced code block, taken from the opening triple-backtick. The second
--- |   argument is each line of the code block. In the case of inline code the
--- |   first argument is always `Nothing` and the `List` will only contain one
--- |   item.
--- | - The second function handles code blocks used to provide a default value
--- |   for a text-based input.
--- | - The third function handles singular values used in determining the
--- |   selected value in a dropdown or collection of radio buttons.
--- | - The fourth function handles lists of values used for the list of options
--- |   in a dropdown, the list of values for checkboxes, and the list of
--- |   selected values for checkboxes.
 eval :: forall m. (Monad m)
-      => (Maybe String -> List String -> m String)
-      -> (TextBoxType -> String -> m String)
-      -> (String -> m String)
-      -> (String -> m (List String))
+      => { code :: String -> m String
+         , block :: String -> List String -> m String
+         , text :: TextBoxType -> String -> m String
+         , value :: String -> m String
+         , list :: String -> m (List String)
+         }
       -> SlamDown
       -> m SlamDown
-eval evalCode evalText evalValue evalList = everywhereM b i
+eval fs = everywhereM b i
   where
 
   b :: Block -> m Block
   b (CodeBlock (Fenced true info) code) =
-    CodeBlock (Fenced false info) <<< singleton <$> evalCode (Just info) code
+    CodeBlock (Fenced false info) <<< singleton <$> fs.block info code
   b other = pure $ other
 
   i :: Inline -> m Inline
-  i (Code true code) = Code false <$> evalCode Nothing (singleton code)
+  i (Code true code) = Code false <$> fs.code code
   i (FormField l r field) = FormField l r <$> f field
   i other = pure $ other
 
   f :: FormField -> m FormField
-  f (TextBox ty val) = TextBox ty <$> traverse (evalExpr (evalText ty)) val
-  f (RadioButtons sel opts) = RadioButtons <$> evalExpr evalValue sel <*> evalExpr evalList opts
+  f (TextBox ty val) = TextBox ty <$> traverse (evalExpr (fs.text ty)) val
+  f (RadioButtons sel opts) = RadioButtons <$> evalExpr fs.value sel <*> evalExpr fs.list opts
   f (CheckBoxes sels vals) = do
-    vals' <- evalExpr evalList vals
-    sels' <- evalExpr (\s -> evalList s >>= pure <<< map (`elem` (getValues vals'))) sels
+    vals' <- evalExpr fs.list vals
+    sels' <- evalExpr (\s -> fs.list s >>= pure <<< map (`elem` (getValues vals'))) sels
     pure $ CheckBoxes sels' vals'
-  f (DropDown opts default) = DropDown <$> evalExpr evalList opts <*> traverse (evalExpr evalValue) default
+  f (DropDown opts default) = DropDown <$> evalExpr fs.list opts <*> traverse (evalExpr fs.value) default
 
   evalExpr :: forall a. (String -> m a) -> Expr a -> m (Expr a)
   evalExpr _ (Literal a) = pure $ Literal a
