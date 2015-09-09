@@ -1,4 +1,21 @@
-module Text.Markdown.SlamDown where
+module Text.Markdown.SlamDown
+  ( SlamDown(..)
+  , Block(..)
+  , Inline(..)
+  , ListType(..)
+  , CodeBlockType(..)
+  , LinkTarget(..)
+  , Expr(..)
+  , FormField(..)
+  , TextBoxType(..)
+  , everywhereM
+  , everywhere
+  , everywhereTopDownM
+  , everywhereTopDown
+  , everythingM
+  , everything
+  , eval
+  ) where
 
 import Prelude
 
@@ -8,10 +25,12 @@ import Data.Either (Either(..))
 import Data.Foldable (foldl, mconcat, elem)
 import Data.Function (on)
 import Data.Identity (runIdentity)
-import Data.List (List(..), concat, singleton)
+import Data.List (List(..), concat, singleton, toList)
 import Data.Maybe (Maybe(..), isJust)
 import Data.Monoid (Monoid, mempty)
 import Data.Traversable (Traversable, traverse)
+import Test.StrongCheck
+import Test.StrongCheck.Gen
 
 data SlamDown = SlamDown (List Block)
 
@@ -30,6 +49,9 @@ instance semigroupSlamDown :: Semigroup SlamDown where
 instance monoidSlamDown :: Monoid SlamDown where
   mempty = SlamDown mempty
 
+instance arbitrarySlamDown :: Arbitrary SlamDown where
+  arbitrary = SlamDown <$> listOf arbitrary
+
 data Block
   = Paragraph (List Inline)
   | Header Int (List Inline)
@@ -47,6 +69,19 @@ instance showBlock :: Show Block where
   show (CodeBlock ca s)      = "(CodeBlock " ++ show ca ++ " " ++ show s ++ ")"
   show (LinkReference l uri) = "(LinkReference " ++ show l ++ " " ++ show uri ++ ")"
   show Rule                  = "Rule"
+
+-- | Nota bene: this does not generate any recursive structure
+instance arbitraryBlock :: Arbitrary Block where
+  arbitrary = do
+    k <- chooseInt 0.0 6.0
+    case k of
+      0 -> Paragraph <$> listOf arbitrary
+      1 -> Header <$> arbitrary <*> listOf arbitrary
+      2 -> pure $ Blockquote Nil
+      3 -> Lst <$> arbitrary <*> listOf (pure Nil)
+      4 -> CodeBlock <$> arbitrary <*> listOf arbitrary
+      5 -> LinkReference <$> arbitrary <*> arbitrary
+      _ -> pure Rule
 
 data Inline
   = Str String
@@ -85,14 +120,45 @@ instance eqListType :: Eq ListType where
   eq (Ordered s1) (Ordered s2) = s1 == s2
   eq _            _            = false
 
+instance arbitraryListType :: Arbitrary ListType where
+  arbitrary = do
+    k <- chooseInt 0.0 1.0
+    case k of
+      0 -> Bullet <$> arbitrary
+      _ -> Ordered <$> arbitrary
+
+-- | Nota bene: this does not generate any recursive structure
+instance arbitraryInline :: Arbitrary Inline where
+  arbitrary = do
+    k <- chooseInt 0.0 10.0
+    case k of
+      0 -> Str <$> arbitrary
+      1 -> Entity <$> arbitrary
+      2 -> pure Space
+      3 -> pure SoftBreak
+      4 -> pure LineBreak
+      5 -> Code <$> arbitrary <*> arbitrary
+      6 -> FormField <$> arbitrary <*> arbitrary <*> arbitrary
+      7 -> pure (Emph Nil)
+      8 -> pure (Strong Nil)
+      9 -> Link Nil <$> arbitrary
+      _ -> Image Nil <$> arbitrary
 
 data CodeBlockType
   = Indented
   | Fenced Boolean String
 
-instance showCodeAttr :: Show CodeBlockType where
+instance showCodeBlockType :: Show CodeBlockType where
   show Indented      = "Indented"
   show (Fenced evaluated info) = "(Fenced " ++ show evaluated ++ " " ++ show info ++ ")"
+
+instance arbitraryCodeBlockType :: Arbitrary CodeBlockType where
+  arbitrary = do
+    k <- chooseInt 0.0 1.0
+    case k of
+      0 -> pure Indented
+      _ -> Fenced <$> arbitrary <*> arbitrary
+
 
 data LinkTarget
   = InlineLink String
@@ -102,6 +168,13 @@ instance showLinkTarget :: Show LinkTarget where
   show (InlineLink uri)    = "(InlineLink " ++ show uri ++ ")"
   show (ReferenceLink tgt) = "(ReferenceLink " ++ show tgt ++ ")"
 
+instance arbitraryLinkTarget :: Arbitrary LinkTarget where
+  arbitrary = do
+    k <- chooseInt 0.1 1.0
+    case k of
+      0 -> InlineLink <$> arbitrary
+      _ -> ReferenceLink <$> arbitrary
+
 data Expr a
   = Literal a
   | Unevaluated String
@@ -109,6 +182,16 @@ data Expr a
 instance showExpr :: (Show a) => Show (Expr a) where
   show (Literal a)   = "(Literal " ++ show a ++ ")"
   show (Unevaluated e) = "(Unevaluated " ++ show e ++ ")"
+
+genExpr :: forall a. Gen a -> Gen (Expr a)
+genExpr g = do
+  i <- chooseInt 0.0 1.0
+  case i of
+    0 -> Literal <$> g
+    _ -> Unevaluated <$> arbitrary
+
+instance arbitraryExpr :: (Arbitrary a) => Arbitrary (Expr a) where
+  arbitrary = genExpr arbitrary
 
 data FormField
   = TextBox        TextBoxType (Maybe (Expr String))
@@ -121,6 +204,18 @@ instance showFormField :: Show FormField where
   show (RadioButtons sel ls) = "(RadioButtons " ++ show sel ++ " " ++ show ls ++ ")"
   show (CheckBoxes bs ls) = "(CheckBoxes " ++ show bs ++ " " ++ show ls ++ ")"
   show (DropDown ls def) = "(DropDown " ++ show ls ++ " " ++ show def ++ ")"
+
+instance arbitraryFormField :: Arbitrary FormField where
+  arbitrary = do
+    k <- chooseInt 0.0 3.0
+    case k of
+      0 -> TextBox <$> arbitrary <*> arbitrary
+      1 -> RadioButtons <$> arbitrary <*> genExpr (listOf arbitrary)
+      2 -> CheckBoxes <$> genExpr (listOf arbitrary) <*> genExpr (listOf arbitrary)
+      _ -> DropDown <$> genExpr (listOf arbitrary) <*> arbitrary
+
+listOf :: forall f a. (Monad f) => GenT f a -> GenT f (List a)
+listOf = map toList <<< arrayOf
 
 data TextBoxType = PlainText | Numeric | Date | Time | DateTime
 
@@ -138,6 +233,15 @@ instance eqTextBoxType :: Eq TextBoxType where
   eq Time Time = true
   eq DateTime DateTime = true
   eq _ _ = false
+
+instance arbitraryTextBoxType :: Arbitrary TextBoxType where
+  arbitrary = elements PlainText $ toList
+    [ PlainText
+    , Numeric
+    , Date
+    , Time
+    , DateTime
+    ]
 
 everywhereM :: forall m. (Monad m) => (Block -> m Block) -> (Inline -> m Inline) -> SlamDown -> m SlamDown
 everywhereM b i (SlamDown bs) = SlamDown <$> traverse b' bs
