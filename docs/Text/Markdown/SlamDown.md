@@ -54,6 +54,7 @@ data Inline
 ##### Instances
 ``` purescript
 instance showInline :: Show Inline
+instance arbitraryInline :: Arbitrary Inline
 ```
 
 #### `ListType`
@@ -68,6 +69,7 @@ data ListType
 ``` purescript
 instance showListType :: Show ListType
 instance eqListType :: Eq ListType
+instance arbitraryListType :: Arbitrary ListType
 ```
 
 #### `CodeBlockType`
@@ -80,7 +82,8 @@ data CodeBlockType
 
 ##### Instances
 ``` purescript
-instance showCodeAttr :: Show CodeBlockType
+instance showCodeBlockType :: Show CodeBlockType
+instance arbitraryCodeBlockType :: Arbitrary CodeBlockType
 ```
 
 #### `LinkTarget`
@@ -94,6 +97,7 @@ data LinkTarget
 ##### Instances
 ``` purescript
 instance showLinkTarget :: Show LinkTarget
+instance arbitraryLinkTarget :: Arbitrary LinkTarget
 ```
 
 #### `Expr`
@@ -107,6 +111,7 @@ data Expr a
 ##### Instances
 ``` purescript
 instance showExpr :: (Show a) => Show (Expr a)
+instance arbitraryExpr :: (Arbitrary a) => Arbitrary (Expr a)
 ```
 
 #### `FormField`
@@ -122,6 +127,7 @@ data FormField
 ##### Instances
 ``` purescript
 instance showFormField :: Show FormField
+instance arbitraryFormField :: Arbitrary FormField
 ```
 
 #### `TextBoxType`
@@ -139,6 +145,7 @@ data TextBoxType
 ``` purescript
 instance showTextBoxType :: Show TextBoxType
 instance eqTextBoxType :: Eq TextBoxType
+instance arbitraryTextBoxType :: Arbitrary TextBoxType
 ```
 
 #### `everywhereM`
