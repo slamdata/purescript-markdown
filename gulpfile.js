@@ -68,4 +68,9 @@ gulp.task('test', ['test-bundle'], function(cb) {
     run('node dist/test.js', { verbosity: 3 }).exec(cb);
 });
 
-gulp.task('default', sequence('make', 'docs'));
+gulp.task('dotpsci', function () {
+    return purescript.psci({ src: sources, ffi: foreigns })
+        .pipe(gulp.dest('.'));
+});
+
+gulp.task('default', sequence('make', 'docs', 'dotpsci'));
