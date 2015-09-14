@@ -122,10 +122,8 @@ instance eqListType :: Eq ListType where
 
 instance arbitraryListType :: Arbitrary ListType where
   arbitrary = do
-    k <- chooseInt 0.0 1.0
-    case k of
-      0 -> Bullet <$> arbitrary
-      _ -> Ordered <$> arbitrary
+    b <- arbitrary
+    if b then Bullet <$> arbitrary else Ordered <$> arbitrary
 
 -- | Nota bene: this does not generate any recursive structure
 instance arbitraryInline :: Arbitrary Inline where
@@ -154,10 +152,8 @@ instance showCodeBlockType :: Show CodeBlockType where
 
 instance arbitraryCodeBlockType :: Arbitrary CodeBlockType where
   arbitrary = do
-    k <- chooseInt 0.0 1.0
-    case k of
-      0 -> pure Indented
-      _ -> Fenced <$> arbitrary <*> arbitrary
+    b <- arbitrary
+    if b then pure Indented else Fenced <$> arbitrary <*> arbitrary
 
 
 data LinkTarget
@@ -170,10 +166,8 @@ instance showLinkTarget :: Show LinkTarget where
 
 instance arbitraryLinkTarget :: Arbitrary LinkTarget where
   arbitrary = do
-    k <- chooseInt 0.1 1.0
-    case k of
-      0 -> InlineLink <$> arbitrary
-      _ -> ReferenceLink <$> arbitrary
+    b <- arbitrary
+    if b then InlineLink <$> arbitrary else ReferenceLink <$> arbitrary
 
 data Expr a
   = Literal a
@@ -185,10 +179,8 @@ instance showExpr :: (Show a) => Show (Expr a) where
 
 genExpr :: forall a. Gen a -> Gen (Expr a)
 genExpr g = do
-  i <- chooseInt 0.0 1.0
-  case i of
-    0 -> Literal <$> g
-    _ -> Unevaluated <$> arbitrary
+  b <- arbitrary
+  if b then Literal <$> g else Unevaluated <$> arbitrary
 
 instance arbitraryExpr :: (Arbitrary a) => Arbitrary (Expr a) where
   arbitrary = genExpr arbitrary
