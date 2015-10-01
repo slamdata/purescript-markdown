@@ -22,13 +22,13 @@
     "package.json"
   ],
   "dependencies": {
-    "purescript-parsing": "^0.5.0",
+    "purescript-parsing": "^0.7.0",
     "purescript-validation": "^0.2.0",
     "purescript-functions": "^0.1.0",
-    "purescript-strongcheck": "^0.12.1",
+    "purescript-strongcheck": "^0.13.0",
     "purescript-prelude": "^0.1.2"
   },
   "devDependencies": {
-    "purescript-strongcheck": "^0.12.1"
+    "purescript-strongcheck": "^0.13.0"
   }
 }
