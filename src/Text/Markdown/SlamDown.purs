@@ -322,9 +322,13 @@ eval fs = everywhereM b i
   f (RadioButtons sel opts) = RadioButtons <$> evalExpr fs.value sel <*> evalExpr fs.list opts
   f (CheckBoxes sels vals) = do
     vals' <- evalExpr fs.list vals
-    sels' <- evalExpr (\s -> fs.list s >>= pure <<< map (`elem` (getValues vals'))) sels
+    sels' <- evalExpr (mkBools vals') sels
     pure $ CheckBoxes sels' vals'
   f (DropDown opts default) = DropDown <$> evalExpr fs.list opts <*> traverse (evalExpr fs.value) default
+
+  mkBools vals' code = do
+    labels <- fs.list code
+    pure $ (`elem` labels) `map` getValues vals'
 
   evalExpr :: forall a. (String -> m a) -> Expr a -> m (Expr a)
   evalExpr _ (Literal a) = pure $ Literal a

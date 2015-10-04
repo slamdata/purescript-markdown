@@ -10,6 +10,7 @@ import Control.Monad.Trampoline
 import Data.Either (Either(..))
 import Data.List
 import Data.Maybe
+import Data.Tuple
 import Data.Traversable (traverse)
 import Data.Identity (runIdentity)
 import qualified Data.Array as A
@@ -173,6 +174,7 @@ static = do
 
 generated :: Eff _ Unit
 generated = do
+
   log "Random documents"
   seed <- random
   let docs = runTrampoline $ sample' 10 (GenState { size: 10, seed: seed }) (prettyPrintMd <<< runTestSlamDown <$> arbitrary)
@@ -185,7 +187,33 @@ generated = do
       "\nOriginal: " <> show sd <>
       "\nPrinted: " <> printed <>
       "\nParsed: " <> show parsed
+
+  quickCheck \(NonEmptyUniqueList xs) x ->
+    let evaluator = { code: const (pure "")
+                    , block: const (const $ pure "")
+                    , text: const (const $ pure "")
+                    , value: const (pure x)
+                    , list: \v -> case v of
+                        "selection" -> pure (pure x)
+                        _ -> pure (Cons x xs)
+                    }
+        evaluated = runIdentity $ eval evaluator (parseMd "test = [!`selection`] !`values`")
+    in case evaluated of
+      SlamDown (Cons (Paragraph (Cons ff Nil)) Nil) ->
+        case ff of
+          FormField "test" false (CheckBoxes (Literal sels) (Literal vals)) ->
+            length sels == length vals <?> "Checkbox evaluated booleans list length does not match the labels list length"
+
   log "All dynamic passed"
+
+newtype NonEmptyUniqueList a = NonEmptyUniqueList (List a)
+
+instance arbNonEmptyUniqueList :: (Eq a, Arbitrary a) => Arbitrary (NonEmptyUniqueList a) where
+  arbitrary = do
+    Tuple x xs <- arbitrary `suchThat` isUnique
+    pure $ NonEmptyUniqueList (Cons x (toList xs))
+      where
+      isUnique (Tuple x xs) = x `A.cons` xs == A.nub (x `A.cons` xs)
 
 deferGen :: forall a. (Unit -> Gen a) -> Gen a
 deferGen g = do
