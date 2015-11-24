@@ -18,8 +18,6 @@ import Text.Parsing.Parser (Parser())
 import Text.Parsing.Parser.Combinators (skipMany)
 import Text.Parsing.Parser.String (string, satisfy)
 
-import Text.Markdown.SlamDown
-
 isWhitespace :: Char -> Boolean
 isWhitespace = R.test wsRegex <<< fromChar
   where

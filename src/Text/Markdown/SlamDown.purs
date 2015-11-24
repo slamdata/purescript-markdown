@@ -21,12 +21,11 @@ import Prelude
 
 import Control.Bind ((<=<))
 
-import Data.Either (Either(..))
 import Data.Foldable (foldl, mconcat, elem)
 import Data.Function (on)
 import Data.Identity (runIdentity)
 import Data.List (List(..), concat, singleton, toList)
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe())
 import Data.Monoid (Monoid, mempty)
 import Data.Traversable (Traversable, traverse)
 import Test.StrongCheck

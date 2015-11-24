@@ -2,7 +2,6 @@ module Text.Markdown.SlamDown.Pretty (prettyPrintMd) where
 
 import Prelude
 
-import Data.Either (either)
 import Data.Foldable (fold)
 import Data.List (concatMap, zipWith, (..), toList, fromList, List(..), singleton)
 import Data.Maybe (fromMaybe, maybe)
