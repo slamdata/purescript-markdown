@@ -17,7 +17,6 @@ import Data.Validation (V())
 import qualified Data.String as S
 
 import Text.Markdown.SlamDown
-import Text.Markdown.SlamDown.Parser.Utils
 import Text.Markdown.SlamDown.Parser.Inline
 import Text.Markdown.SlamDown.Parser.References
 

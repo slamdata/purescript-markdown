@@ -9,12 +9,12 @@ data SlamDown
 
 ##### Instances
 ``` purescript
-instance showSlamDown :: Show SlamDown
-instance eqSlamDown :: Eq SlamDown
-instance ordSlamDown :: Ord SlamDown
-instance semigroupSlamDown :: Semigroup SlamDown
-instance monoidSlamDown :: Monoid SlamDown
-instance arbitrarySlamDown :: Arbitrary SlamDown
+Show SlamDown
+Eq SlamDown
+Ord SlamDown
+Semigroup SlamDown
+Monoid SlamDown
+Arbitrary SlamDown
 ```
 
 #### `Block`
@@ -32,8 +32,8 @@ data Block
 
 ##### Instances
 ``` purescript
-instance showBlock :: Show Block
-instance arbitraryBlock :: Arbitrary Block
+Show Block
+Arbitrary Block
 ```
 
 #### `Inline`
@@ -55,8 +55,8 @@ data Inline
 
 ##### Instances
 ``` purescript
-instance showInline :: Show Inline
-instance arbitraryInline :: Arbitrary Inline
+Show Inline
+Arbitrary Inline
 ```
 
 #### `ListType`
@@ -69,9 +69,9 @@ data ListType
 
 ##### Instances
 ``` purescript
-instance showListType :: Show ListType
-instance eqListType :: Eq ListType
-instance arbitraryListType :: Arbitrary ListType
+Show ListType
+Eq ListType
+Arbitrary ListType
 ```
 
 #### `CodeBlockType`
@@ -84,8 +84,8 @@ data CodeBlockType
 
 ##### Instances
 ``` purescript
-instance showCodeBlockType :: Show CodeBlockType
-instance arbitraryCodeBlockType :: Arbitrary CodeBlockType
+Show CodeBlockType
+Arbitrary CodeBlockType
 ```
 
 #### `LinkTarget`
@@ -98,8 +98,8 @@ data LinkTarget
 
 ##### Instances
 ``` purescript
-instance showLinkTarget :: Show LinkTarget
-instance arbitraryLinkTarget :: Arbitrary LinkTarget
+Show LinkTarget
+Arbitrary LinkTarget
 ```
 
 #### `Expr`
@@ -112,8 +112,8 @@ data Expr a
 
 ##### Instances
 ``` purescript
-instance showExpr :: (Show a) => Show (Expr a)
-instance arbitraryExpr :: (Arbitrary a) => Arbitrary (Expr a)
+(Show a) => Show (Expr a)
+(Arbitrary a) => Arbitrary (Expr a)
 ```
 
 #### `FormField`
@@ -128,8 +128,8 @@ data FormField
 
 ##### Instances
 ``` purescript
-instance showFormField :: Show FormField
-instance arbitraryFormField :: Arbitrary FormField
+Show FormField
+Arbitrary FormField
 ```
 
 #### `TextBoxType`
@@ -145,9 +145,9 @@ data TextBoxType
 
 ##### Instances
 ``` purescript
-instance showTextBoxType :: Show TextBoxType
-instance eqTextBoxType :: Eq TextBoxType
-instance arbitraryTextBoxType :: Arbitrary TextBoxType
+Show TextBoxType
+Eq TextBoxType
+Arbitrary TextBoxType
 ```
 
 #### `everywhereM`
