@@ -19,7 +19,7 @@ module Text.Markdown.SlamDown
 
 import Prelude
 
-import Control.Bind ((<=<))
+import Control.Bind ((<=<), (>=>))
 
 import Data.Foldable (foldl, mconcat, elem)
 import Data.Function (on)
@@ -319,10 +319,10 @@ eval fs = everywhereM b i
   f :: FormField -> m FormField
   f (TextBox ty val) = TextBox ty <$> traverse (evalExpr (fs.text ty)) val
   f (RadioButtons sel opts) = RadioButtons <$> evalExpr fs.value sel <*> evalExpr fs.list opts
-  f (CheckBoxes sels vals) = do
+  f (CheckBoxes checkeds vals) = do
     vals' <- evalExpr fs.list vals
-    sels' <- evalExpr (\s -> fs.list s >>= pure <<< map (`elem` (getValues vals'))) sels
-    pure $ CheckBoxes sels' vals'
+    checkeds' <- evalExpr (fs.list >=> \cs -> pure $ map (`elem` cs) (getValues vals')) checkeds
+    pure $ CheckBoxes checkeds' vals'
   f (DropDown opts default) = DropDown <$> evalExpr fs.list opts <*> traverse (evalExpr fs.value) default
 
   evalExpr :: forall a. (String -> m a) -> Expr a -> m (Expr a)
