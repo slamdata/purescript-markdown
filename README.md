@@ -132,7 +132,7 @@ phones = [] Android [x] iPhone [x] Blackberry
 phones = [!`..`] !`...`
 ```
 
-If code evaluation is used to produce the values, then the first snippet must evaluate to a list of booleans, and the second snippet must evaluate to a list of labels, and the two lists must have the same length.
+If code evaluation is used to produce the values, then both snippets must evaluate to a list of strings. The second list defines the checkboxes' labels and the first defines which checkboxes are to be checked. Checkboxes whose labels are included in the first list will be checked.
 
 #### Dropdowns
 
