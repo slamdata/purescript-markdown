@@ -121,8 +121,6 @@ validateFormField field =
         (invalid <<< map ("Invalid text box: " ++))
         (pure <<< TextBox tbt <<< Just <<< Literal)
         (validateTextOfType tbt def)
-    RadioButtons (Literal sel) (Literal ls) | not (sel `elem` ls) ->
-      invalid ["Invalid radio buttons"]
     CheckBoxes (Literal bs) (Literal ls) | length bs /= length ls ->
       invalid ["Invalid checkboxes"]
     DropDown (Literal ls) (Just (Literal def)) | not (def `elem` ls) ->
