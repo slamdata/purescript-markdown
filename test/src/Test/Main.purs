@@ -39,14 +39,12 @@ testValidations = do
   let document =
         "welp = __:__ (not-a-time)\n\
         \welp = #__ (not-a-number)\n\
-        \welp = __-__-__ __:__ (hi)\n\
-        \city = {BOS, SFO, NYC} (NOPE)"
+        \welp = __-__-__ __:__ (hi)"
 
   let expectedErrors =
         [ "Invalid text box: Expected Time"
         , "Invalid text box: Expected Numeric"
         , "Invalid text box: Expected DateTime"
-        , "Invalid dropdown"
         ]
 
   assert $ validate document == Left expectedErrors

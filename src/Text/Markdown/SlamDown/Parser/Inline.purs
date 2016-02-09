@@ -123,8 +123,6 @@ validateFormField field =
         (validateTextOfType tbt def)
     CheckBoxes (Literal bs) (Literal ls) | length bs /= length ls ->
       invalid ["Invalid checkboxes"]
-    DropDown (Literal ls) (Just (Literal def)) | not (def `elem` ls) ->
-      invalid ["Invalid dropdown"]
     _ -> pure field
 
 validateInline :: Inline -> V (Array String) Inline
