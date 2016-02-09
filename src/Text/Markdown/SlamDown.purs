@@ -294,15 +294,17 @@ everythingM b i (SlamDown bs) = mconcat <$> traverse b' bs
 everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown -> r
 everything b i = runIdentity <<< everythingM (pure <<< b) (pure <<< i)
 
-eval :: forall m. (Monad m)
-      => { code :: String -> m String
-         , block :: String -> List String -> m String
-         , text :: TextBoxType -> String -> m String
-         , value :: String -> m String
-         , list :: String -> m (List String)
-         }
-      -> SlamDown
-      -> m SlamDown
+eval
+  :: forall m
+   . (Monad m)
+  => { code :: String -> m String
+     , block :: String -> List String -> m String
+     , text :: TextBoxType -> String -> m String
+     , value :: String -> m String
+     , list :: String -> m (List String)
+     }
+  -> SlamDown
+  -> m SlamDown
 eval fs = everywhereM b i
   where
 
