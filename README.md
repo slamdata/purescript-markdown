@@ -10,11 +10,11 @@ import Text.Markdown.SlamDown
 import Text.Markdown.SlamDown.Parser
 
 -- parsing
-case parseMd "# foo" of 
+case parseMd "# foo" of
   SlamDown [Header 1 (Text "foo")] -> trace "matched!"
   _                                -> trace "did not match!"
 
-import Text.Markdown.SlamDown.Pretty 
+import Text.Markdown.SlamDown.Pretty
 
 -- rendering
 (trace <<< prettyPrintMd <<< parseMd) "# foo"
@@ -76,9 +76,14 @@ Fenced code blocks may be evaluated by prefixing them with an exclamation point 
 
 For example, in a document supporting evaluation of Javascript, the inline code block !`1 + 2` would be evaluated and the resulting number (`3`) would be inserted into the document at that location.
 
-Code evaluation may be used for inline or block-level fenced code. 
+Code evaluation may be used for inline or block-level fenced code.
 
 If an info-string is specified, the evaluation must use the specified language or error. If no info-string is specified, the default language understood by the Markdown application is used.
+
+Note that code may be delimited by any number of backticks, so long as the same number of backticks is used on either side; in case the expression being embedded contains a backtick, longer delimiters can be used to prevent this backtick from being parsed as a delimiter. For example:
+
+    !``the `backticks` are taking over!``
+
 
 **Note**: This library does not provide any support for evaluation of code, and the code snippets are treated as completely opaque, but the documentation does define *semantics* for how these blocks interact with other elements and with the rendering of the document.
 
