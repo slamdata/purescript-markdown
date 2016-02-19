@@ -3,25 +3,26 @@
 #### `Inline`
 
 ``` purescript
-data Inline
+data Inline a
   = Str String
   | Entity String
   | Space
   | SoftBreak
   | LineBreak
-  | Emph (List Inline)
-  | Strong (List Inline)
+  | Emph (List (Inline a))
+  | Strong (List (Inline a))
   | Code Boolean String
-  | Link (List Inline) LinkTarget
-  | Image (List Inline) String
-  | FormField String Boolean FormField
+  | Link (List (Inline a)) LinkTarget
+  | Image (List (Inline a)) String
+  | FormField String Boolean (FormField a)
 ```
 
 ##### Instances
 ``` purescript
-Show Inline
-Eq Inline
-Arbitrary Inline
+Functor Inline
+(Show a) => Show (Inline a)
+(Eq a) => Eq (Inline a)
+(Arbitrary a) => Arbitrary (Inline a)
 ```
 
 #### `LinkTarget`

@@ -36,7 +36,6 @@ testDocument sd = do
 
 testValidations :: forall eff. Eff _ Unit
 testValidations = do
-  let validate = V.runV Left Right <<< validateSlamDown <<< parseMd
   let document =
         "welp = __:__ (not-a-time)\n\
         \welp = #__ (not-a-number)\n\
@@ -49,6 +48,13 @@ testValidations = do
         ]
 
   assert $ validate document == Left expectedErrors
+
+  where
+  validate :: String -> Either (Array String) SlamDown
+  validate =
+    V.runV Left Right
+      <<< validateSlamDown
+      <<< parseMd
 
 static :: Eff _ Unit
 static = do
@@ -135,8 +141,8 @@ static = do
                $ eval { block: \_ _ -> pure "Evaluated code block!"
                       , code: \_ -> pure "Evaluated code value!"
                       , text: \_ _ -> pure "Evaluated textbox value!"
-                      , value: \_ -> pure "Evaluated value!"
-                      , list: \_ -> pure $ singleton "Evaluated list!"
+                      , value: \_ -> pure $ stringValue "Evaluated value!"
+                      , list: \_ -> pure $ singleton $ stringValue "Evaluated list!"
                       }
                $ parseMd "Some evaluated fenced code:\n\
                          \\n\
@@ -213,65 +219,76 @@ three :: forall a. a -> a -> a -> Array a
 three a b c = [a, b, c]
 
 
-blocks :: Gen (Array Block)
-blocks = oneOf (smallArrayOf block0)
-               [ A.singleton <$> bq
-               , A.singleton <$> list
-               , A.singleton <$> cb
-               ]
+blocks :: forall a. Gen (Array (Block a))
+blocks =
+  oneOf (smallArrayOf block0)
+    [ A.singleton <$> bq
+    , A.singleton <$> list
+    , A.singleton <$> cb
+    ]
   where
-  block0 :: Gen Block
-  block0 = oneOf (Paragraph <<< toList <$> inlines)
-                 [ Header <$> chooseInt 1.0 6.0 <*> (singleton <$> simpleText)
-                 , CodeBlock <$>
-                   (Fenced <$> (elements true (singleton false)) <*>
-                    alphaNum)
-                   <*> (toList <$> smallArrayOf alphaNum)
-                 , LinkReference <$> alphaNum <*> alphaNum
-                 , pure Rule
-                 ]
+  block0 :: Gen (Block a)
+  block0 =
+    oneOf (Paragraph <<< toList <$> inlines)
+      [ Header <$> chooseInt 1.0 6.0 <*> (singleton <$> simpleText)
+      , CodeBlock <$>
+        (Fenced <$> (elements true (singleton false)) <*>
+         alphaNum)
+        <*> (toList <$> smallArrayOf alphaNum)
+      , LinkReference <$> alphaNum <*> alphaNum
+      , pure Rule
+      ]
 
-  bq :: Gen Block
+  bq :: Gen (Block a)
   bq = Blockquote <$> (singleton <$> block0)
 
-  cb :: Gen Block
+  cb :: Gen (Block a)
   cb = (CodeBlock Indented <<< toList) <$> smallArrayOf alphaNum
 
-  list :: Gen Block
-  list = Lst <$> oneOf (Bullet <$> (elements "-" $ toList ["+", "*"]))
-                        [ Ordered <$> (elements ")" $ singleton ".")]
-              <*> (toList <$> tinyArrayOf (toList <$> (tinyArrayOf block0)))
+  list :: Gen (Block a)
+  list =
+    Lst <$> oneOf (Bullet <$> (elements "-" $ toList ["+", "*"])) [ Ordered <$> (elements ")" $ singleton ".")]
+        <*> (toList <$> tinyArrayOf (toList <$> (tinyArrayOf block0)))
 
-inlines :: Gen (Array Inline)
-inlines = oneOf inlines0 [ A.singleton <$> link
-                         , A.singleton <$> formField
-                         ]
+inlines :: forall a. Gen (Array (Inline a))
+inlines =
+  oneOf inlines0
+    [ A.singleton <$> link
+    , A.singleton <$> formField
+    ]
   where
-  inlines0 :: Gen (Array Inline)
-  inlines0 = oneOf (A.singleton <$> simpleText)
-                  [ three <$> simpleText
-                          <*> (elements Space $ toList [SoftBreak, LineBreak])
-                          <*> simpleText
-                  , A.singleton <$> (Code <$> (elements true (singleton false)) <*> alphaNum)
-                  ]
+  inlines0 :: Gen (Array (Inline a))
+  inlines0 =
+    oneOf (A.singleton <$> simpleText)
+     [ three
+         <$> simpleText
+         <*> (elements Space $ toList [SoftBreak, LineBreak])
+         <*> simpleText
+     , A.singleton <$> (Code <$> (elements true (singleton false)) <*> alphaNum)
+     ]
 
-  link :: Gen Inline
+  link :: Gen (Inline a)
   link = Link <$> (toList <$> inlines0) <*> linkTarget
 
   linkTarget :: Gen LinkTarget
-  linkTarget = oneOf (InlineLink <$> alphaNum)
-                     [ ReferenceLink <<< Just <$> alphaNum ]
+  linkTarget =
+    oneOf (InlineLink <$> alphaNum)
+      [ ReferenceLink <<< Just <$> alphaNum ]
 
-  formField :: Gen Inline
-  formField = FormField <$> alphaNum
-                        <*> elements true (singleton false)
-                        <*> formElement
+  formField :: Gen (Inline a)
+  formField =
+    FormField
+      <$> alphaNum
+      <*> elements true (singleton false)
+      <*> formElement
 
-  formElement :: Gen FormField
-  formElement = TextBox <$> (elements PlainText $ toList [Date, Time, DateTime])
-                        <*> (Just <<< Literal <$> alphaNum)
+  formElement :: Gen (FormField a)
+  formElement =
+    TextBox
+      <$> (elements PlainText $ toList [Date, Time, DateTime])
+      <*> (Just <<< Literal <$> alphaNum)
 
-simpleText :: Gen Inline
+simpleText :: forall a. Gen (Inline a)
 simpleText = Str <$> alphaNum
 
 alphaNum :: Gen String

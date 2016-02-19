@@ -16,10 +16,10 @@ import Text.Parsing.Parser.String (eof, string, anyChar)
 import Text.Markdown.SlamDown.Syntax
 import Text.Markdown.SlamDown.Parser.Utils
 
-parseLinkReference :: String -> Maybe Block
+parseLinkReference :: forall a. String -> Maybe (Block a)
 parseLinkReference s = either (const Nothing) Just $ runParser s linkReference
 
-linkReference :: Parser String Block
+linkReference :: forall a. Parser String (Block a)
 linkReference = do
   l <- trim <<< (fromCharArray <<< fromList) <$> (string "[" *> skipSpaces *> manyTill anyChar (string "]"))
   string ":"

@@ -3,11 +3,11 @@
 #### `Block`
 
 ``` purescript
-data Block
-  = Paragraph (List Inline)
-  | Header Int (List Inline)
-  | Blockquote (List Block)
-  | Lst ListType (List (List Block))
+data Block a
+  = Paragraph (List (Inline a))
+  | Header Int (List (Inline a))
+  | Blockquote (List (Block a))
+  | Lst ListType (List (List (Block a)))
   | CodeBlock CodeBlockType (List String)
   | LinkReference String String
   | Rule
@@ -15,9 +15,10 @@ data Block
 
 ##### Instances
 ``` purescript
-Show Block
-Eq Block
-Arbitrary Block
+Functor Block
+(Show a) => Show (Block a)
+(Eq a) => Eq (Block a)
+(Arbitrary a) => Arbitrary (Block a)
 ```
 
 #### `ListType`

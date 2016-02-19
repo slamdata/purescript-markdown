@@ -1,5 +1,6 @@
 module Text.Markdown.SlamDown.Syntax
-  ( SlamDown(..)
+  ( SlamDownP(..)
+  , SlamDown()
 
   , module Text.Markdown.SlamDown.Syntax.FormField
   , module Text.Markdown.SlamDown.Syntax.Inline
@@ -18,23 +19,30 @@ import Text.Markdown.SlamDown.Syntax.FormField
 import Text.Markdown.SlamDown.Syntax.Inline
 import Text.Markdown.SlamDown.Syntax.Block
 
-data SlamDown = SlamDown (L.List Block)
+-- | `SlamDownP` is the type of SlamDown abstract syntax trees which take values in `a`.
+data SlamDownP a = SlamDown (L.List (Block a))
 
-instance showSlamDown :: Show SlamDown where
+type SlamDown = SlamDownP String
+
+instance functorSlamDownP :: Functor SlamDownP where
+  map f (SlamDown bs) = SlamDown (map f <$> bs)
+
+instance showSlamDownP :: (Show a) => Show (SlamDownP a) where
   show (SlamDown bs) = "(SlamDown " ++ show bs ++ ")"
 
-instance eqSlamDown :: Eq SlamDown where
+instance eqSlamDownP :: (Eq a) => Eq (SlamDownP a) where
   eq (SlamDown bs1) (SlamDown bs2) = bs1 == bs2
 
-instance ordSlamDown :: Ord SlamDown where
+-- TODO: replace this with a proper `Ord` instance.
+instance ordSlamDownP :: (Show a, Eq a) => Ord (SlamDownP a) where
   compare = compare `on` show
 
-instance semigroupSlamDown :: Semigroup SlamDown where
+instance semigroupSlamDownP :: Semigroup (SlamDownP a) where
   append (SlamDown bs1) (SlamDown bs2) = SlamDown (bs1 <> bs2)
 
-instance monoidSlamDown :: Monoid SlamDown where
+instance monoidSlamDownP :: Monoid (SlamDownP a) where
   mempty = SlamDown mempty
 
-instance arbitrarySlamDown :: Arbitrary SlamDown where
+instance arbitrarySlamDownP :: (Arbitrary a) => Arbitrary (SlamDownP a) where
   arbitrary = SlamDown <<< L.toList <$> arrayOf arbitrary
 
