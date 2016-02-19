@@ -25,7 +25,7 @@ import Text.Parsing.Parser (Parser(), ParseError(..), runParser)
 import Text.Parsing.Parser.Combinators (try, option, optional, optionMaybe, manyTill, many1Till, sepBy, (<?>))
 import Text.Parsing.Parser.String (eof, satisfy, string, anyChar, noneOf)
 
-import Text.Markdown.SlamDown
+import Text.Markdown.SlamDown.Syntax
 import Text.Markdown.SlamDown.Parser.Utils
 
 foreign import error :: forall a. String -> a

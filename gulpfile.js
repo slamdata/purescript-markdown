@@ -33,6 +33,12 @@ gulp.task('docs', function() {
         src: sources,
         docgen: {
             "Text.Markdown.SlamDown": "docs/Text/Markdown/SlamDown.md",
+            "Text.Markdown.SlamDown.Syntax": "docs/Text/Markdown/SlamDown/Syntax.md",
+            "Text.Markdown.SlamDown.Syntax.FormField": "docs/Text/Markdown/SlamDown/Syntax/FormField.md",
+            "Text.Markdown.SlamDown.Syntax.Inline": "docs/Text/Markdown/SlamDown/Syntax/Inline.md",
+            "Text.Markdown.SlamDown.Syntax.Block": "docs/Text/Markdown/SlamDown/Syntax/Block.md",
+            "Text.Markdown.SlamDown.Traverse": "docs/Text/Markdown/SlamDown/Traverse.md",
+            "Text.Markdown.SlamDown.Eval": "docs/Text/Markdown/SlamDown/Eval.md",
             "Text.Markdown.SlamDown.Parser": "docs/Text/Markdown/SlamDown/Parser.md",
             "Text.Markdown.SlamDown.Pretty": "docs/Text/Markdown/SlamDown/Pretty.md"
         }

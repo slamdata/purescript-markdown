@@ -13,7 +13,7 @@ import Text.Parsing.Parser (Parser(), runParser)
 import Text.Parsing.Parser.Combinators (manyTill)
 import Text.Parsing.Parser.String (eof, string, anyChar)
 
-import Text.Markdown.SlamDown
+import Text.Markdown.SlamDown.Syntax
 import Text.Markdown.SlamDown.Parser.Utils
 
 parseLinkReference :: String -> Maybe Block

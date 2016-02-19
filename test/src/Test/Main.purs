@@ -17,7 +17,8 @@ import qualified Data.Char as C
 import qualified Data.String as S
 import qualified Data.Validation as V
 
-import Text.Markdown.SlamDown
+import Text.Markdown.SlamDown.Syntax
+import Text.Markdown.SlamDown.Eval
 import Text.Markdown.SlamDown.Parser
 import Text.Markdown.SlamDown.Pretty
 
