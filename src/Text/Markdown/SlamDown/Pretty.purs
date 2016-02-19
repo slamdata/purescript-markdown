@@ -8,7 +8,7 @@ import Data.Maybe (fromMaybe, maybe)
 import Data.Monoid (mempty)
 import Data.String (split, indexOf, joinWith, length)
 
-import Text.Markdown.SlamDown
+import Text.Markdown.SlamDown.Syntax
 
 unlines :: List String -> String
 unlines lst = joinWith "\n" $ fromList lst
