@@ -1,20 +1,29 @@
 ## Module Text.Markdown.SlamDown.Syntax
 
-#### `SlamDown`
+#### `SlamDownP`
 
 ``` purescript
-data SlamDown
-  = SlamDown (List Block)
+data SlamDownP a
+  = SlamDown (List (Block a))
 ```
+
+`SlamDownP` is the type of SlamDown abstract syntax trees which take values in `a`.
 
 ##### Instances
 ``` purescript
-Show SlamDown
-Eq SlamDown
-Ord SlamDown
-Semigroup SlamDown
-Monoid SlamDown
-Arbitrary SlamDown
+Functor SlamDownP
+(Show a) => Show (SlamDownP a)
+(Eq a) => Eq (SlamDownP a)
+(Show a, Eq a) => Ord (SlamDownP a)
+Semigroup (SlamDownP a)
+Monoid (SlamDownP a)
+(Arbitrary a) => Arbitrary (SlamDownP a)
+```
+
+#### `SlamDown`
+
+``` purescript
+type SlamDown = SlamDownP String
 ```
 
 

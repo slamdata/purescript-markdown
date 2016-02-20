@@ -3,19 +3,19 @@
 #### `validateBlock`
 
 ``` purescript
-validateBlock :: Block -> V (Array String) Block
+validateBlock :: forall a. Block a -> V (Array String) (Block a)
 ```
 
 #### `validateSlamDown`
 
 ``` purescript
-validateSlamDown :: SlamDown -> V (Array String) SlamDown
+validateSlamDown :: forall a. SlamDownP a -> V (Array String) (SlamDownP a)
 ```
 
 #### `parseMd`
 
 ``` purescript
-parseMd :: String -> SlamDown
+parseMd :: forall a. (Value a) => String -> SlamDownP a
 ```
 
 

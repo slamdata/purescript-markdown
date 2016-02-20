@@ -3,37 +3,37 @@
 #### `everywhereM`
 
 ``` purescript
-everywhereM :: forall m. (Monad m) => (Block -> m Block) -> (Inline -> m Inline) -> SlamDown -> m SlamDown
+everywhereM :: forall m a. (Monad m) => (Block a -> m (Block a)) -> (Inline a -> m (Inline a)) -> SlamDownP a -> m (SlamDownP a)
 ```
 
 #### `everywhere`
 
 ``` purescript
-everywhere :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
+everywhere :: forall a. (Block a -> Block a) -> (Inline a -> Inline a) -> SlamDownP a -> SlamDownP a
 ```
 
 #### `everywhereTopDownM`
 
 ``` purescript
-everywhereTopDownM :: forall m. (Monad m) => (Block -> m Block) -> (Inline -> m Inline) -> SlamDown -> m SlamDown
+everywhereTopDownM :: forall m a. (Monad m) => (Block a -> m (Block a)) -> (Inline a -> m (Inline a)) -> SlamDownP a -> m (SlamDownP a)
 ```
 
 #### `everywhereTopDown`
 
 ``` purescript
-everywhereTopDown :: (Block -> Block) -> (Inline -> Inline) -> SlamDown -> SlamDown
+everywhereTopDown :: forall a. (Block a -> Block a) -> (Inline a -> Inline a) -> SlamDownP a -> SlamDownP a
 ```
 
 #### `everythingM`
 
 ``` purescript
-everythingM :: forall m r. (Monad m, Monoid r) => (Block -> m r) -> (Inline -> m r) -> SlamDown -> m r
+everythingM :: forall m a r. (Monad m, Monoid r) => (Block a -> m r) -> (Inline a -> m r) -> SlamDownP a -> m r
 ```
 
 #### `everything`
 
 ``` purescript
-everything :: forall r. (Monoid r) => (Block -> r) -> (Inline -> r) -> SlamDown -> r
+everything :: forall r a. (Monoid r) => (Block a -> r) -> (Inline a -> r) -> SlamDownP a -> r
 ```
 
 

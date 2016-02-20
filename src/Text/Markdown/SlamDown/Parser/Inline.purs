@@ -30,14 +30,14 @@ import Text.Markdown.SlamDown.Parser.Utils
 
 foreign import error :: forall a. String -> a
 
-parseInlines :: List String -> List Inline
+parseInlines :: forall a. (Value a) => List String -> List (Inline a)
 parseInlines s = consolidate $ throwOnError $ runParser (S.joinWith "\n" $ fromList s) inlines
   where
-  throwOnError :: forall e a. (Show e) => Either e a -> a
+  throwOnError :: forall e b. (Show e) => Either e b -> b
   throwOnError (Left e) = error (show e)
   throwOnError (Right a) = a
 
-consolidate :: List Inline -> List Inline
+consolidate :: forall a. List (Inline a) -> List (Inline a)
 consolidate Nil = Nil
 consolidate (Cons (Str s1) (Cons (Str s2) is)) =
   consolidate (Cons (Str (s1 <> s2)) is)
@@ -113,7 +113,7 @@ validateTextOfType tbt txt =
       , numericPrefix : optional hash
       }
 
-validateFormField :: FormField -> V (Array String) FormField
+validateFormField :: forall a. FormField a -> V (Array String) (FormField a)
 validateFormField field =
   case field of
     TextBox tbt (Just (Literal def)) ->
@@ -125,7 +125,7 @@ validateFormField field =
       invalid ["Invalid checkboxes"]
     _ -> pure field
 
-validateInline :: Inline -> V (Array String) Inline
+validateInline :: forall a. Inline a -> V (Array String) (Inline a)
 validateInline inl =
   case inl of
     Emph inls -> Emph <$> traverse validateInline inls
@@ -136,10 +136,10 @@ validateInline inl =
     _ -> pure inl
 
 
-inlines :: Parser String (List Inline)
+inlines :: forall a. (Value a) => Parser String (List (Inline a))
 inlines = many inline2 <* eof
   where
-  inline0 :: Parser String Inline
+  inline0 :: Parser String (Inline a)
   inline0 = fix \p -> alphaNumStr
      <|> space
      <|> strongEmph p
@@ -149,17 +149,19 @@ inlines = many inline2 <* eof
      <|> autolink
      <|> entity
 
-  inline1 :: Parser String Inline
-  inline1 = try inline0
-            <|> try link
+  inline1 :: Parser String (Inline a)
+  inline1 =
+    try inline0
+      <|> try link
 
-  inline2 :: Parser String Inline
-  inline2 = try formField
-            <|> try inline1
-            <|> try image
-            <|> other
+  inline2 :: Parser String (Inline a)
+  inline2 =
+    try formField
+      <|> try inline1
+      <|> try image
+      <|> other
 
-  alphaNumStr :: Parser String Inline
+  alphaNumStr :: Parser String (Inline a)
   alphaNumStr = Str <$> someOf isAlphaNum
 
   isAlphaNum :: Char -> Boolean
@@ -169,23 +171,23 @@ inlines = many inline2 <* eof
     (s >= "0" && s <= "9")
     where s = S.fromChar c
 
-  emphasis :: Parser String Inline -> (List Inline -> Inline) -> String -> Parser String Inline
+  emphasis :: Parser String (Inline a) -> (List (Inline a) -> Inline a) -> String -> Parser String (Inline a)
   emphasis p f s = do
     string s
     f <$> manyTill p (string s)
 
-  emph :: Parser String Inline -> Parser String Inline
+  emph :: Parser String (Inline a) -> Parser String (Inline a)
   emph p = emphasis p Emph "*" <|> emphasis p Emph "_"
 
-  strong :: Parser String Inline -> Parser String Inline
+  strong :: Parser String (Inline a) -> Parser String (Inline a)
   strong p = emphasis p Strong "**" <|> emphasis p Strong "__"
 
-  strongEmph :: Parser String Inline -> Parser String Inline
+  strongEmph :: Parser String (Inline a) -> Parser String (Inline a)
   strongEmph p = emphasis p f "***" <|> emphasis p f "___"
     where
     f is = Strong $ singleton $ Emph is
 
-  space :: Parser String Inline
+  space :: Parser String (Inline a)
   space = (toSpace <<< (S.fromChar <$>)) <$> some (satisfy isWhitespace)
     where
     toSpace cs
@@ -195,7 +197,7 @@ inlines = many inline2 <* eof
           _ -> SoftBreak
       | otherwise = Space
 
-  code :: Parser String Inline
+  code :: Parser String (Inline a)
   code = do
     eval <- option false (string "!" *> pure true)
     ticks <- someOf (\x -> S.fromChar x == "`")
@@ -203,10 +205,10 @@ inlines = many inline2 <* eof
     return <<< Code eval <<< S.trim $ contents
 
 
-  link :: Parser String Inline
+  link :: Parser String (Inline a)
   link = Link <$> linkLabel <*> linkTarget
     where
-    linkLabel :: Parser String (List Inline)
+    linkLabel :: Parser String (List (Inline a))
     linkLabel = string "[" *> manyTill (inline0 <|> other) (string "]")
 
     linkTarget :: Parser String LinkTarget
@@ -218,16 +220,16 @@ inlines = many inline2 <* eof
     referenceLink :: Parser String LinkTarget
     referenceLink = ReferenceLink <$> optionMaybe ((S.fromCharArray <<< fromList) <$> (string "[" *> manyTill anyChar (string "]")))
 
-  image :: Parser String Inline
+  image :: Parser String (Inline a)
   image = Image <$> imageLabel <*> imageUrl
     where
-    imageLabel :: Parser String (List Inline)
+    imageLabel :: Parser String (List (Inline a))
     imageLabel = string "![" *> manyTill (inline1 <|> other) (string "]")
 
     imageUrl :: Parser String String
     imageUrl = S.fromCharArray <<< fromList <$> (string "(" *> manyTill anyChar (string ")"))
 
-  autolink :: Parser String Inline
+  autolink :: Parser String (Inline a)
   autolink = do
     string "<"
     url <- (S.fromCharArray <<< fromList) <$> (anyChar `many1Till` string ">")
@@ -237,30 +239,33 @@ inlines = many inline2 <* eof
     autoLabel s | isEmailAddress s = "mailto:" <> s
                 | otherwise = s
 
-  entity :: Parser String Inline
+  entity :: Parser String (Inline a)
   entity = do
     string "&"
     s <- (S.fromCharArray <<< fromList) <$> (noneOf (S.toCharArray ";") `many1Till` string ";")
     return $ Entity $ "&" <> s <> ";"
 
 
-  formField :: Parser String Inline
-  formField = FormField <$> label
-                        <*> (skipSpaces *> required)
-                        <*> (skipSpaces *> string "=" *> skipSpaces *> formElement)
+  formField :: Parser String (Inline a)
+  formField =
+    FormField
+      <$> label
+      <*> (skipSpaces *> required)
+      <*> (skipSpaces *> string "=" *> skipSpaces *> formElement)
     where
     label = someOf isAlphaNum <|> (S.fromCharArray <<< fromList <$> (string "[" *> manyTill anyChar (string "]")))
     required = option false (string "*" *> pure true)
 
-  formElement :: Parser String FormField
-  formElement = try (textBox DateTime)
-            <|> try (textBox Date)
-            <|> try (textBox Time)
-            <|> try (textBox Numeric)
-            <|> try (textBox PlainText)
-            <|> try radioButtons
-            <|> try checkBoxes
-            <|> try dropDown
+  formElement :: Parser String (FormField a)
+  formElement =
+    try (textBox DateTime)
+      <|> try (textBox Date)
+      <|> try (textBox Time)
+      <|> try (textBox Numeric)
+      <|> try (textBox PlainText)
+      <|> try radioButtons
+      <|> try checkBoxes
+      <|> try dropDown
     where
 
     templateParserKit :: TextParserKit
@@ -270,7 +275,7 @@ inlines = many inline2 <* eof
       , numeric : und
       }
 
-    textBox :: TextBoxType -> Parser String FormField
+    textBox :: TextBoxType -> Parser String (FormField a)
     textBox ty =
       TextBox ty <$>
         (parseTextOfType templateParserKit ty *>
@@ -281,20 +286,20 @@ inlines = many inline2 <* eof
     und :: Parser String String
     und = someOf (\x -> S.fromChar x == "_")
 
-    radioButtons :: Parser String FormField
+    radioButtons :: Parser String (FormField a)
     radioButtons = do
-      let item = someOf \c -> not $ c `elem` ['(',')',' ','!','`']
+      let item = stringValue <$> someOf \c -> not $ c `elem` ['(',')',' ','!','`']
       def <- expr parens $ string "(x)" *> skipSpaces *> item
       skipSpaces
       ls <- expr id $ many (try (skipSpaces *> string "()" *> skipSpaces *> item))
       return $ RadioButtons def ls
 
-    checkBoxes :: Parser String FormField
+    checkBoxes :: Parser String (FormField a)
     checkBoxes = literalCheckBoxes <|> evaluatedCheckBoxes
       where
       literalCheckBoxes = do
         ls <- some $ try do
-          let item = someOf \c -> not $ c `elem` ['[',']',' ','!','`']
+          let item = stringValue <$> someOf \c -> not $ c `elem` ['[',']',' ','!','`']
           skipSpaces
           b <- (string "[x]" *> pure true) <|> (string "[]" *> pure false)
           skipSpaces
@@ -304,24 +309,23 @@ inlines = many inline2 <* eof
 
       evaluatedCheckBoxes = CheckBoxes <$> squares unevaluated <*> (skipSpaces *> unevaluated)
 
-    dropDown :: Parser String FormField
+    dropDown :: Parser String (FormField a)
     dropDown = do
-      let item = someOf \c -> not $ c `elem` ['{','}',',',' ','!','`','(',')']
+      let item = stringValue <$> someOf \c -> not $ c `elem` ['{','}',',',' ','!','`','(',')']
       ls <- braces $ expr id $ (try (skipSpaces *> item)) `sepBy` (skipSpaces *> string ",")
       sel <- optionMaybe $ skipSpaces *> (parens $ expr id $ item)
       return $ DropDown ls sel
 
-    expr :: forall a. (forall e. Parser String e -> Parser String e) ->
-            Parser String a -> Parser String (Expr a)
+    expr :: forall b. (forall e. Parser String e -> Parser String e) -> Parser String b -> Parser String (Expr b)
     expr f p = try (f unevaluated) <|> Literal <$> p
 
-    unevaluated :: forall a. Parser String (Expr a)
+    unevaluated :: forall b. Parser String (Expr b)
     unevaluated = do
       string "!"
       ticks <- someOf (\x -> S.fromChar x == "`")
       Unevaluated <$> (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
 
-  other :: Parser String Inline
+  other :: Parser String (Inline a)
   other = do
     c <- S.fromChar <$> anyChar
     if c == "\\"

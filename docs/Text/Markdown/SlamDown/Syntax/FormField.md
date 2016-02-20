@@ -3,18 +3,19 @@
 #### `FormField`
 
 ``` purescript
-data FormField
+data FormField a
   = TextBox TextBoxType (Maybe (Expr String))
-  | RadioButtons (Expr String) (Expr (List String))
-  | CheckBoxes (Expr (List Boolean)) (Expr (List String))
-  | DropDown (Expr (List String)) (Maybe (Expr String))
+  | RadioButtons (Expr a) (Expr (List a))
+  | CheckBoxes (Expr (List Boolean)) (Expr (List a))
+  | DropDown (Expr (List a)) (Maybe (Expr a))
 ```
 
 ##### Instances
 ``` purescript
-Show FormField
-Eq FormField
-Arbitrary FormField
+Functor FormField
+(Show a) => Show (FormField a)
+(Eq a) => Eq (FormField a)
+(Arbitrary a) => Arbitrary (FormField a)
 ```
 
 #### `TextBoxType`
@@ -45,6 +46,7 @@ data Expr a
 
 ##### Instances
 ``` purescript
+Functor Expr
 (Eq a) => Eq (Expr a)
 (Show a) => Show (Expr a)
 (Arbitrary a) => Arbitrary (Expr a)

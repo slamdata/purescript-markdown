@@ -13,7 +13,7 @@ import Text.Markdown.SlamDown.Syntax
 unlines :: List String -> String
 unlines lst = joinWith "\n" $ fromList lst
 
-prettyPrintMd :: SlamDown -> String
+prettyPrintMd :: forall a. (Value a) => SlamDownP a -> String
 prettyPrintMd (SlamDown bs) = unlines $ concatMap prettyPrintBlock bs
 
 replicateS :: Int -> String -> String
@@ -29,13 +29,13 @@ lines :: String -> List String
 lines "" = mempty
 lines s = toList $ split "\n" s
 
-prettyPrintBlock :: Block -> List String
+prettyPrintBlock :: forall a. (Value a) => Block a -> List String
 prettyPrintBlock (Paragraph is) = Cons (prettyPrintInlines is) (Cons "" Nil)
 prettyPrintBlock (Header n is) = singleton (replicateS n "#" <> " " <> prettyPrintInlines is)
 prettyPrintBlock (Blockquote bs) = overLines ((<>) "> ") (concatMap prettyPrintBlock bs)
 prettyPrintBlock (Lst lt bss) = concatMap listItem bss
   where
-  listItem :: List Block -> List String
+  listItem :: List (Block a) -> List String
   listItem bs =
     let ss = concatMap prettyPrintBlock bs
     in addMarker (concatMap lines ss)
@@ -58,10 +58,10 @@ prettyPrintBlock (CodeBlock (Fenced eval info) ss) = singleton (bang <> "```" <>
 prettyPrintBlock (LinkReference l url) = singleton $ squares l <> ": " <> url
 prettyPrintBlock Rule = singleton "***"
 
-prettyPrintInlines :: List Inline -> String
+prettyPrintInlines :: forall a. (Value a) => List (Inline a) -> String
 prettyPrintInlines is = joinWith "" $ fromList $ (map prettyPrintInline is)
 
-prettyPrintInline :: Inline -> String
+prettyPrintInline :: forall a. (Value a) => Inline a -> String
 prettyPrintInline (Str s) = s
 prettyPrintInline (Entity s) = s
 prettyPrintInline Space = " "
@@ -81,7 +81,7 @@ prettyPrintInline (FormField l r e) = esc l <> star <> " = " <> prettyPrintFormE
   star = if r then "*" else" "
   esc s = maybe s (const $ "[" <> s <> "]") $ indexOf " " s
 
-prettyPrintFormElement :: FormField -> String
+prettyPrintFormElement :: forall a. (Value a) => FormField a -> String
 prettyPrintFormElement (TextBox ty value) =
   intro ty <> maybe "" (\v -> " (" <> prettyPrintExpr id id v <> ")") value
   where
@@ -91,17 +91,17 @@ prettyPrintFormElement (TextBox ty value) =
   intro Time      = "__ : __"
   intro DateTime  = "__ - __ - ____ __ : __"
 prettyPrintFormElement (RadioButtons def lbls) =
-  prettyPrintExpr parens ((<>) "(x) ") def <> " " <>
-  prettyPrintExpr id (joinWith " " <<< fromList <<< map ((<>) "() ")) lbls
+  prettyPrintExpr parens ((<>) "(x) " <<< renderValue) def <> " " <>
+  prettyPrintExpr id (joinWith " " <<< fromList <<< map ((<>) "() " <<< renderValue)) lbls
 prettyPrintFormElement (CheckBoxes (Literal bs) (Literal ls)) =
   joinWith " " $ fromList (zipWith checkBox bs ls)
   where
-  checkBox b l = (if b then "[x] " else "[] ") <> l
+  checkBox b l = (if b then "[x] " else "[] ") <> renderValue l
 prettyPrintFormElement (CheckBoxes (Unevaluated bs) (Unevaluated ls)) =
   "[!`" <> bs <> "`] !`" <> ls <> "`"
 prettyPrintFormElement (DropDown lbls sel) =
-  braces (prettyPrintExpr id (fromList >>> joinWith ", ") lbls) <>
-  maybe "" (\s -> parens (prettyPrintExpr id id s)) sel
+  braces (prettyPrintExpr id (fromList >>> map renderValue >>> joinWith ", ") lbls) <>
+  maybe "" (\s -> parens (prettyPrintExpr id renderValue s)) sel
 prettyPrintFormElement _ = "Unsupported form element"
 
 prettyPrintExpr :: forall a. (String -> String) -> (a -> String) -> Expr a -> String

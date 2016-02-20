@@ -3,7 +3,7 @@
 #### `prettyPrintMd`
 
 ``` purescript
-prettyPrintMd :: SlamDown -> String
+prettyPrintMd :: forall a. (Value a) => SlamDownP a -> String
 ```
 
 

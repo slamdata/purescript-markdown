@@ -12,20 +12,35 @@ import Test.StrongCheck.Gen as SC
 
 import Text.Markdown.SlamDown.Syntax.FormField
 
-data Inline
+data Inline a
   = Str String
   | Entity String
   | Space
   | SoftBreak
   | LineBreak
-  | Emph (L.List Inline)
-  | Strong (L.List Inline)
+  | Emph (L.List (Inline a))
+  | Strong (L.List (Inline a))
   | Code Boolean String
-  | Link (L.List Inline) LinkTarget
-  | Image (L.List Inline) String
-  | FormField String Boolean FormField
+  | Link (L.List (Inline a)) LinkTarget
+  | Image (L.List (Inline a)) String
+  | FormField String Boolean (FormField a)
 
-instance showInline :: Show Inline where
+instance functorInline :: Functor Inline where
+  map f x =
+    case x of
+      Str s -> Str s
+      Entity s -> Entity s
+      Space -> Space
+      SoftBreak -> SoftBreak
+      LineBreak -> LineBreak
+      Emph is -> Emph (map f <$> is)
+      Strong is -> Strong (map f <$> is)
+      Code b s -> Code b s
+      Link is tgt -> Link (map f <$> is) tgt
+      Image is tgt -> Image (map f <$> is) tgt
+      FormField str b ff -> FormField str b (f <$> ff)
+
+instance showInline :: (Show a) => Show (Inline a) where
   show (Str s) = "(Str " ++ show s ++ ")"
   show (Entity s) = "(Entity " ++ show s ++ ")"
   show Space = "Space"
@@ -38,7 +53,7 @@ instance showInline :: Show Inline where
   show (Image is uri) = "(Image " ++ show is ++ " " ++ show uri ++ ")"
   show (FormField l r f) = "(FormField " ++ show l ++ " " ++ show r ++ " " ++ show f ++ ")"
 
-instance eqInline :: Eq Inline where
+instance eqInline :: (Eq a) => Eq (Inline a) where
   eq (Str s1) (Str s2) = s1 == s2
   eq (Entity s1) (Entity s2) = s1 == s2
   eq Space Space = true
@@ -53,7 +68,7 @@ instance eqInline :: Eq Inline where
   eq _ _ = false
 
 -- | Nota bene: this does not generate any recursive structure
-instance arbitraryInline :: SC.Arbitrary Inline where
+instance arbitraryInline :: (SC.Arbitrary a) => SC.Arbitrary (Inline a) where
   arbitrary = do
     k <- SC.chooseInt 0.0 10.0
     case k of
@@ -75,7 +90,7 @@ data LinkTarget
   | ReferenceLink (M.Maybe String)
 
 instance showLinkTarget :: Show LinkTarget where
-  show (InlineLink uri)    = "(InlineLink " ++ show uri ++ ")"
+  show (InlineLink uri) = "(InlineLink " ++ show uri ++ ")"
   show (ReferenceLink tgt) = "(ReferenceLink " ++ show tgt ++ ")"
 
 instance eqLinkTarget :: Eq LinkTarget where
