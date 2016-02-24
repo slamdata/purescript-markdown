@@ -2,23 +2,21 @@ module Text.Markdown.SlamDown.Parser
   ( parseMd
   , validateBlock
   , validateSlamDown
-  )
-  where
+  ) where
 
 import Prelude
 
 import Data.Foldable (any, all)
-import Data.List (List(..), toList, reverse, last, span, drop, singleton)
-import Data.Maybe (Maybe(..), isJust)
-import Data.Maybe.Unsafe (fromJust)
+import Data.List as L
+import Data.Maybe as M
 import Data.Monoid (mempty)
+import Data.String as S
 import Data.Traversable (traverse)
-import Data.Validation (V())
-import qualified Data.String as S
+import Data.Validation as V
 
-import Text.Markdown.SlamDown.Syntax
-import Text.Markdown.SlamDown.Parser.Inline
-import Text.Markdown.SlamDown.Parser.References
+import Text.Markdown.SlamDown.Syntax as SD
+import Text.Markdown.SlamDown.Parser.Inline as Inline
+import Text.Markdown.SlamDown.Parser.References as Ref
 
 data Container a
   = CText String
@@ -26,17 +24,17 @@ data Container a
   | CRule
   | CATXHeader Int String
   | CSetextHeader Int
-  | CBlockquote (List (Container a))
-  | CListItem ListType (List (Container a))
-  | CCodeBlockFenced Boolean String (List String)
-  | CCodeBlockIndented (List String)
-  | CLinkReference (Block a)
+  | CBlockquote (L.List (Container a))
+  | CListItem SD.ListType (L.List (Container a))
+  | CCodeBlockFenced Boolean String (L.List String)
+  | CCodeBlockIndented (L.List String)
+  | CLinkReference (SD.Block a)
 
-isSpace :: String -> Boolean
-isSpace " "  = true
-isSpace _    = false
+isSpace ∷ String → Boolean
+isSpace " " = true
+isSpace _  = false
 
-isDigit :: String -> Boolean
+isDigit ∷ String → Boolean
 isDigit "0" = true
 isDigit "1" = true
 isDigit "2" = true
@@ -47,39 +45,40 @@ isDigit "6" = true
 isDigit "7" = true
 isDigit "8" = true
 isDigit "9" = true
-isDigit _   = false
+isDigit _ = false
 
-allChars :: (String -> Boolean) -> String -> Boolean
+allChars ∷ (String → Boolean) → String → Boolean
 allChars p = all p <<< S.split ""
 
-removeNonIndentingSpaces :: String -> String
+removeNonIndentingSpaces ∷ String → String
 removeNonIndentingSpaces s
   | S.count (isSpace <<< S.fromChar) s < 4 = S.dropWhile (isSpace <<< S.fromChar) s
   | otherwise = s
 
-isRuleChar :: String -> Boolean
+isRuleChar ∷ String → Boolean
 isRuleChar "*" = true
 isRuleChar "-" = true
 isRuleChar "_" = true
 isRuleChar _   = false
 
-isRule :: String -> Boolean
-isRule s = allChars isRuleChar s &&
-           S.length s >= 3 &&
-           allChars ((==) (S.take 1 s)) s
+isRule ∷ String → Boolean
+isRule s =
+  allChars isRuleChar s
+    && S.length s >= 3
+    && allChars ((==) (S.take 1 s)) s
 
-isATXHeader :: String -> Boolean
+isATXHeader ∷ String → Boolean
 isATXHeader s =
   let
-    level = S.count (\c -> S.fromChar c == "#") s
+    level = S.count (\c → S.fromChar c == "#") s
     rest = S.drop level s
   in
     level >= 1 && level <= 6 && S.take 1 rest == " "
 
-splitATXHeader :: String -> { level :: Int, contents :: String }
+splitATXHeader ∷ String → { level ∷ Int, contents ∷ String }
 splitATXHeader s =
   let
-    level = S.count (\c -> S.fromChar c == "#") s
+    level = S.count (\c → S.fromChar c == "#") s
     contents = S.drop (level + 1) s
   in
     { level: level
@@ -88,36 +87,35 @@ splitATXHeader s =
 
 -- Takes the last parsed container as an argument
 -- to avoid parsing a rule as a header
-isSetextHeader :: forall a. String -> Maybe (Container a) -> Boolean
-isSetextHeader s (Just (CText _)) = S.length s >= 1 && any (\c -> allChars ((==) c) s) ["=", "-"]
+isSetextHeader ∷ ∀ a. String → M.Maybe (Container a) → Boolean
+isSetextHeader s (M.Just (CText _)) = S.length s >= 1 && any (\c → allChars ((==) c) s) ["=", "-"]
 isSetextHeader _ _ = false
 
-setextLevel :: String -> Int
+setextLevel ∷ String → Int
 setextLevel s
   | S.take 1 s == "=" = 1
   | otherwise         = 2
 
-isBlockquoteLine :: String -> Boolean
+isBlockquoteLine ∷ String → Boolean
 isBlockquoteLine s = S.take 1 (removeNonIndentingSpaces s) == ">"
 
-splitBlockquote :: List String -> { blockquoteLines :: List String
-                                  , otherLines :: List String }
+splitBlockquote ∷ L.List String → { blockquoteLines ∷ L.List String , otherLines ∷ L.List String }
 splitBlockquote ss =
   let
-    sp = span isBlockquoteLine ss
+    sp = L.span isBlockquoteLine ss
     bq = map (blockquoteContents <<< removeNonIndentingSpaces) sp.init
   in
     { blockquoteLines: bq
     , otherLines: sp.rest
     }
   where
-  blockquoteContents :: String -> String
+  blockquoteContents ∷ String → String
   blockquoteContents s = S.drop (if S.take 2 s == "> " then 2 else 1) s
 
-countLeadingSpaces :: String -> Int
+countLeadingSpaces ∷ String → Int
 countLeadingSpaces = S.count (isSpace <<< S.fromChar)
 
-isBulleted :: String -> Boolean
+isBulleted ∷ String → Boolean
 isBulleted s =
   let
     b  = S.take 1 s
@@ -125,13 +123,13 @@ isBulleted s =
   in
     isBullet b && ls > 0 && ls < 5
   where
-  isBullet :: String -> Boolean
+  isBullet ∷ String → Boolean
   isBullet "*" = true
   isBullet "+" = true
   isBullet "-" = true
   isBullet _   = false
 
-isOrderedListMarker :: String -> Boolean
+isOrderedListMarker ∷ String → Boolean
 isOrderedListMarker s =
   let
     n = S.count (isDigit <<< S.fromChar) s
@@ -140,41 +138,41 @@ isOrderedListMarker s =
   in
     n > 0 && (next == "." || next == ")") && ls > 0
 
-listItemType :: String -> ListType
+listItemType ∷ String → SD.ListType
 listItemType s
-  | isBulleted s = Bullet (S.take 1 s)
+  | isBulleted s = SD.Bullet (S.take 1 s)
   | otherwise =
       let n = S.count (isDigit <<< S.fromChar) s
-      in Ordered (S.take 1 (S.drop n s))
+      in SD.Ordered (S.take 1 (S.drop n s))
 
-listItemIndent :: String -> Int
+listItemIndent ∷ String → Int
 listItemIndent s
   | isBulleted s = 1 + min 4 (countLeadingSpaces (S.drop 1 s))
   | otherwise =
       let n = S.count (isDigit <<< S.fromChar) s
       in n + 1 + min 4 (countLeadingSpaces (S.drop (n + 1) s))
 
-isListItemLine :: String -> Boolean
+isListItemLine ∷ String → Boolean
 isListItemLine s =
   let s' = removeNonIndentingSpaces s
   in isBulleted s' || isOrderedListMarker s'
 
-isIndentedTo :: Int -> String -> Boolean
+isIndentedTo ∷ Int → String → Boolean
 isIndentedTo n s = countLeadingSpaces s >= n
 
 splitListItem
-  :: String
-  -> List String
-  -> { listType :: ListType
-     , listItemLines :: List String
-     , otherLines :: List String
+  ∷ String
+  → L.List String
+  → { listType ∷ SD.ListType
+     , listItemLines ∷ L.List String
+     , otherLines ∷ L.List String
      }
 splitListItem s ss =
   let
     s1 = removeNonIndentingSpaces s
-    sp = span (isIndentedTo indent) ss
+    sp = L.span (isIndentedTo indent) ss
     indent = listItemIndent s1
-    listItemLines = Cons (S.drop indent s1) $ map (S.drop indent) sp.init
+    listItemLines = L.Cons (S.drop indent s1) $ map (S.drop indent) sp.init
     listType = listItemType s1
   in
     { listType: listType
@@ -182,94 +180,98 @@ splitListItem s ss =
     , otherLines: sp.rest
     }
 
-isIndentedChunk :: String -> Boolean
+isIndentedChunk ∷ String → Boolean
 isIndentedChunk s = isIndentedTo 4 s
 
-fromIndentedChunk :: String -> String
+fromIndentedChunk ∷ String → String
 fromIndentedChunk = S.drop 4
 
 splitIndentedChunks
-  :: List String
-  -> { codeLines :: List String
-     , otherLines :: List String
-     }
+  ∷ L.List String
+  → { codeLines ∷ L.List String
+    , otherLines ∷ L.List String
+    }
 splitIndentedChunks ss =
   let
-    sp = span isIndentedChunk ss
+    sp = L.span isIndentedChunk ss
     codeLines = map fromIndentedChunk sp.init
   in
     { codeLines: codeLines
     , otherLines: sp.rest
     }
 
-isCodeFence :: String -> Boolean
+isCodeFence ∷ String → Boolean
 isCodeFence s = isSimpleFence s || (isEvaluatedCode s && isSimpleFence (S.drop 1 s))
   where
   isSimpleFence s = S.count (isFenceChar <<< S.fromChar) s >= 3
 
-isEvaluatedCode :: String -> Boolean
+isEvaluatedCode ∷ String → Boolean
 isEvaluatedCode s = S.take 1 s == "!"
 
-isFenceChar :: String -> Boolean
+isFenceChar ∷ String → Boolean
 isFenceChar "~" = true
 isFenceChar "`" = true
 isFenceChar _ = false
 
-codeFenceInfo :: String -> String
+codeFenceInfo ∷ String → String
 codeFenceInfo = S.trim <<< S.dropWhile (isFenceChar <<< S.fromChar)
 
-codeFenceChar :: String -> String
+codeFenceChar ∷ String → String
 codeFenceChar = S.take 1
 
 splitCodeFence
-  :: Int
-  -> String
-  -> List String
-  -> { codeLines :: List String
-     , otherLines :: List String
+  ∷ Int
+  → String
+  → L.List String
+  → { codeLines ∷ L.List String
+     , otherLines ∷ L.List String
      }
 splitCodeFence indent fence ss =
   let
-    sp = span (not <<< isClosingFence) ss
+    sp = L.span (not <<< isClosingFence) ss
     codeLines = map removeIndentTo sp.init
   in
     { codeLines: codeLines
-    , otherLines: drop 1 sp.rest
+    , otherLines: L.drop 1 sp.rest
     }
   where
-  isClosingFence :: String -> Boolean
-  isClosingFence s = S.count (\c -> S.fromChar c == fence) (removeNonIndentingSpaces s) >= 3
+  isClosingFence ∷ String → Boolean
+  isClosingFence s = S.count (\c → S.fromChar c == fence) (removeNonIndentingSpaces s) >= 3
 
-  removeIndentTo :: String -> String
+  removeIndentTo ∷ String → String
   removeIndentTo s = S.drop (min indent (countLeadingSpaces s)) s
 
-isLinkReference :: String -> Boolean
-isLinkReference s = S.take 1 s == "[" && isJust (parseLinkReference s)
+isLinkReference ∷ String → Boolean
+isLinkReference s = S.take 1 s == "[" && M.isJust (Ref.parseLinkReference s)
 
-min :: forall a. (Ord a) => a -> a -> a
+min ∷ ∀ a. (Ord a) ⇒ a → a → a
 min n m = if n < m then n else m
 
-parseContainers :: forall a. List (Container a) -> List String -> List (Container a)
-parseContainers acc Nil = reverse acc
-parseContainers acc (Cons s ss)
+parseContainers
+  ∷ ∀ a
+  . L.List (Container a)
+  → L.List String
+  → L.List (Container a)
+parseContainers acc L.Nil = L.reverse acc
+parseContainers acc (L.Cons s ss)
   | allChars isSpace s =
-      parseContainers (Cons CBlank acc) ss
+      parseContainers (L.Cons CBlank acc) ss
   | isATXHeader (removeNonIndentingSpaces s) =
       let o = splitATXHeader (removeNonIndentingSpaces s)
-      in parseContainers (Cons (CATXHeader o.level o.contents) acc) ss
-  | isSetextHeader (removeNonIndentingSpaces (S.trim s)) (last acc) =
-      parseContainers (Cons (CSetextHeader $ setextLevel (removeNonIndentingSpaces (S.trim s))) acc) ss
+      in parseContainers (L.Cons (CATXHeader o.level o.contents) acc) ss
+  | isSetextHeader (removeNonIndentingSpaces (S.trim s)) (L.last acc) =
+      parseContainers (L.Cons (CSetextHeader $ setextLevel (removeNonIndentingSpaces (S.trim s))) acc) ss
   | isRule (removeNonIndentingSpaces s) =
-      parseContainers (Cons CRule acc) ss
+      parseContainers (L.Cons CRule acc) ss
   | isBlockquoteLine s =
-      let o = splitBlockquote $ Cons s ss
-      in parseContainers (Cons (CBlockquote (parseContainers mempty o.blockquoteLines)) acc) o.otherLines
+      let o = splitBlockquote $ L.Cons s ss
+      in parseContainers (L.Cons (CBlockquote (parseContainers mempty o.blockquoteLines)) acc) o.otherLines
   | isListItemLine s =
       let o = splitListItem s ss
-      in parseContainers (Cons (CListItem o.listType $ parseContainers mempty o.listItemLines) acc) o.otherLines
+      in parseContainers (L.Cons (CListItem o.listType $ parseContainers mempty o.listItemLines) acc) o.otherLines
   | isIndentedChunk s =
-      let o = splitIndentedChunks (Cons s ss)
-      in parseContainers (Cons (CCodeBlockIndented o.codeLines) acc) o.otherLines
+      let o = splitIndentedChunks (L.Cons s ss)
+      in parseContainers (L.Cons (CCodeBlockIndented o.codeLines) acc) o.otherLines
   | isCodeFence (removeNonIndentingSpaces s) =
       let
         s1 = removeNonIndentingSpaces s
@@ -279,83 +281,87 @@ parseContainers acc (Cons s ss)
         ch = codeFenceChar s2
         o = splitCodeFence (countLeadingSpaces s) ch ss
       in
-        parseContainers (Cons (CCodeBlockFenced eval info o.codeLines) acc) o.otherLines
+        parseContainers (L.Cons (CCodeBlockFenced eval info o.codeLines) acc) o.otherLines
   | isLinkReference (removeNonIndentingSpaces s) =
       let
         s1 = removeNonIndentingSpaces s
-        b = fromJust $ parseLinkReference s1
+        b = Data.Maybe.Unsafe.fromJust $ Ref.parseLinkReference s1
       in
-        parseContainers (Cons (CLinkReference b) acc) ss
-  | otherwise = parseContainers (Cons (CText s) acc) ss
+        parseContainers (L.Cons (CLinkReference b) acc) ss
+  | otherwise = parseContainers (L.Cons (CText s) acc) ss
 
-isTextContainer :: forall a. Container a -> Boolean
+isTextContainer ∷ ∀ a. Container a → Boolean
 isTextContainer (CText _) = true
 isTextContainer _ = false
 
-getCText :: forall a. Container a -> String
+getCText ∷ ∀ a. Container a → String
 getCText (CText s) = s
 getCText _ = ""
 
-isListItem :: forall a. ListType -> Container a -> Boolean
+isListItem ∷ ∀ a. SD.ListType → Container a → Boolean
 isListItem lt1 (CListItem lt2 _) = lt1 == lt2
 isListItem _ _ = false
 
-getCListItem :: forall a. Container a -> List (Container a)
+getCListItem ∷ ∀ a. Container a → L.List (Container a)
 getCListItem (CListItem _ cs) = cs
-getCListItem _ = Nil
+getCListItem _ = L.Nil
 
-parseBlocks :: forall a. (Value a) => List (Container a) -> List (Block a)
-parseBlocks Nil = Nil
-parseBlocks (Cons (CText s) (Cons (CSetextHeader n) cs)) =
-  Cons (Header n (parseInlines $ singleton s)) $ parseBlocks cs
-parseBlocks (Cons (CText s) cs) =
-  let
-    sp = span isTextContainer cs
-    is = parseInlines (Cons s (map getCText sp.init))
-  in
-    Cons (Paragraph is) $ parseBlocks sp.rest
-parseBlocks (Cons CRule cs) =
-  Cons Rule $ parseBlocks cs
-parseBlocks (Cons (CATXHeader n s) cs) =
-  Cons (Header n (parseInlines $ singleton s)) $ parseBlocks cs
-parseBlocks (Cons (CBlockquote cs) cs1) =
-  Cons (Blockquote $ parseBlocks cs) $ parseBlocks cs1
-parseBlocks (Cons (CListItem lt cs) cs1) =
-  let
-    sp = span (isListItem lt) cs1
-    bs = parseBlocks cs
-    bss = map (parseBlocks <<< getCListItem) sp.init
-  in
-    Cons (Lst lt (Cons bs bss)) $ parseBlocks sp.rest
-parseBlocks (Cons (CCodeBlockIndented ss) cs) =
-  Cons (CodeBlock Indented ss) $ parseBlocks cs
-parseBlocks (Cons (CCodeBlockFenced eval info ss) cs) =
-  Cons (CodeBlock (Fenced eval info) ss) $ parseBlocks cs
-parseBlocks (Cons (CLinkReference b) cs) =
-  Cons b $ parseBlocks cs
-parseBlocks (Cons _ cs) =
-  parseBlocks cs
+parseBlocks
+  ∷ ∀ a
+  . (SD.Value a)
+  ⇒ L.List (Container a)
+  → L.List (SD.Block a)
+parseBlocks cs =
+  case cs of
+    L.Nil → L.Nil
+    L.Cons (CText s) (L.Cons (CSetextHeader n) cs) →
+      L.Cons (SD.Header n (Inline.parseInlines $ L.singleton s)) $ parseBlocks cs
+    L.Cons (CText s) cs →
+      let
+        sp = L.span isTextContainer cs
+        is = Inline.parseInlines $ L.Cons s (map getCText sp.init)
+      in
+        L.Cons (SD.Paragraph is) $ parseBlocks sp.rest
+    L.Cons CRule cs →
+      L.Cons SD.Rule $ parseBlocks cs
+    L.Cons (CATXHeader n s) cs →
+      L.Cons (SD.Header n (Inline.parseInlines $ L.singleton s)) $ parseBlocks cs
+    L.Cons (CBlockquote cs) cs1 →
+      L.Cons (SD.Blockquote $ parseBlocks cs) $ parseBlocks cs1
+    L.Cons (CListItem lt cs) cs1 →
+      let
+        sp = L.span (isListItem lt) cs1
+        bs = parseBlocks cs
+        bss = map (parseBlocks <<< getCListItem) sp.init
+      in
+        L.Cons (SD.Lst lt (L.Cons bs bss)) $ parseBlocks sp.rest
+    L.Cons (CCodeBlockIndented ss) cs →
+      L.Cons (SD.CodeBlock SD.Indented ss) $ parseBlocks cs
+    L.Cons (CCodeBlockFenced eval info ss) cs →
+      L.Cons (SD.CodeBlock (SD.Fenced eval info) ss) $ parseBlocks cs
+    L.Cons (CLinkReference b) cs →
+      L.Cons b $ parseBlocks cs
+    L.Cons _ cs →
+      parseBlocks cs
 
-validateBlock :: forall a. Block a -> V (Array String) (Block a)
+validateBlock ∷ ∀ a. SD.Block a → V.V (Array String) (SD.Block a)
 validateBlock b =
   case b of
-    Paragraph inls -> Paragraph <$> traverse validateInline inls
-    Header i inls -> Header i <$> traverse validateInline inls
-    Blockquote bls -> Blockquote <$> traverse validateBlock bls
-    Lst lt blss -> Lst lt <$> traverse (traverse validateBlock) blss
-    _ -> pure b
+    SD.Paragraph inls → SD.Paragraph <$> traverse Inline.validateInline inls
+    SD.Header i inls → SD.Header i <$> traverse Inline.validateInline inls
+    SD.Blockquote bls → SD.Blockquote <$> traverse validateBlock bls
+    SD.Lst lt blss → SD.Lst lt <$> traverse (traverse validateBlock) blss
+    _ → pure b
 
-validateSlamDown :: forall a. SlamDownP a -> V (Array String) (SlamDownP a)
-validateSlamDown (SlamDown bls) = SlamDown <$> traverse validateBlock bls
+validateSlamDown ∷ ∀ a. SD.SlamDownP a → V.V (Array String) (SD.SlamDownP a)
+validateSlamDown (SD.SlamDown bls) = SD.SlamDown <$> traverse validateBlock bls
 
-tabsToSpaces :: String -> String
+tabsToSpaces ∷ String → String
 tabsToSpaces = S.replace "\t" "    "
 
-parseMd :: forall a. (Value a) => String -> SlamDownP a
-parseMd s =
-  let
-    lines = toList $ S.split "\n" $ S.replace "\r" "" $ tabsToSpaces s
+parseMd ∷ ∀ a. (SD.Value a) ⇒ String → SD.SlamDownP a
+parseMd s = SD.SlamDown bs
+  where
+    lines = L.toList $ S.split "\n" $ S.replace "\r" "" $ tabsToSpaces s
     ctrs = parseContainers mempty lines
     bs = parseBlocks ctrs
-  in
-    SlamDown bs

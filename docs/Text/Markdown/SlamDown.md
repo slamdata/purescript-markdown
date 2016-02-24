@@ -1,3 +1,0 @@
-## Module Text.Markdown.SlamDown
-
-
