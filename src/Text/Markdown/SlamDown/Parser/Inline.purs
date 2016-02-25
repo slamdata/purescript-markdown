@@ -82,7 +82,7 @@ parseTextOfType kit tbt = go tbt <?> show tbt
       m <- kit.numeric
       skipSpaces
       n <- optionMaybe $ dot *> skipSpaces *> kit.numeric
-      pure $ m ++ maybe "" (":" ++) n
+      pure $ m ++ maybe "" ("." ++) n
     go Time = do
       hh <- kit.numeric
       skipSpaces *> colon *> skipSpaces
