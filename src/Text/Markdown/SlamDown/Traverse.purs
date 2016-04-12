@@ -9,78 +9,78 @@ module Text.Markdown.SlamDown.Traverse
 
 import Prelude
 import Control.Bind ((<=<), join)
-import Data.Monoid
+import Data.Monoid (class Monoid)
 import Data.Identity as Id
 import Data.Foldable as F
 import Data.Traversable as T
-import Text.Markdown.SlamDown.Syntax
+import Text.Markdown.SlamDown.Syntax as SD
 
 everywhereM
-  :: forall m a
-   . (Monad m)
-  => (Block a -> m (Block a))
-  -> (Inline a -> m (Inline a))
-  -> SlamDownP a
-  -> m (SlamDownP a)
-everywhereM b i (SlamDown bs) =
-  SlamDown <$> T.traverse b' bs
+  ∷ ∀ m a
+  . (Monad m)
+  ⇒ (SD.Block a → m (SD.Block a))
+  → (SD.Inline a → m (SD.Inline a))
+  → SD.SlamDownP a
+  → m (SD.SlamDownP a)
+everywhereM b i (SD.SlamDown bs) =
+  SD.SlamDown <$> T.traverse b' bs
 
   where
-  b' :: Block a -> m (Block a)
-  b' (Paragraph is) = (Paragraph <$> T.traverse i' is) >>= b
-  b' (Header n is) = (Header n <$> T.traverse i' is) >>= b
-  b' (Blockquote bs) = (Blockquote <$> T.traverse b' bs) >>= b
-  b' (Lst lt bss) = (Lst lt <$> T.traverse (T.traverse b') bss) >>= b
+  b' ∷ SD.Block a → m (SD.Block a)
+  b' (SD.Paragraph is) = (SD.Paragraph <$> T.traverse i' is) >>= b
+  b' (SD.Header n is) = (SD.Header n <$> T.traverse i' is) >>= b
+  b' (SD.Blockquote bs) = (SD.Blockquote <$> T.traverse b' bs) >>= b
+  b' (SD.Lst lt bss) = (SD.Lst lt <$> T.traverse (T.traverse b') bss) >>= b
   b' other = b other
 
-  i' :: Inline a -> m (Inline a)
-  i' (Emph is) = (Emph <$> T.traverse i' is) >>= i
-  i' (Strong is) = (Strong <$> T.traverse i' is) >>= i
-  i' (Link is uri) = (flip Link uri <$> T.traverse i' is) >>= i
-  i' (Image is uri) = (flip Image uri <$> T.traverse i' is) >>= i
+  i' ∷ SD.Inline a → m (SD.Inline a)
+  i' (SD.Emph is) = (SD.Emph <$> T.traverse i' is) >>= i
+  i' (SD.Strong is) = (SD.Strong <$> T.traverse i' is) >>= i
+  i' (SD.Link is uri) = (flip SD.Link uri <$> T.traverse i' is) >>= i
+  i' (SD.Image is uri) = (flip SD.Image uri <$> T.traverse i' is) >>= i
   i' other = i other
 
 everywhere
-  :: forall a
-   . (Block a -> Block a)
-  -> (Inline a -> Inline a)
-  -> SlamDownP a
-  -> SlamDownP a
+  ∷ ∀ a
+  . (SD.Block a → SD.Block a)
+  → (SD.Inline a → SD.Inline a)
+  → SD.SlamDownP a
+  → SD.SlamDownP a
 everywhere b i =
   Id.runIdentity
     <<< everywhereM (pure <<< b) (pure <<< i)
 
 everywhereTopDownM
-  :: forall m a
-   . (Monad m)
-  => (Block a -> m (Block a))
-  -> (Inline a -> m (Inline a))
-  -> SlamDownP a
-  -> m (SlamDownP a)
-everywhereTopDownM b i (SlamDown bs) =
-  SlamDown <$>
+  ∷ ∀ m a
+  . (Monad m)
+  ⇒ (SD.Block a → m (SD.Block a))
+  → (SD.Inline a → m (SD.Inline a))
+  → SD.SlamDownP a
+  → m (SD.SlamDownP a)
+everywhereTopDownM b i (SD.SlamDown bs) =
+  SD.SlamDown <$>
     T.traverse (b' <=< b) bs
   where
-  b' :: Block a -> m (Block a)
-  b' (Paragraph is) = Paragraph <$> T.traverse (i' <=< i) is
-  b' (Header n is) = Header n <$> T.traverse (i' <=< i) is
-  b' (Blockquote bs) = Blockquote <$> T.traverse (b' <=< b) bs
-  b' (Lst ty bss) = Lst ty <$> T.traverse (T.traverse (b' <=< b)) bss
+  b' ∷ SD.Block a → m (SD.Block a)
+  b' (SD.Paragraph is) = SD.Paragraph <$> T.traverse (i' <=< i) is
+  b' (SD.Header n is) = SD.Header n <$> T.traverse (i' <=< i) is
+  b' (SD.Blockquote bs) = SD.Blockquote <$> T.traverse (b' <=< b) bs
+  b' (SD.Lst ty bss) = SD.Lst ty <$> T.traverse (T.traverse (b' <=< b)) bss
   b' other = b other
 
-  i' :: Inline a -> m (Inline a)
-  i' (Emph is) = Emph <$> T.traverse (i' <=< i) is
-  i' (Strong is) = Strong <$> T.traverse (i' <=< i) is
-  i' (Link is uri) = flip Link uri <$> T.traverse (i' <=< i) is
-  i' (Image is uri) = flip Image uri <$> T.traverse (i' <=< i) is
+  i' ∷ SD.Inline a → m (SD.Inline a)
+  i' (SD.Emph is) = SD.Emph <$> T.traverse (i' <=< i) is
+  i' (SD.Strong is) = SD.Strong <$> T.traverse (i' <=< i) is
+  i' (SD.Link is uri) = flip SD.Link uri <$> T.traverse (i' <=< i) is
+  i' (SD.Image is uri) = flip SD.Image uri <$> T.traverse (i' <=< i) is
   i' other = i other
 
 everywhereTopDown
-  :: forall a
-   . (Block a -> Block a)
-  -> (Inline a -> Inline a)
-  -> SlamDownP a
-  -> SlamDownP a
+  ∷ ∀ a
+  . (SD.Block a → SD.Block a)
+  → (SD.Inline a → SD.Inline a)
+  → SD.SlamDownP a
+  → SD.SlamDownP a
 everywhereTopDown b i =
   Id.runIdentity <<<
     everywhereTopDownM
@@ -88,36 +88,36 @@ everywhereTopDown b i =
       (pure <<< i)
 
 everythingM
-  :: forall m a r
-   . (Monad m, Monoid r)
-  => (Block a -> m r)
-  -> (Inline a -> m r)
-  -> SlamDownP a
-  -> m r
-everythingM b i (SlamDown bs) =
+  ∷ ∀ m a r
+  . (Monad m, Monoid r)
+  ⇒ (SD.Block a → m r)
+  → (SD.Inline a → m r)
+  → SD.SlamDownP a
+  → m r
+everythingM b i (SD.SlamDown bs) =
   F.mconcat <$> T.traverse b' bs
   where
-  b' :: Block a -> m r
-  b' x@(Paragraph is) = b x >>= \r -> F.foldl (<>) r <$> T.traverse i' is
-  b' x@(Header _ is) = b x >>= \r -> F.foldl (<>) r <$> T.traverse i' is
-  b' x@(Blockquote bs) = b x >>= \r -> F.foldl (<>) r <$> T.traverse b' bs
-  b' x@(Lst _ bss) = b x >>= \r -> F.foldl (<>) r <<< join <$> T.traverse (\bs -> T.traverse b' bs) bss
+  b' ∷ SD.Block a → m r
+  b' x@(SD.Paragraph is) = b x >>= \r → F.foldl (<>) r <$> T.traverse i' is
+  b' x@(SD.Header _ is) = b x >>= \r → F.foldl (<>) r <$> T.traverse i' is
+  b' x@(SD.Blockquote bs) = b x >>= \r → F.foldl (<>) r <$> T.traverse b' bs
+  b' x@(SD.Lst _ bss) = b x >>= \r → F.foldl (<>) r <<< join <$> T.traverse (\bs → T.traverse b' bs) bss
   b' x = b x
 
-  i' :: Inline a -> m r
-  i' x@(Emph is) = i x >>= \r -> F.foldl (<>) r <$> T.traverse i' is
-  i' x@(Strong is) = i x >>= \r -> F.foldl (<>) r <$> T.traverse i' is
-  i' x@(Link is _) = i x >>= \r -> F.foldl (<>) r <$> T.traverse i' is
-  i' x@(Image is _) = i x >>= \r -> F.foldl (<>) r <$> T.traverse i' is
+  i' ∷ SD.Inline a → m r
+  i' x@(SD.Emph is) = i x >>= \r → F.foldl (<>) r <$> T.traverse i' is
+  i' x@(SD.Strong is) = i x >>= \r → F.foldl (<>) r <$> T.traverse i' is
+  i' x@(SD.Link is _) = i x >>= \r → F.foldl (<>) r <$> T.traverse i' is
+  i' x@(SD.Image is _) = i x >>= \r → F.foldl (<>) r <$> T.traverse i' is
   i' x = i x
 
 everything
-  :: forall r a
-   . (Monoid r)
-  => (Block a -> r)
-  -> (Inline a -> r)
-  -> SlamDownP a
-  -> r
+  ∷ ∀ r a
+  . (Monoid r)
+  ⇒ (SD.Block a → r)
+  → (SD.Inline a → r)
+  → SD.SlamDownP a
+  → r
 everything b i =
   Id.runIdentity <<<
     everythingM

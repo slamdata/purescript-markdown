@@ -1,336 +1,459 @@
 module Text.Markdown.SlamDown.Parser.Inline
   ( parseInlines
-  , validateTextOfType
   , validateFormField
   , validateInline
-  )
-  where
+  , parseTextBox
+  ) where
 
 import Prelude
 
 import Control.Alt ((<|>))
 import Control.Apply ((<*), (*>))
-import Control.Lazy (fix)
+import Control.Lazy as Lazy
 
-import Data.Either (Either(..))
+import Data.Const (Const(..))
 import Data.Foldable (elem)
-import Data.List (List(..), take, many, some, singleton, fromList, length)
-import Data.Maybe (Maybe(..), maybe)
+import Data.Functor ((<$))
+import Data.Functor.Compose (Compose(..))
+import Data.HugeNum as HN
+import Data.List as L
+import Data.Maybe as M
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
-import Data.Validation (V(), invalid, runV)
-import qualified Data.String as S
+import Data.Validation as V
+import Data.String as S
 
-import Text.Parsing.Parser (Parser(), ParseError(..), runParser)
-import Text.Parsing.Parser.Combinators (try, option, optional, optionMaybe, manyTill, many1Till, sepBy, (<?>))
-import Text.Parsing.Parser.String (eof, satisfy, string, anyChar, noneOf)
+import Text.Parsing.Parser as P
+import Text.Parsing.Parser.Combinators as PC
+import Text.Parsing.Parser.String as PS
 
-import Text.Markdown.SlamDown.Syntax
-import Text.Markdown.SlamDown.Parser.Utils
+import Text.Markdown.SlamDown.Syntax as SD
+import Text.Markdown.SlamDown.Parser.Utils as PU
 
-foreign import error :: forall a. String -> a
+parseInlines
+  ∷ ∀ a
+  . (SD.Value a)
+  ⇒ L.List String
+  → L.List (SD.Inline a)
+parseInlines s =
+  -- Note: `fromRight` is benign, because the parser never fails
+  consolidate <<< Data.Either.Unsafe.fromRight $
+    P.runParser (S.joinWith "\n" $ L.fromList s) inlines
 
-parseInlines :: forall a. (Value a) => List String -> List (Inline a)
-parseInlines s = consolidate $ throwOnError $ runParser (S.joinWith "\n" $ fromList s) inlines
-  where
-  throwOnError :: forall e b. (Show e) => Either e b -> b
-  throwOnError (Left e) = error (show e)
-  throwOnError (Right a) = a
+consolidate
+  ∷ ∀ a
+  . L.List (SD.Inline a)
+  → L.List (SD.Inline a)
+consolidate xs =
+  case xs of
+    L.Nil → L.Nil
+    L.Cons (SD.Str s1) (L.Cons (SD.Str s2) is) →
+      consolidate $ L.Cons (SD.Str (s1 <> s2)) is
+    L.Cons i is → L.Cons i $ consolidate is
 
-consolidate :: forall a. List (Inline a) -> List (Inline a)
-consolidate Nil = Nil
-consolidate (Cons (Str s1) (Cons (Str s2) is)) =
-  consolidate (Cons (Str (s1 <> s2)) is)
-consolidate (Cons i is) = Cons i $ consolidate is
+someOf
+  ∷ (Char → Boolean)
+  → P.Parser String String
+someOf =
+  map (S.fromCharArray <<< L.fromList)
+    <<< L.some
+    <<< PS.satisfy
 
-someOf :: (Char -> Boolean) -> Parser String String
-someOf p = (S.fromCharArray <<< fromList) <$> some (satisfy p)
+manyOf
+  ∷ (Char → Boolean)
+  → P.Parser String String
+manyOf =
+  map (S.fromCharArray <<< L.fromList)
+    <<< L.many
+    <<< PS.satisfy
 
-manyOf :: (Char -> Boolean) -> Parser String String
-manyOf p = (S.fromCharArray <<< fromList) <$> many (satisfy p)
-
-isNumeric :: Char -> Boolean
+isNumeric ∷ Char → Boolean
 isNumeric c =
   s >= "0" && s <= "9"
   where
     s = S.fromChar c
 
-dash :: Parser String Unit
-dash = void $ string "-"
+dash ∷ P.Parser String Unit
+dash = void $ PS.string "-"
 
-colon :: Parser String Unit
-colon = void $ string ":"
+colon ∷ P.Parser String Unit
+colon = void $ PS.string ":"
 
-dot :: Parser String Unit
-dot = void $ string "."
+dot ∷ P.Parser String Unit
+dot = void $ PS.string "."
 
-hash :: Parser String Unit
-hash = void $ string "#"
+hash ∷ P.Parser String Unit
+hash = void $ PS.string "#"
 
 type TextParserKit
-  = { plainText :: Parser String String
-    , numeric :: Parser String String
-    , numericPrefix :: Parser String Unit
+  = { plainText ∷ P.Parser String String
+    , natural ∷ P.Parser String Int
+    , decimal ∷ P.Parser String HN.HugeNum
+    , numericPrefix ∷ P.Parser String Unit
     }
 
-parseTextOfType :: TextParserKit -> TextBoxType -> Parser String String
-parseTextOfType kit tbt = go tbt <?> show tbt
-  where
-    go PlainText = kit.plainText
-    go Numeric = do
-      kit.numericPrefix
-      m <- kit.numeric
-      skipSpaces
-      n <- optionMaybe $ dot *> skipSpaces *> kit.numeric
-      pure $ m ++ maybe "" ("." ++) n
-    go Time = do
-      hh <- kit.numeric
-      skipSpaces *> colon *> skipSpaces
-      mm <- kit.numeric
-      pure $ hh ++ ":" ++ mm
-    go Date = do
-      m <- kit.numeric
-      skipSpaces *> dash *> skipSpaces
-      d <- kit.numeric
-      skipSpaces *> dash *> skipSpaces
-      y <- kit.numeric
-      pure $ m ++ "-" ++ d ++ "-" ++ y
-    go DateTime = do
-      date <- go Date
-      skipSpaces
-      time <- go Time
-      pure $ date ++ " " ++ time
-
-validateTextOfType :: TextBoxType -> String -> V (Array String) String
-validateTextOfType tbt txt =
-  case runParser txt $ parseTextOfType kit tbt of
-    Left (ParseError err) -> invalid [err.message]
-    Right res -> pure res
-  where
-    kit =
-      { plainText : manyOf \_ -> true
-      , numeric : someOf isNumeric
-      , numericPrefix : optional hash
-      }
-
-validateFormField :: forall a. FormField a -> V (Array String) (FormField a)
+validateFormField
+  ∷ ∀ a
+  . SD.FormField a
+  → V.V (Array String) (SD.FormField a)
 validateFormField field =
   case field of
-    TextBox tbt (Just (Literal def)) ->
-      runV
-        (invalid <<< map ("Invalid text box: " ++))
-        (pure <<< TextBox tbt <<< Just <<< Literal)
-        (validateTextOfType tbt def)
-    CheckBoxes (Literal bs) (Literal ls) | length bs /= length ls ->
-      invalid ["Invalid checkboxes"]
-    _ -> pure field
+    SD.CheckBoxes (SD.Literal bs) (SD.Literal ls) | L.length bs /= L.length ls →
+      V.invalid ["Invalid checkboxes"]
+    SD.CheckBoxes (SD.Literal _) (SD.Unevaluated _) →
+      V.invalid ["Checkbox values & selection must be both literals or both unevaluated expressions"]
+    SD.CheckBoxes (SD.Unevaluated _) (SD.Literal _) →
+      V.invalid ["Checkbox values & selection must be both literals or both unevaluated expressions"]
+    _ → pure field
 
-validateInline :: forall a. Inline a -> V (Array String) (Inline a)
+validateInline
+  ∷ ∀ a
+  . SD.Inline a
+  → V.V (Array String) (SD.Inline a)
 validateInline inl =
   case inl of
-    Emph inls -> Emph <$> traverse validateInline inls
-    Strong inls -> Strong <$> traverse validateInline inls
-    Link inls targ -> Link <$> traverse validateInline inls <*> pure targ
-    Image inls str -> Image <$> traverse validateInline inls <*> pure str
-    FormField str b ff -> FormField str b <$> validateFormField ff
-    _ -> pure inl
+    SD.Emph inls → SD.Emph <$> traverse validateInline inls
+    SD.Strong inls → SD.Strong <$> traverse validateInline inls
+    SD.Link inls targ → SD.Link <$> traverse validateInline inls <*> pure targ
+    SD.Image inls str → SD.Image <$> traverse validateInline inls <*> pure str
+    SD.FormField str b ff → SD.FormField str b <$> validateFormField ff
+    _ → pure inl
 
 
-inlines :: forall a. (Value a) => Parser String (List (Inline a))
-inlines = many inline2 <* eof
+inlines
+  ∷ ∀ a
+  . (SD.Value a)
+  ⇒ P.Parser String (L.List (SD.Inline a))
+inlines = L.many inline2 <* PS.eof
   where
-  inline0 :: Parser String (Inline a)
-  inline0 = fix \p -> alphaNumStr
-     <|> space
-     <|> strongEmph p
-     <|> strong p
-     <|> emph p
-     <|> code
-     <|> autolink
-     <|> entity
+  inline0 ∷ P.Parser String (SD.Inline a)
+  inline0 =
+    Lazy.fix \p →
+      alphaNumStr
+        <|> space
+        <|> strongEmph p
+        <|> strong p
+        <|> emph p
+        <|> code
+        <|> autolink
+        <|> entity
 
-  inline1 :: Parser String (Inline a)
+  inline1 ∷ P.Parser String (SD.Inline a)
   inline1 =
-    try inline0
-      <|> try link
+    PC.try inline0
+      <|> PC.try link
 
-  inline2 :: Parser String (Inline a)
+  inline2 ∷ P.Parser String (SD.Inline a)
   inline2 =
-    try formField
-      <|> try inline1
-      <|> try image
+    PC.try formField
+      <|> PC.try inline1
+      <|> PC.try image
       <|> other
 
-  alphaNumStr :: Parser String (Inline a)
-  alphaNumStr = Str <$> someOf isAlphaNum
+  alphaNumStr ∷ P.Parser String (SD.Inline a)
+  alphaNumStr = SD.Str <$> someOf isAlphaNum
 
-  isAlphaNum :: Char -> Boolean
+  isAlphaNum ∷ Char → Boolean
   isAlphaNum c =
     (s >= "a" && s <= "z") ||
     (s >= "A" && s <= "Z") ||
     (s >= "0" && s <= "9")
     where s = S.fromChar c
 
-  emphasis :: Parser String (Inline a) -> (List (Inline a) -> Inline a) -> String -> Parser String (Inline a)
+  emphasis ∷ P.Parser String (SD.Inline a) → (L.List (SD.Inline a) → SD.Inline a) → String → P.Parser String (SD.Inline a)
   emphasis p f s = do
-    string s
-    f <$> manyTill p (string s)
+    PS.string s
+    f <$> PC.manyTill p (PS.string s)
 
-  emph :: Parser String (Inline a) -> Parser String (Inline a)
-  emph p = emphasis p Emph "*" <|> emphasis p Emph "_"
+  emph ∷ P.Parser String (SD.Inline a) → P.Parser String (SD.Inline a)
+  emph p = emphasis p SD.Emph "*" <|> emphasis p SD.Emph "_"
 
-  strong :: Parser String (Inline a) -> Parser String (Inline a)
-  strong p = emphasis p Strong "**" <|> emphasis p Strong "__"
+  strong ∷ P.Parser String (SD.Inline a) → P.Parser String (SD.Inline a)
+  strong p = emphasis p SD.Strong "**" <|> emphasis p SD.Strong "__"
 
-  strongEmph :: Parser String (Inline a) -> Parser String (Inline a)
+  strongEmph ∷ P.Parser String (SD.Inline a) → P.Parser String (SD.Inline a)
   strongEmph p = emphasis p f "***" <|> emphasis p f "___"
     where
-    f is = Strong $ singleton $ Emph is
+    f is = SD.Strong $ L.singleton $ SD.Emph is
 
-  space :: Parser String (Inline a)
-  space = (toSpace <<< (S.fromChar <$>)) <$> some (satisfy isWhitespace)
+  space ∷ P.Parser String (SD.Inline a)
+  space = (toSpace <<< (S.fromChar <$>)) <$> L.some (PS.satisfy PU.isWhitespace)
     where
     toSpace cs
       | "\n" `elem` cs =
-        case take 2 cs of
-          (Cons " " (Cons " " Nil)) -> LineBreak
-          _ -> SoftBreak
-      | otherwise = Space
+        case L.take 2 cs of
+          L.Cons " " (L.Cons " " L.Nil) → SD.LineBreak
+          _ → SD.SoftBreak
+      | otherwise = SD.Space
 
-  code :: Parser String (Inline a)
+  code ∷ P.Parser String (SD.Inline a)
   code = do
-    eval <- option false (string "!" *> pure true)
-    ticks <- someOf (\x -> S.fromChar x == "`")
-    contents <- (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
-    return <<< Code eval <<< S.trim $ contents
+    eval ← PC.option false (PS.string "!" *> pure true)
+    ticks ← someOf (\x → S.fromChar x == "`")
+    contents ← (S.fromCharArray <<< L.fromList) <$> PC.manyTill PS.anyChar (PS.string ticks)
+    return <<< SD.Code eval <<< S.trim $ contents
 
 
-  link :: Parser String (Inline a)
-  link = Link <$> linkLabel <*> linkTarget
+  link ∷ P.Parser String (SD.Inline a)
+  link = SD.Link <$> linkLabel <*> linkTarget
     where
-    linkLabel :: Parser String (List (Inline a))
-    linkLabel = string "[" *> manyTill (inline0 <|> other) (string "]")
+    linkLabel ∷ P.Parser String (L.List (SD.Inline a))
+    linkLabel = PS.string "[" *> PC.manyTill (inline0 <|> other) (PS.string "]")
 
-    linkTarget :: Parser String LinkTarget
+    linkTarget ∷ P.Parser String SD.LinkTarget
     linkTarget = inlineLink <|> referenceLink
 
-    inlineLink :: Parser String LinkTarget
-    inlineLink = InlineLink <<< S.fromCharArray <<< fromList <$> (string "(" *> manyTill anyChar (string ")"))
+    inlineLink ∷ P.Parser String SD.LinkTarget
+    inlineLink = SD.InlineLink <<< S.fromCharArray <<< L.fromList <$> (PS.string "(" *> PC.manyTill PS.anyChar (PS.string ")"))
 
-    referenceLink :: Parser String LinkTarget
-    referenceLink = ReferenceLink <$> optionMaybe ((S.fromCharArray <<< fromList) <$> (string "[" *> manyTill anyChar (string "]")))
+    referenceLink ∷ P.Parser String SD.LinkTarget
+    referenceLink = SD.ReferenceLink <$> PC.optionMaybe ((S.fromCharArray <<< L.fromList) <$> (PS.string "[" *> PC.manyTill PS.anyChar (PS.string "]")))
 
-  image :: Parser String (Inline a)
-  image = Image <$> imageLabel <*> imageUrl
+  image ∷ P.Parser String (SD.Inline a)
+  image = SD.Image <$> imageLabel <*> imageUrl
     where
-    imageLabel :: Parser String (List (Inline a))
-    imageLabel = string "![" *> manyTill (inline1 <|> other) (string "]")
+    imageLabel ∷ P.Parser String (L.List (SD.Inline a))
+    imageLabel = PS.string "![" *> PC.manyTill (inline1 <|> other) (PS.string "]")
 
-    imageUrl :: Parser String String
-    imageUrl = S.fromCharArray <<< fromList <$> (string "(" *> manyTill anyChar (string ")"))
+    imageUrl ∷ P.Parser String String
+    imageUrl = S.fromCharArray <<< L.fromList <$> (PS.string "(" *> PC.manyTill PS.anyChar (PS.string ")"))
 
-  autolink :: Parser String (Inline a)
+  autolink ∷ P.Parser String (SD.Inline a)
   autolink = do
-    string "<"
-    url <- (S.fromCharArray <<< fromList) <$> (anyChar `many1Till` string ">")
-    return $ Link (singleton $ Str (autoLabel url)) (InlineLink url)
+    PS.string "<"
+    url ← (S.fromCharArray <<< L.fromList) <$> (PS.anyChar `PC.many1Till` PS.string ">")
+    return $ SD.Link (L.singleton $ SD.Str (autoLabel url)) (SD.InlineLink url)
     where
-    autoLabel :: String -> String
-    autoLabel s | isEmailAddress s = "mailto:" <> s
-                | otherwise = s
+    autoLabel ∷ String → String
+    autoLabel s
+      | PU.isEmailAddress s = "mailto:" <> s
+      | otherwise = s
 
-  entity :: Parser String (Inline a)
+  entity ∷ P.Parser String (SD.Inline a)
   entity = do
-    string "&"
-    s <- (S.fromCharArray <<< fromList) <$> (noneOf (S.toCharArray ";") `many1Till` string ";")
-    return $ Entity $ "&" <> s <> ";"
+    PS.string "&"
+    s ← (S.fromCharArray <<< L.fromList) <$> (PS.noneOf (S.toCharArray ";") `PC.many1Till` PS.string ";")
+    return $ SD.Entity $ "&" <> s <> ";"
 
-
-  formField :: Parser String (Inline a)
+  formField ∷ P.Parser String (SD.Inline a)
   formField =
-    FormField
+    SD.FormField
       <$> label
-      <*> (skipSpaces *> required)
-      <*> (skipSpaces *> string "=" *> skipSpaces *> formElement)
+      <*> (PU.skipSpaces *> required)
+      <*> (PU.skipSpaces *> PS.string "=" *> PU.skipSpaces *> formElement)
     where
-    label = someOf isAlphaNum <|> (S.fromCharArray <<< fromList <$> (string "[" *> manyTill anyChar (string "]")))
-    required = option false (string "*" *> pure true)
+    label = someOf isAlphaNum <|> (S.fromCharArray <<< L.fromList <$> (PS.string "[" *> PC.manyTill PS.anyChar (PS.string "]")))
+    required = PC.option false (PS.string "*" *> pure true)
 
-  formElement :: Parser String (FormField a)
+  formElement ∷ P.Parser String (SD.FormField a)
   formElement =
-    try (textBox DateTime)
-      <|> try (textBox Date)
-      <|> try (textBox Time)
-      <|> try (textBox Numeric)
-      <|> try (textBox PlainText)
-      <|> try radioButtons
-      <|> try checkBoxes
-      <|> try dropDown
+    PC.try textBox
+      <|> PC.try radioButtons
+      <|> PC.try checkBoxes
+      <|> PC.try dropDown
     where
 
-    templateParserKit :: TextParserKit
-    templateParserKit =
-      { numericPrefix : hash
-      , plainText : und
-      , numeric : und
-      }
+    textBox ∷ P.Parser String (SD.FormField a)
+    textBox = do
+      template ← parseTextBoxTemplate
+      PU.skipSpaces
+      mdef ← PC.optionMaybe $ PU.parens $ parseTextBox (\x → x /= ')') (expr id) template
+      pure $ SD.TextBox $
+        case mdef of
+          M.Nothing → SD.transTextBox (const $ Compose M.Nothing) template
+          M.Just def → SD.transTextBox (M.Just >>> Compose) def
 
-    textBox :: TextBoxType -> Parser String (FormField a)
-    textBox ty =
-      TextBox ty <$>
-        (parseTextOfType templateParserKit ty *>
-         skipSpaces *>
-         optionMaybe
-         (parens (expr id (manyOf (\x -> S.fromChar x /= ")")))))
+    parseTextBoxTemplate ∷ P.Parser String (SD.TextBox (Const Unit))
+    parseTextBoxTemplate =
+      SD.DateTime (Const unit) <$ PC.try parseDateTimeTemplate
+        <|> SD.Date (Const unit) <$ PC.try parseDateTemplate
+        <|> SD.Time (Const unit) <$ PC.try parseTimeTemplate
+        <|> SD.Numeric (Const unit) <$ PC.try parseNumericTemplate
+        <|> SD.PlainText (Const unit) <$ parsePlainTextTemplate
 
-    und :: Parser String String
-    und = someOf (\x -> S.fromChar x == "_")
+      where
+        parseDateTimeTemplate = do
+          parseDateTemplate
+          PU.skipSpaces
+          parseTimeTemplate
 
-    radioButtons :: Parser String (FormField a)
-    radioButtons = do
-      let item = stringValue <$> someOf \c -> not $ c `elem` ['(',')',' ','!','`']
-      def <- expr parens $ string "(x)" *> skipSpaces *> item
-      skipSpaces
-      ls <- expr id $ many (try (skipSpaces *> string "()" *> skipSpaces *> item))
-      return $ RadioButtons def ls
+        parseDateTemplate = do
+          und
+          PU.skipSpaces *> dash *> PU.skipSpaces
+          und
+          PU.skipSpaces *> dash *> PU.skipSpaces
+          und
 
-    checkBoxes :: Parser String (FormField a)
+        parseTimeTemplate = do
+          und
+          PU.skipSpaces *> colon *> PU.skipSpaces
+          und
+
+        parseNumericTemplate = do
+          hash
+          und
+
+        parsePlainTextTemplate =
+          und
+
+
+    und ∷ P.Parser String String
+    und = someOf (\x → x == '_')
+
+    radioButtons ∷ P.Parser String (SD.FormField a)
+    radioButtons = literalRadioButtons <|> evaluatedRadioButtons
+      where
+        literalRadioButtons = do
+          ls ← L.some $ PC.try do
+            let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['(',')',' ','!','`']
+            PU.skipSpaces
+            b ← (PS.string "(x)" *> pure true) <|> (PS.string "()" *> pure false)
+            PU.skipSpaces
+            l ← item
+            pure $ Tuple b l
+          sel ←
+            case L.filter fst ls of
+              L.Cons (Tuple _ l) L.Nil → pure l
+              _ → P.fail "Invalid number of selected radio buttons"
+          pure $ SD.RadioButtons (SD.Literal sel) (SD.Literal (map snd ls))
+
+
+        hole ∷ ∀ b. b
+        hole = Unsafe.Coerce.unsafeCoerce "hole"
+
+        evaluatedRadioButtons = do
+          SD.RadioButtons
+            <$> PU.parens unevaluated
+            <*> (PU.skipSpaces *> unevaluated)
+
+    checkBoxes ∷ P.Parser String (SD.FormField a)
     checkBoxes = literalCheckBoxes <|> evaluatedCheckBoxes
       where
-      literalCheckBoxes = do
-        ls <- some $ try do
-          let item = stringValue <$> someOf \c -> not $ c `elem` ['[',']',' ','!','`']
-          skipSpaces
-          b <- (string "[x]" *> pure true) <|> (string "[]" *> pure false)
-          skipSpaces
-          l <- item
-          return $ Tuple b l
-        return $ CheckBoxes (Literal (map fst ls)) (Literal (map snd ls))
+        literalCheckBoxes = do
+          ls ← L.some $ PC.try do
+            let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['[',']',' ','!','`']
+            PU.skipSpaces
+            b ← (PS.string "[x]" *> pure true) <|> (PS.string "[]" *> pure false)
+            PU.skipSpaces
+            l ← item
+            return $ Tuple b l
+          return $ SD.CheckBoxes (SD.Literal (map fst ls)) (SD.Literal (map snd ls))
 
-      evaluatedCheckBoxes = CheckBoxes <$> squares unevaluated <*> (skipSpaces *> unevaluated)
+        evaluatedCheckBoxes =
+          SD.CheckBoxes
+            <$> PU.squares unevaluated
+            <*> (PU.skipSpaces *> unevaluated)
 
-    dropDown :: Parser String (FormField a)
+    dropDown ∷ P.Parser String (SD.FormField a)
     dropDown = do
-      let item = stringValue <$> someOf \c -> not $ c `elem` ['{','}',',',' ','!','`','(',')']
-      ls <- braces $ expr id $ (try (skipSpaces *> item)) `sepBy` (skipSpaces *> string ",")
-      sel <- optionMaybe $ skipSpaces *> (parens $ expr id $ item)
-      return $ DropDown ls sel
+      let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['{','}',',',' ','!','`','(',')']
+      ls ← PU.braces $ expr id $ (PC.try (PU.skipSpaces *> item)) `PC.sepBy` (PU.skipSpaces *> PS.string ",")
+      sel ← PC.optionMaybe $ PU.skipSpaces *> (PU.parens $ expr id $ item)
+      return $ SD.DropDown sel ls
 
-    expr :: forall b. (forall e. Parser String e -> Parser String e) -> Parser String b -> Parser String (Expr b)
-    expr f p = try (f unevaluated) <|> Literal <$> p
-
-    unevaluated :: forall b. Parser String (Expr b)
-    unevaluated = do
-      string "!"
-      ticks <- someOf (\x -> S.fromChar x == "`")
-      Unevaluated <$> (S.fromCharArray <<< fromList) <$> manyTill anyChar (string ticks)
-
-  other :: Parser String (Inline a)
+  other ∷ P.Parser String (SD.Inline a)
   other = do
-    c <- S.fromChar <$> anyChar
+    c ← S.fromChar <$> PS.anyChar
     if c == "\\"
-       then (Str <<< S.fromChar) <$> anyChar
-            <|> (satisfy (\x -> S.fromChar x == "\n") *> pure LineBreak)
-            <|> pure (Str "\\")
-       else pure (Str c)
+      then
+        (SD.Str <<< S.fromChar) <$> PS.anyChar
+          <|> (PS.satisfy (\x → S.fromChar x == "\n") *> pure SD.LineBreak)
+          <|> pure (SD.Str "\\")
+      else pure (SD.Str c)
+
+parseTextBox
+  ∷ ∀ f g
+  . (Char → Boolean)
+  → (∀ a. P.Parser String a → P.Parser String (g a))
+  → SD.TextBox f
+  → P.Parser String (SD.TextBox g)
+parseTextBox isPlainText eta template =
+  case template of
+    SD.DateTime _ → SD.DateTime <$> eta parseDateTimeValue
+    SD.Date _ → SD.Date <$> eta parseDateValue
+    SD.Time _ → SD.Time <$> eta parseTimeValue
+    SD.Numeric _ → SD.Numeric <$> eta parseNumericValue
+    SD.PlainText _ → SD.PlainText <$> eta parsePlainTextValue
+
+  where
+    parseDateTimeValue = do
+      date ← parseDateValue
+      PU.skipSpaces
+      time ← parseTimeValue
+      pure { date, time }
+
+    parseDateValue = do
+      year ← natural
+      PU.skipSpaces *> dash *> PU.skipSpaces
+      month ← natural
+      PU.skipSpaces *> dash *> PU.skipSpaces
+      day ← natural
+      pure { month, day, year }
+
+    parseTimeValue = do
+      hours ← natural
+      PU.skipSpaces *> colon *> PU.skipSpaces
+      minutes ← natural
+      PU.skipSpaces
+      amPm ←
+        PC.optionMaybe $
+          (false <$ (PS.string "PM" <|> PS.string "pm"))
+            <|> (true <$ (PS.string "AM" <|> PS.string "am"))
+      let hours' =
+            case amPm of
+              M.Nothing → hours
+              M.Just isAM →
+                if not isAM && hours < 12
+                then hours + 12
+                else if isAM && hours == 12
+                then 0
+                else hours
+      pure { hours : hours', minutes }
+
+    parseNumericValue = do
+      sign ← PC.try (-1 <$ PS.char '-') <|> pure 1
+      ms ← digits
+      PU.skipSpaces
+      gotDot ← PC.optionMaybe dot
+      PU.skipSpaces
+
+      ns ←
+        case gotDot of
+          M.Just _ → do
+            PC.optionMaybe (PU.skipSpaces *> digits)
+          M.Nothing →
+            pure M.Nothing
+
+      HN.fromString (ms <> "." <> M.fromMaybe "" ns)
+        # M.maybe (P.fail "Failed parsing decimal") pure
+
+    parsePlainTextValue =
+      manyOf isPlainText
+
+    natural = do
+      xs ← digits
+      Data.Int.fromString xs
+        # M.maybe (P.fail "Failed parsing natural") pure
+
+    digit =
+      PS.oneOf ['0','1','2','3','4','5','6','7','8','9']
+
+    digits =
+      L.some digit <#>
+        L.fromList >>> S.fromCharArray
+
+expr
+  ∷ ∀ b
+  . (∀ e. P.Parser String e → P.Parser String e)
+  → P.Parser String b
+  → P.Parser String (SD.Expr b)
+expr f p =
+  PC.try (f unevaluated)
+    <|> SD.Literal <$> p
+
+unevaluated ∷ ∀ b. P.Parser String (SD.Expr b)
+unevaluated = do
+  PS.string "!"
+  ticks ← someOf (\x → S.fromChar x == "`")
+  SD.Unevaluated <<< S.fromCharArray <<< L.fromList <$> PC.manyTill PS.anyChar (PS.string ticks)
 

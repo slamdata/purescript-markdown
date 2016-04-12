@@ -7,9 +7,9 @@ module Text.Markdown.SlamDown.Syntax.Block
 import Prelude
 import Data.List as L
 import Test.StrongCheck as SC
-import Test.StrongCheck.Gen as SC
+import Test.StrongCheck.Gen as Gen
 
-import Text.Markdown.SlamDown.Syntax.Inline
+import Text.Markdown.SlamDown.Syntax.Inline (Inline)
 
 data Block a
   = Paragraph (L.List (Inline a))
@@ -20,18 +20,18 @@ data Block a
   | LinkReference String String
   | Rule
 
-instance functorBlock :: Functor Block where
+instance functorBlock ∷ Functor Block where
   map f x =
     case x of
-      Paragraph is -> Paragraph (map f <$> is)
-      Header n is -> Header n (map f <$> is)
-      Blockquote bs -> Blockquote (map f <$> bs)
-      Lst ty bss -> Lst ty (map (map f) <$> bss)
-      CodeBlock ty ss -> CodeBlock ty ss
-      LinkReference l uri -> LinkReference l uri
-      Rule -> Rule
+      Paragraph is → Paragraph (map f <$> is)
+      Header n is → Header n (map f <$> is)
+      Blockquote bs → Blockquote (map f <$> bs)
+      Lst ty bss → Lst ty (map (map f) <$> bss)
+      CodeBlock ty ss → CodeBlock ty ss
+      LinkReference l uri → LinkReference l uri
+      Rule → Rule
 
-instance showBlock :: (Show a) => Show (Block a) where
+instance showBlock ∷ (Show a) ⇒ Show (Block a) where
   show (Paragraph is) = "(Paragraph " ++ show is ++ ")"
   show (Header n is) = "(Header " ++ show n ++ " " ++ show is ++ ")"
   show (Blockquote bs) = "(Blockquote " ++ show bs ++ ")"
@@ -40,7 +40,7 @@ instance showBlock :: (Show a) => Show (Block a) where
   show (LinkReference l uri) = "(LinkReference " ++ show l ++ " " ++ show uri ++ ")"
   show Rule = "Rule"
 
-instance eqBlock :: (Eq a) => Eq (Block a) where
+instance eqBlock ∷ (Eq a) ⇒ Eq (Block a) where
   eq (Paragraph is1) (Paragraph is2) = is1 == is2
   eq (Header n1 is1) (Header n2 is2) = n1 == n2 && is1 == is2
   eq (Blockquote bs1) (Blockquote bs2) = bs1 == bs2
@@ -51,54 +51,54 @@ instance eqBlock :: (Eq a) => Eq (Block a) where
   eq _ _ = false
 
 -- | Nota bene: this does not generate any recursive structure
-instance arbitraryBlock :: (SC.Arbitrary a) => SC.Arbitrary (Block a) where
+instance arbitraryBlock ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (Block a) where
   arbitrary = do
-    k <- SC.chooseInt 0.0 6.0
+    k ← Gen.chooseInt 0.0 6.0
     case k of
-      0 -> Paragraph <$> listOf SC.arbitrary
-      1 -> Header <$> SC.arbitrary <*> listOf SC.arbitrary
-      2 -> pure $ Blockquote L.Nil
-      3 -> Lst <$> SC.arbitrary <*> listOf (pure L.Nil)
-      4 -> CodeBlock <$> SC.arbitrary <*> listOf SC.arbitrary
-      5 -> LinkReference <$> SC.arbitrary <*> SC.arbitrary
-      _ -> pure Rule
+      0 → Paragraph <$> listOf SC.arbitrary
+      1 → Header <$> SC.arbitrary <*> listOf SC.arbitrary
+      2 → pure $ Blockquote L.Nil
+      3 → Lst <$> SC.arbitrary <*> listOf (pure L.Nil)
+      4 → CodeBlock <$> SC.arbitrary <*> listOf SC.arbitrary
+      5 → LinkReference <$> SC.arbitrary <*> SC.arbitrary
+      _ → pure Rule
 
-listOf :: forall f a. (Monad f) => SC.GenT f a -> SC.GenT f (L.List a)
-listOf = map L.toList <<< SC.arrayOf
+listOf ∷ ∀ f a. (Monad f) ⇒ Gen.GenT f a → Gen.GenT f (L.List a)
+listOf = map L.toList <<< Gen.arrayOf
 
 data ListType
   = Bullet String
   | Ordered String
 
-instance showListType :: Show ListType where
+instance showListType ∷ Show ListType where
   show (Bullet s) = "(Bullet " ++ show s ++ ")"
   show (Ordered s) = "(Ordered " ++ show s ++ ")"
 
-instance eqListType :: Eq ListType where
+instance eqListType ∷ Eq ListType where
   eq (Bullet s1)  (Bullet s2) = s1 == s2
   eq (Ordered s1) (Ordered s2) = s1 == s2
   eq _ _ = false
 
-instance arbitraryListType :: SC.Arbitrary ListType where
+instance arbitraryListType ∷ SC.Arbitrary ListType where
   arbitrary = do
-    b <- SC.arbitrary
+    b ← SC.arbitrary
     if b then Bullet <$> SC.arbitrary else Ordered <$> SC.arbitrary
 
 data CodeBlockType
   = Indented
   | Fenced Boolean String
 
-instance showCodeBlockType :: Show CodeBlockType where
+instance showCodeBlockType ∷ Show CodeBlockType where
   show Indented = "Indented"
   show (Fenced evaluated info) = "(Fenced " ++ show evaluated ++ " " ++ show info ++ ")"
 
-instance eqCodeBlockType :: Eq CodeBlockType where
+instance eqCodeBlockType ∷ Eq CodeBlockType where
   eq Indented Indented = true
   eq (Fenced b1 s1) (Fenced b2 s2) = b1 == b2 && s1 == s2
   eq _ _ = false
 
-instance arbitraryCodeBlockType :: SC.Arbitrary CodeBlockType where
+instance arbitraryCodeBlockType ∷ SC.Arbitrary CodeBlockType where
   arbitrary = do
-    b <- SC.arbitrary
+    b ← SC.arbitrary
     if b then pure Indented else Fenced <$> SC.arbitrary <*> SC.arbitrary
 

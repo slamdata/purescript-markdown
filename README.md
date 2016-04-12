@@ -22,7 +22,8 @@ import Text.Markdown.SlamDown.Pretty
 
 ### API
 
-See the [module documentation](docs/).
+Module documentation is [published on
+Pursuit](http://pursuit.purescript.org/packages/purescript-markdown).
 
 ### Tests
 

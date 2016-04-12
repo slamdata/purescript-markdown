@@ -1,16 +1,19 @@
 module Text.Markdown.SlamDown.Syntax.Value
-  ( Value
+  ( class Value
   , stringValue
   , renderValue
   ) where
 
 import Prelude
 
-class (Eq a) <= Value a where
-  stringValue :: String -> a
+class (Eq a) ⇐ Value a where
+  stringValue
+    ∷ String
+    → a
+  renderValue
+    ∷ a
+    → String
 
-  renderValue :: a -> String
-
-instance valueString :: Value String where
+instance valueString ∷ Value String where
   stringValue = id
   renderValue = id
