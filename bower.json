@@ -27,7 +27,7 @@
     "purescript-functor-compose": "^0.0.1",
     "purescript-hugenums": "^1.3.0",
     "purescript-lists": "^0.7.10",
-    "purescript-parsing": "^0.7.1",
+    "purescript-parsing": "^0.8.0",
     "purescript-prelude": "^0.1.3",
     "purescript-strongcheck": "^0.14.4",
     "purescript-validation": "^0.2.1"
