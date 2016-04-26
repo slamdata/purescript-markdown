@@ -61,12 +61,27 @@ eval fs = everywhereM b i
       quoteTextBox ∷ SD.TextBox Identity → SD.TextBox (Compose M.Maybe SD.Expr)
       quoteTextBox = SD.transTextBox (runIdentity >>> SD.Literal >>> M.Just >>> Compose)
 
-  f (SD.RadioButtons sel opts) = SD.RadioButtons <$> evalExpr fs.value sel <*> evalExpr fs.list opts
+  f (SD.RadioButtons sel opts) = do
+    sel' <- evalExpr fs.value sel
+    opts' <- evalExpr fs.list opts
+    pure $ SD.RadioButtons sel' (mergeSelection sel' opts')
+
   f (SD.CheckBoxes checkeds vals) = do
     vals' ← evalExpr fs.list vals
     checkeds' ← evalExpr (fs.list >=> \cs → pure $ map (_ `F.elem` cs) (getValues vals')) checkeds
     pure $ SD.CheckBoxes checkeds' vals'
-  f (SD.DropDown sel opts) = SD.DropDown <$> T.traverse (evalExpr fs.value) sel <*> evalExpr fs.list opts
+
+  f (SD.DropDown msel opts) = do
+    msel' ← T.traverse (evalExpr fs.value) msel
+    opts' ← evalExpr fs.list opts
+    pure $ SD.DropDown msel' $ M.maybe opts' (flip mergeSelection opts') msel'
+
+  mergeSelection ∷ SD.Expr a → SD.Expr (L.List a) → SD.Expr (L.List a)
+  mergeSelection (SD.Literal x) (SD.Literal xs) =
+    if F.elem x xs
+    then SD.Literal xs
+    else SD.Literal $ L.Cons x xs
+  mergeSelection _ exs = exs
 
   evalExpr ∷ ∀ e. (String → m e) → SD.Expr e → m (SD.Expr e)
   evalExpr _ (SD.Literal a) = pure $ SD.Literal a
@@ -75,3 +90,4 @@ eval fs = everywhereM b i
   getValues ∷ ∀ e. SD.Expr (L.List e) → L.List e
   getValues (SD.Literal vs) = vs
   getValues _ = L.Nil
+
