@@ -1,6 +1,6 @@
 {
   "private": true,
   "devDependencies": {
-    "purescript": "^0.8.2"
+    "purescript": "^0.8.5"
   }
 }

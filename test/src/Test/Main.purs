@@ -17,6 +17,8 @@ import Data.Array as A
 import Data.Char as CH
 import Data.String as S
 
+import Data.Tuple (uncurry)
+
 import Text.Markdown.SlamDown.Syntax as SD
 import Text.Markdown.SlamDown.Eval as SDE
 import Text.Markdown.SlamDown.Parser as SDP
@@ -32,7 +34,28 @@ type TestEffects e =
   | e
   )
 
-testDocument ∷ ∀ e. SD.SlamDown → Eff (TestEffects e) Unit
+newtype NonEmptyString = NonEmptyString String
+derive instance eqNonEmptyString ∷ Eq NonEmptyString
+
+genChar ∷ Gen.Gen Char
+genChar = Gen.elements '-' $ L.toList $ S.toCharArray "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*"
+
+instance arbitraryNonEmptyString ∷ SC.Arbitrary NonEmptyString where
+  arbitrary =
+    Gen.arrayOf1 genChar
+      <#> uncurry A.cons
+      >>> S.fromCharArray
+      >>> S.trim
+      >>> NonEmptyString
+
+instance showNonEmptyString ∷ Show NonEmptyString where
+  show (NonEmptyString str) = str
+
+instance valueNonEmptyString ∷ SD.Value NonEmptyString where
+  stringValue = NonEmptyString
+  renderValue (NonEmptyString str) = str
+
+testDocument ∷ ∀ e. SD.SlamDownP NonEmptyString → Eff (TestEffects e) Unit
 testDocument sd = do
 
   let printed = SDPR.prettyPrintMd sd
@@ -266,9 +289,9 @@ smallArrayOf g = do
   len ← Gen.chooseInt 1.0 2.0
   Gen.vectorOf len g
 
-newtype TestSlamDown = TestSlamDown SD.SlamDown
+newtype TestSlamDown = TestSlamDown (SD.SlamDownP NonEmptyString)
 
-runTestSlamDown ∷ TestSlamDown → SD.SlamDown
+runTestSlamDown ∷ TestSlamDown → SD.SlamDownP NonEmptyString
 runTestSlamDown (TestSlamDown sd) = sd
 
 instance arbSlamDown ∷ SC.Arbitrary TestSlamDown where
