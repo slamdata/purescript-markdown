@@ -231,6 +231,8 @@ static = do
   testDocument $ SDP.parseMd "[numeric field] = #______ (23)"
   testDocument $ SDP.parseMd "i9a0qvg8* = ______ (9a0qvg8h)"
   testDocument $ SDP.parseMd "xeiodbdy  = [x] "
+  testDocument $ SDP.parseMd "4udo5r  = {!`  `} (!`èŒ`)"
+  testDocument $ SDP.parseMd "4udo5r  = {!`   `} (!` `)"
 
   C.log "All static tests passed!"
 
