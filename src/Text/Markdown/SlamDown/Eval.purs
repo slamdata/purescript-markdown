@@ -62,19 +62,19 @@ eval fs = everywhereM b i
       quoteTextBox = SD.transTextBox (runIdentity >>> SD.Literal >>> M.Just >>> Compose)
 
   f (SD.RadioButtons sel opts) = do
-    sel' <- evalExpr fs.value sel
     opts' <- evalExpr fs.list opts
-    pure $ SD.RadioButtons sel' (mergeSelection sel' opts')
+    sel' ← evalExpr (fs.value >=> \x → pure $ M.fromMaybe 0 $ L.elemIndex x (getValues opts')) sel
+    pure $ SD.RadioButtons sel' opts'
 
-  f (SD.CheckBoxes checkeds vals) = do
-    vals' ← evalExpr fs.list vals
-    checkeds' ← evalExpr (fs.list >=> \cs → pure $ map (_ `F.elem` cs) (getValues vals')) checkeds
-    pure $ SD.CheckBoxes checkeds' vals'
+  f (SD.CheckBoxes checkeds opts) = do
+    opts' ← evalExpr fs.list opts
+    checkeds' ← evalExpr (fs.list >=> \cs → pure $ map (_ `F.elem` cs) (getValues opts')) checkeds
+    pure $ SD.CheckBoxes checkeds' opts'
 
   f (SD.DropDown msel opts) = do
-    msel' ← T.traverse (evalExpr fs.value) msel
     opts' ← evalExpr fs.list opts
-    pure $ SD.DropDown msel' $ M.maybe opts' (flip mergeSelection opts') msel'
+    msel' ← T.for msel $ evalExpr (fs.value >=> \x → pure $ M.fromMaybe 0 $ L.elemIndex x (getValues opts'))
+    pure $ SD.DropDown msel' opts'
 
   mergeSelection ∷ SD.Expr a → SD.Expr (L.List a) → SD.Expr (L.List a)
   mergeSelection (SD.Literal x) (SD.Literal xs) =
@@ -90,4 +90,3 @@ eval fs = everywhereM b i
   getValues ∷ ∀ e. SD.Expr (L.List e) → L.List e
   getValues (SD.Literal vs) = vs
   getValues _ = L.Nil
-

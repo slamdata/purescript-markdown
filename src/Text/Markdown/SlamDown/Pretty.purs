@@ -172,15 +172,21 @@ prettyPrintTextBox t =
         SD.DateTime def → prettyPrintExpr id prettyPrintDateTime def
 
 
+mapWithIndex ∷ ∀ a b. (Int → a → b) → L.List a → L.List b
+mapWithIndex f = go 0
+  where
+    go i L.Nil = L.Nil
+    go i (L.Cons x xs) = L.Cons (f i x) (go (i + 1) xs)
+
 prettyPrintFormElement ∷ ∀ a. (SD.Value a) ⇒ SD.FormField a → String
 prettyPrintFormElement el =
   case el of
     SD.TextBox tb → prettyPrintTextBox tb
     SD.RadioButtons (SD.Literal sel) (SD.Literal ls) →
       let
-        radioButton l = (if l == sel then "(x) " else "() ") <> SD.renderValue l
+        radioButton i l = (if i == sel then "(x) " else "() ") <> SD.renderValue l
       in
-        S.joinWith " " $ L.fromList (map radioButton ls)
+        S.joinWith " " $ L.fromList (mapWithIndex radioButton ls)
     SD.RadioButtons (SD.Unevaluated bs) (SD.Unevaluated ls) →
       "(!`" <> bs <> "`) !`" <> ls <> "`"
     SD.CheckBoxes (SD.Literal bs) (SD.Literal ls) →
@@ -190,9 +196,16 @@ prettyPrintFormElement el =
         S.joinWith " " $ L.fromList (L.zipWith checkBox bs ls)
     SD.CheckBoxes (SD.Unevaluated bs) (SD.Unevaluated ls) →
       "[!`" <> bs <> "`] !`" <> ls <> "`"
-    SD.DropDown sel lbls →
-      braces (prettyPrintExpr id (L.fromList >>> map SD.renderValue >>> S.joinWith ", ") lbls)
-        <> M.maybe "" (parens <<< prettyPrintExpr id SD.renderValue) sel
+    SD.DropDown msel (SD.Literal ls) →
+      braces (S.joinWith ", " $ map SD.renderValue $ L.fromList ls) <>
+        case msel of
+          M.Just (SD.Literal i) → M.maybe "" (parens <<< SD.renderValue) (L.index ls i)
+          _ → ""
+    SD.DropDown msel (SD.Unevaluated ls) →
+      "{!`" <> ls <> "`} " <>
+        case msel of
+          M.Just (SD.Unevaluated x) → "(!`" <> x <> "`)"
+          _ → ""
     _ → "Unsupported form element"
 
 prettyPrintExpr ∷ ∀ a. (String → String) → (a → String) → SD.Expr a → String
