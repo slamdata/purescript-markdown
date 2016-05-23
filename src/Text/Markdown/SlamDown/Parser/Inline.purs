@@ -300,26 +300,28 @@ inlines = L.many inline2 <* PS.eof
     und ∷ P.Parser String String
     und = someOf (\x → x == '_')
 
+    zipWithIndices ∷ ∀ b. L.List b → L.List (Tuple Int b)
+    zipWithIndices = go 0
+      where
+        go i L.Nil = L.Nil
+        go i (L.Cons x xs) = L.Cons (Tuple i x) $ go (i + 1) xs
+
     radioButtons ∷ P.Parser String (SD.FormField a)
     radioButtons = literalRadioButtons <|> evaluatedRadioButtons
       where
         literalRadioButtons = do
           ls ← L.some $ PC.try do
-            let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['(',')',' ','!','`']
+            let item = SD.stringValue <<< S.trim <$> manyOf \c → not $ c `elem` ['(',')','!','`']
             PU.skipSpaces
             b ← (PS.string "(x)" *> pure true) <|> (PS.string "()" *> pure false)
             PU.skipSpaces
             l ← item
             pure $ Tuple b l
           sel ←
-            case L.filter fst ls of
-              L.Cons (Tuple _ l) L.Nil → pure l
+            case L.filter (\(Tuple i x) → fst x) $ zipWithIndices ls of
+              L.Cons (Tuple i _) L.Nil → pure i
               _ → P.fail "Invalid number of selected radio buttons"
           pure $ SD.RadioButtons (SD.Literal sel) (SD.Literal (map snd ls))
-
-
-        hole ∷ ∀ b. b
-        hole = Unsafe.Coerce.unsafeCoerce "hole"
 
         evaluatedRadioButtons = do
           SD.RadioButtons
@@ -331,7 +333,7 @@ inlines = L.many inline2 <* PS.eof
       where
         literalCheckBoxes = do
           ls ← L.some $ PC.try do
-            let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['[',']',' ','!','`']
+            let item = SD.stringValue <<< S.trim <$> manyOf \c → not $ c `elem` ['[',']','!','`']
             PU.skipSpaces
             b ← (PS.string "[x]" *> pure true) <|> (PS.string "[]" *> pure false)
             PU.skipSpaces
@@ -345,11 +347,20 @@ inlines = L.many inline2 <* PS.eof
             <*> (PU.skipSpaces *> unevaluated)
 
     dropDown ∷ P.Parser String (SD.FormField a)
-    dropDown = do
-      let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['{','}',',','!','`','(',')']
-      ls ← PU.braces $ expr id $ (PC.try (PU.skipSpaces *> item)) `PC.sepBy` (PU.skipSpaces *> PS.string ",")
-      sel ← PC.optionMaybe $ PU.skipSpaces *> (PU.parens $ expr id $ item)
-      return $ SD.DropDown sel ls
+    dropDown = literalDropDown <|> evaluatedDropDown
+      where
+        literalDropDown = do
+          let item = SD.stringValue <<< S.trim <$> manyOf \c → not $ c `elem` ['{','}',',','!','`','(',')']
+          ls ← PU.braces $ (PC.try (PU.skipSpaces *> item)) `PC.sepBy` (PU.skipSpaces *> PS.string ",")
+          sel ← PC.optionMaybe $ PU.skipSpaces *> PU.parens item
+          let i = sel >>= flip L.elemIndex ls
+          return $ SD.DropDown (SD.Literal <$> i) (SD.Literal ls)
+
+        evaluatedDropDown = do
+          ls ← PU.braces unevaluated
+          PU.skipSpaces
+          i ← M.Just <$> PU.parens unevaluated
+          pure $ SD.DropDown i ls
 
   other ∷ P.Parser String (SD.Inline a)
   other = do

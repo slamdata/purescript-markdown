@@ -17,6 +17,7 @@ import Data.Array as A
 import Data.Identity (Identity(..), runIdentity)
 import Data.Functor.Compose (Compose(..), decompose)
 import Data.NaturalTransformation (Natural)
+import Data.Int as Int
 import Data.List as L
 import Data.Maybe as M
 import Data.HugeNum as HN
@@ -31,9 +32,9 @@ import Text.Markdown.SlamDown.Syntax.TextBox as TB
 
 data FormFieldP f a
   = TextBox (TB.TextBox (Compose M.Maybe f))
-  | RadioButtons (f a) (f (L.List a))
+  | RadioButtons (f Int) (f (L.List a))
   | CheckBoxes (f (L.List Boolean)) (f (L.List a))
-  | DropDown (M.Maybe (f a)) (f (L.List a))
+  | DropDown (M.Maybe (f Int)) (f (L.List a))
 
 type FormField a = FormFieldP Expr a
 
@@ -62,17 +63,17 @@ instance functorFormField ∷ (Functor f) ⇒ Functor (FormFieldP f) where
   map f x =
     case x of
       TextBox tb → TextBox tb
-      RadioButtons sel ls → RadioButtons (f <$> sel) (map f <$> ls)
+      RadioButtons sel ls → RadioButtons sel (map f <$> ls)
       CheckBoxes bs ls → CheckBoxes bs (map f <$> ls)
-      DropDown sel ls → DropDown (map f <$> sel) (map f <$> ls)
+      DropDown sel ls → DropDown sel (map f <$> ls)
 
-instance showFormField ∷ (Functor f, Show (f a), Show (f (L.List a)), Show (f (L.List Boolean)), Show (f String), Show (f HN.HugeNum), Show (f TB.TimeValueP), Show (f TB.DateValueP), Show (f TB.DateTimeValueP), Show a) ⇒ Show (FormFieldP f a) where
+instance showFormField ∷ (Functor f, Show (f a), Show (f Int), Show (f (L.List a)), Show (f (L.List Boolean)), Show (f String), Show (f HN.HugeNum), Show (f TB.TimeValueP), Show (f TB.DateValueP), Show (f TB.DateTimeValueP), Show a) ⇒ Show (FormFieldP f a) where
   show (TextBox tb) = "(TextBox " ++ show tb ++ ")"
   show (RadioButtons sel ls) = "(RadioButtons " ++ show sel ++ " " ++ show ls ++ ")"
   show (CheckBoxes bs ls) = "(CheckBoxes " ++ show bs ++ " " ++ show ls ++ ")"
   show (DropDown sel ls) = "(DropDown " ++ show sel ++ " " ++ show ls ++ ")"
 
-instance eqFormField ∷ (Functor f, Eq (f a), Eq (f (L.List a)), Eq (f (L.List Boolean)), Eq (f String), Eq (f HN.HugeNum), Eq (f TB.TimeValueP), Eq (f TB.DateValueP), Eq (f TB.DateTimeValueP), Eq a) ⇒ Eq (FormFieldP f a) where
+instance eqFormField ∷ (Functor f, Eq (f a), Eq (f Int), Eq (f (L.List a)), Eq (f (L.List Boolean)), Eq (f String), Eq (f HN.HugeNum), Eq (f TB.TimeValueP), Eq (f TB.DateValueP), Eq (f TB.DateTimeValueP), Eq a) ⇒ Eq (FormFieldP f a) where
   eq (TextBox tb1) (TextBox tb2) = tb1 == tb2
   eq (RadioButtons sel1 ls1) (RadioButtons sel2 ls2) = sel1 == sel2 && ls1 == ls2
   eq (CheckBoxes bs1 ls1) (CheckBoxes bs2 ls2) = bs1 == bs2 && ls1 == ls2
@@ -133,10 +134,9 @@ instance arbitraryFormField ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (FormFie
         xse ← genExpr $ distinctListOf SC.arbitrary
         case xse of
           Literal xs → do
-            x ← do
-              def ← SC.arbitrary
-              Literal <$> Gen.elements def xs
-            pure $ RadioButtons x xse
+            let n = L.length xs
+            i ← Gen.chooseInt 0.0 $ Int.toNumber $ n - 1
+            pure $ RadioButtons (Literal i) xse
           Unevaluated e → do
             x ← Unevaluated <$> genUnevaluated
             pure $ RadioButtons x xse
@@ -153,10 +153,10 @@ instance arbitraryFormField ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (FormFie
         xse ← genExpr $ distinctListOf SC.arbitrary
         case xse of
           Literal xs → do
-            mx ← genMaybe do
-              def ← SC.arbitrary
-              Literal <$> Gen.elements def xs
-            pure $ DropDown mx xse
+            let n = L.length xs
+            mi ← genMaybe $
+              Literal <$> Gen.chooseInt 0.0 (Int.toNumber $ n - 1)
+            pure $ DropDown mi xse
           Unevaluated e → do
             mx ← genMaybe $ Unevaluated <$> genUnevaluated
             pure $ DropDown mx xse
@@ -168,20 +168,19 @@ instance arbitraryFormFieldIdentity ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary 
       0 → TextBox <<< TB.transTextBox (\(ArbCompose x) → Compose $ map getArbIdentity x) <$> SC.arbitrary
       1 → do
         xs ← distinctListOf $ getArbIdentity <$> SC.arbitrary
-        x ← do
-          def <- getArbIdentity <$> SC.arbitrary
-          Gen.elements def xs
-        pure $ RadioButtons x $ TR.sequence xs
+        let n = L.length xs
+        i ← Gen.chooseInt 0.0 $ Int.toNumber $ n - 1
+        pure $ RadioButtons (Identity i) $ TR.sequence xs
       2 → do
         xs ← map TR.sequence <<< distinctListOf $ getArbIdentity <$> SC.arbitrary
         bs ← listOfLength (L.length $ runIdentity xs) SC.arbitrary
         pure $ CheckBoxes (Identity bs) xs
       _ → do
         xs ← distinctListOf $ getArbIdentity <$> SC.arbitrary
-        mx ← genMaybe do
-          def <- getArbIdentity <$> SC.arbitrary
-          Gen.elements def xs
-        pure $ DropDown mx $ TR.sequence xs
+        let n = L.length xs
+        mi ← genMaybe $
+          pure <$> Gen.chooseInt 0.0 (Int.toNumber $ n - 1)
+        pure $ DropDown mi $ TR.sequence xs
 
 
 genMaybe
