@@ -134,7 +134,7 @@ instance arbitraryFormField ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (FormFie
         case xse of
           Literal xs → do
             x ← do
-              def ← SC.arbitrary
+              let def = Data.Maybe.Unsafe.fromJust (L.head xs)
               Literal <$> Gen.elements def xs
             pure $ RadioButtons x xse
           Unevaluated e → do
@@ -154,7 +154,7 @@ instance arbitraryFormField ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (FormFie
         case xse of
           Literal xs → do
             mx ← genMaybe do
-              def ← SC.arbitrary
+              let def = Data.Maybe.Unsafe.fromJust (L.head xs)
               Literal <$> Gen.elements def xs
             pure $ DropDown mx xse
           Unevaluated e → do
@@ -169,7 +169,7 @@ instance arbitraryFormFieldIdentity ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary 
       1 → do
         xs ← distinctListOf $ getArbIdentity <$> SC.arbitrary
         x ← do
-          def <- getArbIdentity <$> SC.arbitrary
+          let def = Data.Maybe.Unsafe.fromJust (L.head xs)
           Gen.elements def xs
         pure $ RadioButtons x $ TR.sequence xs
       2 → do
@@ -179,7 +179,7 @@ instance arbitraryFormFieldIdentity ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary 
       _ → do
         xs ← distinctListOf $ getArbIdentity <$> SC.arbitrary
         mx ← genMaybe do
-          def <- getArbIdentity <$> SC.arbitrary
+          let def = Data.Maybe.Unsafe.fromJust (L.head xs)
           Gen.elements def xs
         pure $ DropDown mx $ TR.sequence xs
 

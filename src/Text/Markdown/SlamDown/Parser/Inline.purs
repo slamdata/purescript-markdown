@@ -305,7 +305,7 @@ inlines = L.many inline2 <* PS.eof
       where
         literalRadioButtons = do
           ls ← L.some $ PC.try do
-            let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['(',')',' ','!','`']
+            let item = SD.stringValue <<< S.trim <$> manyOf \c → not $ c `elem` ['(',')','!','`']
             PU.skipSpaces
             b ← (PS.string "(x)" *> pure true) <|> (PS.string "()" *> pure false)
             PU.skipSpaces
@@ -317,10 +317,6 @@ inlines = L.many inline2 <* PS.eof
               _ → P.fail "Invalid number of selected radio buttons"
           pure $ SD.RadioButtons (SD.Literal sel) (SD.Literal (map snd ls))
 
-
-        hole ∷ ∀ b. b
-        hole = Unsafe.Coerce.unsafeCoerce "hole"
-
         evaluatedRadioButtons = do
           SD.RadioButtons
             <$> PU.parens unevaluated
@@ -331,7 +327,7 @@ inlines = L.many inline2 <* PS.eof
       where
         literalCheckBoxes = do
           ls ← L.some $ PC.try do
-            let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['[',']',' ','!','`']
+            let item = SD.stringValue <<< S.trim <$> manyOf \c → not $ c `elem` ['[',']','!','`']
             PU.skipSpaces
             b ← (PS.string "[x]" *> pure true) <|> (PS.string "[]" *> pure false)
             PU.skipSpaces
@@ -346,7 +342,7 @@ inlines = L.many inline2 <* PS.eof
 
     dropDown ∷ P.Parser String (SD.FormField a)
     dropDown = do
-      let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['{','}',',',' ','!','`','(',')']
+      let item = SD.stringValue <<< S.trim <$> manyOf \c → not $ c `elem` ['{','}',',','!','`','(',')']
       ls ← PU.braces $ expr id $ (PC.try (PU.skipSpaces *> item)) `PC.sepBy` (PU.skipSpaces *> PS.string ",")
       sel ← PC.optionMaybe $ PU.skipSpaces *> (PU.parens $ expr id $ item)
       return $ SD.DropDown sel ls

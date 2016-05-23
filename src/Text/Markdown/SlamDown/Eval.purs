@@ -62,8 +62,8 @@ eval fs = everywhereM b i
       quoteTextBox = SD.transTextBox (runIdentity >>> SD.Literal >>> M.Just >>> Compose)
 
   f (SD.RadioButtons sel opts) = do
-    sel' <- evalExpr fs.value sel
-    opts' <- evalExpr fs.list opts
+    sel' ← evalExpr fs.value sel
+    opts' ← evalExpr fs.list opts
     pure $ SD.RadioButtons sel' (mergeSelection sel' opts')
 
   f (SD.CheckBoxes checkeds vals) = do
@@ -90,4 +90,3 @@ eval fs = everywhereM b i
   getValues ∷ ∀ e. SD.Expr (L.List e) → L.List e
   getValues (SD.Literal vs) = vs
   getValues _ = L.Nil
-
