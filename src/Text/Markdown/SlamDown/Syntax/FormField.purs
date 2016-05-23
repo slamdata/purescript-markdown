@@ -158,7 +158,7 @@ instance arbitraryFormField ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (FormFie
               Literal <$> Gen.chooseInt 0.0 (Int.toNumber $ n - 1)
             pure $ DropDown mi xse
           Unevaluated e → do
-            mx ← genMaybe $ Unevaluated <$> genUnevaluated
+            mx ← pure <<< Unevaluated <$> genUnevaluated
             pure $ DropDown mx xse
 
 instance arbitraryFormFieldIdentity ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (FormFieldP Identity a) where
