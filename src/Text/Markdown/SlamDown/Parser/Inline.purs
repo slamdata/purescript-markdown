@@ -177,7 +177,7 @@ inlines = L.many inline2 <* PS.eof
     f is = SD.Strong $ L.singleton $ SD.Emph is
 
   space ∷ P.Parser String (SD.Inline a)
-  space = (toSpace <<< (S.fromChar <$>)) <$> L.some (PS.satisfy PU.isWhitespace)
+  space = (toSpace <<< (S.fromChar <$> _)) <$> L.some (PS.satisfy PU.isWhitespace)
     where
     toSpace cs
       | "\n" `elem` cs =
@@ -456,4 +456,3 @@ unevaluated = do
   PS.string "!"
   ticks ← someOf (\x → S.fromChar x == "`")
   SD.Unevaluated <<< S.fromCharArray <<< L.fromList <$> PC.manyTill PS.anyChar (PS.string ticks)
-
