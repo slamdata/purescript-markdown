@@ -307,7 +307,7 @@ inlines = L.many inline2 <* PS.eof
         go i (L.Cons x xs) = L.Cons (Tuple i x) $ go (i + 1) xs
 
     radioButtons ∷ P.Parser String (SD.FormField a)
-    radioButtons = literalRadioButtons <|> evaluatedRadioButtons
+    radioButtons = PC.try evaluatedRadioButtons <|> literalRadioButtons
       where
         literalRadioButtons = do
           ls ← L.some $ PC.try do
@@ -329,7 +329,7 @@ inlines = L.many inline2 <* PS.eof
             <*> (PU.skipSpaces *> unevaluated)
 
     checkBoxes ∷ P.Parser String (SD.FormField a)
-    checkBoxes = literalCheckBoxes <|> evaluatedCheckBoxes
+    checkBoxes = PC.try evaluatedCheckBoxes <|> literalCheckBoxes
       where
         literalCheckBoxes = do
           ls ← L.some $ PC.try do
@@ -347,7 +347,7 @@ inlines = L.many inline2 <* PS.eof
             <*> (PU.skipSpaces *> unevaluated)
 
     dropDown ∷ P.Parser String (SD.FormField a)
-    dropDown = literalDropDown <|> evaluatedDropDown
+    dropDown = PC.try evaluatedDropDown <|> literalDropDown
       where
         literalDropDown = do
           let item = SD.stringValue <<< S.trim <$> manyOf \c → not $ c `elem` ['{','}',',','!','`','(',')']
