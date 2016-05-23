@@ -346,7 +346,7 @@ inlines = L.many inline2 <* PS.eof
 
     dropDown ∷ P.Parser String (SD.FormField a)
     dropDown = do
-      let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['{','}',',',' ','!','`','(',')']
+      let item = SD.stringValue <$> manyOf \c → not $ c `elem` ['{','}',',','!','`','(',')']
       ls ← PU.braces $ expr id $ (PC.try (PU.skipSpaces *> item)) `PC.sepBy` (PU.skipSpaces *> PS.string ",")
       sel ← PC.optionMaybe $ PU.skipSpaces *> (PU.parens $ expr id $ item)
       return $ SD.DropDown sel ls
