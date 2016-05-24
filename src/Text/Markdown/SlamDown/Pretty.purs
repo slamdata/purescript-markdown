@@ -6,7 +6,7 @@ module Text.Markdown.SlamDown.Pretty
 import Prelude
 
 import Data.Array as A
-import Data.Foldable (fold)
+import Data.Foldable (fold, elem)
 import Data.Identity (Identity(..))
 import Data.Functor.Compose (Compose(), decompose)
 import Data.HugeNum as HN
@@ -183,11 +183,11 @@ prettyPrintFormElement el =
         S.joinWith " " $ L.fromList (map radioButton ls)
     SD.RadioButtons (SD.Unevaluated bs) (SD.Unevaluated ls) →
       "(!`" <> bs <> "`) !`" <> ls <> "`"
-    SD.CheckBoxes (SD.Literal bs) (SD.Literal ls) →
+    SD.CheckBoxes (SD.Literal sel) (SD.Literal ls) →
       let
-        checkBox b l = (if b then "[x] " else "[] ") <> SD.renderValue l
+        checkBox l = (if elem l sel then "[x] " else "[] ") <> SD.renderValue l
       in
-        S.joinWith " " $ L.fromList (L.zipWith checkBox bs ls)
+        S.joinWith " " <<< L.fromList $ checkBox <$> ls
     SD.CheckBoxes (SD.Unevaluated bs) (SD.Unevaluated ls) →
       "[!`" <> bs <> "`] !`" <> ls <> "`"
     SD.DropDown sel lbls →

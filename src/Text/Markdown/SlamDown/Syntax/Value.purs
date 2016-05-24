@@ -6,7 +6,7 @@ module Text.Markdown.SlamDown.Syntax.Value
 
 import Prelude
 
-class (Eq a) ⇐ Value a where
+class (Eq a, Ord a) ⇐ Value a where
   stringValue
     ∷ String
     → a
