@@ -98,8 +98,6 @@ validateFormField
   → V.V (Array String) (SD.FormField a)
 validateFormField field =
   case field of
-    SD.CheckBoxes (SD.Literal bs) (SD.Literal ls) | L.length bs /= L.length ls →
-      V.invalid ["Invalid checkboxes"]
     SD.CheckBoxes (SD.Literal _) (SD.Unevaluated _) →
       V.invalid ["Checkbox values & selection must be both literals or both unevaluated expressions"]
     SD.CheckBoxes (SD.Unevaluated _) (SD.Literal _) →
