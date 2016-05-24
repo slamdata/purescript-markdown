@@ -55,7 +55,7 @@ traverseFormField eta field =
   case field of
     TextBox tb → TextBox <$> TB.traverseTextBox (decompose >>> TR.traverse eta >>> map Compose) tb
     RadioButtons sel ls → RadioButtons <$> eta sel <*> eta ls
-    CheckBoxes sel ls → CheckBoxes <$> eta ls <*> eta ls
+    CheckBoxes sel ls → CheckBoxes <$> eta sel <*> eta ls
     DropDown sel ls → DropDown <$> TR.traverse eta sel <*> eta ls
 
 instance functorFormField ∷ (Functor f) ⇒ Functor (FormFieldP f) where
