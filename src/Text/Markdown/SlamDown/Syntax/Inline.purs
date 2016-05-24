@@ -53,8 +53,8 @@ instance showInline ∷ (Show a) ⇒ Show (Inline a) where
   show (Image is uri) = "(Image " ++ show is ++ " " ++ show uri ++ ")"
   show (FormField l r f) = "(FormField " ++ show l ++ " " ++ show r ++ " " ++ show f ++ ")"
 
-derive instance eqInline ∷ (Eq a, Ord a) => Eq (Inline a)
-derive instance ordInline ∷ (Ord a) => Ord (Inline a)
+derive instance eqInline ∷ (Eq a, Ord a) ⇒ Eq (Inline a)
+derive instance ordInline ∷ (Ord a) ⇒ Ord (Inline a)
 
 -- | Nota bene: this does not generate any recursive structure
 instance arbitraryInline ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (Inline a) where

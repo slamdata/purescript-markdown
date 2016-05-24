@@ -40,8 +40,8 @@ instance showBlock ∷ (Show a) ⇒ Show (Block a) where
   show (LinkReference l uri) = "(LinkReference " ++ show l ++ " " ++ show uri ++ ")"
   show Rule = "Rule"
 
-derive instance eqBlock ∷ (Eq a, Ord a) => Eq (Block a)
-derive instance ordBlock ∷ (Ord a) => Ord (Block a)
+derive instance eqBlock ∷ (Eq a, Ord a) ⇒ Eq (Block a)
+derive instance ordBlock ∷ (Ord a) ⇒ Ord (Block a)
 
 -- | Nota bene: this does not generate any recursive structure
 instance arbitraryBlock ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (Block a) where

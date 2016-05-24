@@ -293,8 +293,8 @@ instance showExpr ∷ (Show a) ⇒ Show (Expr a) where
       Literal a → "(Literal " ++ show a ++ ")"
       Unevaluated e → "(Unevaluated " ++ show e ++ ")"
 
-derive instance eqExpr ∷ Eq a => Eq (Expr a)
-derive instance ordExpr ∷ Ord a => Ord (Expr a)
+derive instance eqExpr ∷ Eq a ⇒ Eq (Expr a)
+derive instance ordExpr ∷ Ord a ⇒ Ord (Expr a)
 
 genExpr ∷ ∀ a. Gen.Gen a → Gen.Gen (Expr a)
 genExpr g = do
