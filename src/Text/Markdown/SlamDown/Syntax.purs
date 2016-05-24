@@ -9,7 +9,6 @@ module Text.Markdown.SlamDown.Syntax
 
 import Prelude
 
-import Data.Function (on)
 import Data.List as L
 import Data.Monoid (class Monoid, mempty)
 import Test.StrongCheck as SC
@@ -30,12 +29,8 @@ instance functorSlamDownP ∷ Functor SlamDownP where
 instance showSlamDownP ∷ (Show a) ⇒ Show (SlamDownP a) where
   show (SlamDown bs) = "(SlamDown " ++ show bs ++ ")"
 
-instance eqSlamDownP ∷ (Eq a, Ord a) ⇒ Eq (SlamDownP a) where
-  eq (SlamDown bs1) (SlamDown bs2) = bs1 == bs2
-
--- TODO: replace this with a proper `Ord` instance.
-instance ordSlamDownP ∷ (Show a, Eq a, Ord a) ⇒ Ord (SlamDownP a) where
-  compare = compare `on` show
+derive instance eqSlamDownP ∷ (Eq a, Ord a) ⇒ Eq (SlamDownP a)
+derive instance ordSlamDownP ∷ (Eq a, Ord a) ⇒ Ord (SlamDownP a)
 
 instance semigroupSlamDownP ∷ Semigroup (SlamDownP a) where
   append (SlamDown bs1) (SlamDown bs2) = SlamDown (bs1 <> bs2)

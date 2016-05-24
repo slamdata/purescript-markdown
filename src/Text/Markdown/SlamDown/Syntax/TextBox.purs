@@ -12,6 +12,7 @@ module Text.Markdown.SlamDown.Syntax.TextBox
   ) where
 
 import Prelude
+import Data.Function (on)
 import Data.HugeNum as HN
 import Data.Identity (Identity(..), runIdentity)
 import Data.NaturalTransformation (Natural)
@@ -35,6 +36,11 @@ instance eqTimeValueP ∷ Eq TimeValueP where
   eq (TimeValueP v1) (TimeValueP v2) =
     v1.hours == v2.hours
       && v1.minutes == v2.minutes
+
+instance ordTimeValueP ∷ Ord TimeValueP where
+  compare (TimeValueP v1) (TimeValueP v2) =
+    compare v1.hours v2.hours
+      <> compare v1.minutes v2.minutes
 
 instance showTimeValueP ∷ Show TimeValueP where
   show (TimeValueP { hours, minutes }) =
@@ -75,6 +81,12 @@ instance eqDateValueP ∷ Eq DateValueP where
       && v1.day == v2.day
       && v1.year == v2.year
 
+instance ordDateValueP ∷ Ord DateValueP where
+  compare (DateValueP v1) (DateValueP v2) =
+    compare v1.year v2.year
+      <> compare v1.month v2.month
+      <> compare v1.day v2.day
+
 instance showDateValueP ∷ Show DateValueP where
   show (DateValueP { month, day, year }) =
     "{ month : "
@@ -113,8 +125,13 @@ getDateTimeValueP (DateTimeValueP v) =
 
 instance eqDateTimeValueP ∷ Eq DateTimeValueP where
   eq (DateTimeValueP v1) (DateTimeValueP v2) =
-    DateValueP v1.date == DateValueP v2.date
-      && TimeValueP v1.time == TimeValueP v2.time
+    on eq (DateValueP <<< _.date) v1 v2
+      && on eq (TimeValueP <<< _.time) v1 v2
+
+instance ordDateTimeValueP ∷ Ord DateTimeValueP where
+  compare (DateTimeValueP v1) (DateTimeValueP v2) =
+    on compare (DateValueP <<< _.date) v1 v2
+      <> on compare (TimeValueP <<< _.time) v1 v2
 
 instance showDateTimeValueP ∷ Show DateTimeValueP where
   show (DateTimeValueP { date, time }) =
@@ -166,27 +183,44 @@ traverseTextBox eta t =
     DateTime def → DateTime <$> eta def
 
 instance showTextBox ∷ (Functor f, Show (f String), Show (f HN.HugeNum), Show (f TimeValueP), Show (f DateValueP), Show (f DateTimeValueP)) ⇒ Show (TextBox f) where
-  show t =
-    case t of
+  show =
+    case _ of
       PlainText def → "(PlainText " <> show def <> ")"
       Numeric def → "(Numeric " <> show def <> ")"
       Date def → "(Date " <> show (DateValueP <$> def) <> ")"
       Time def → "(Time " <> show (TimeValueP <$> def) <> ")"
       DateTime def → "(DateTime " <> show (DateTimeValueP <$> def) <> ")"
 
+instance ordTextBox ∷ (Functor f, Ord (f String), Ord (f HN.HugeNum), Ord (f TimeValueP), Ord (f DateValueP), Ord (f DateTimeValueP)) ⇒ Ord (TextBox f) where
+  compare =
+    case _, _ of
+      PlainText d1, PlainText d2 → compare d1 d2
+      PlainText _, _ → LT
+      _, PlainText _ → GT
+
+      Numeric d1, Numeric d2 → compare d1 d2
+      Numeric _, _ → LT
+      _, Numeric _ → GT
+
+      Date d1, Date d2 → on compare (map DateValueP) d1 d2
+      Date _, _ → LT
+      _, Date _ → GT
+
+      Time t1, Time t2 → on compare (map TimeValueP) t1 t2
+      Time _, _ → LT
+      _, Time _ → GT
+
+      DateTime d1, DateTime d2 → on compare (map DateTimeValueP) d1 d2
+
 instance eqTextBox ∷ (Functor f, Eq (f String), Eq (f HN.HugeNum), Eq (f TimeValueP), Eq (f DateValueP), Eq (f DateTimeValueP)) ⇒ Eq (TextBox f) where
-  eq (PlainText d1) (PlainText d2) =
-    d1 == d2
-  eq (Numeric d1) (Numeric d2) =
-    d1 == d2
-  eq (Date d1) (Date d2) =
-    map DateValueP d1 == map DateValueP d2
-  eq (Time d1) (Time d2) =
-    map TimeValueP d1 == map TimeValueP d2
-  eq (DateTime d1) (DateTime d2) =
-    map DateTimeValueP d1 == map DateTimeValueP d2
-  eq _ _ =
-    false
+  eq =
+    case _, _ of
+      PlainText d1, PlainText d2 → d1 == d2
+      Numeric d1, Numeric d2 → d1 == d2
+      Date d1, Date d2 → on eq (map DateValueP) d1 d2
+      Time d1, Time d2 → on eq (map TimeValueP) d1 d2
+      DateTime d1, DateTime d2 → on eq (map DateTimeValueP) d1 d2
+      _, _ → false
 
 instance arbitraryTextBox ∷ (Functor f, SC.Arbitrary (f String), SC.Arbitrary (f Number), SC.Arbitrary (f TimeValueP), SC.Arbitrary (f DateValueP), SC.Arbitrary (f DateTimeValueP)) ⇒ SC.Arbitrary (TextBox f) where
   arbitrary = do
@@ -200,8 +234,8 @@ instance arbitraryTextBox ∷ (Functor f, SC.Arbitrary (f String), SC.Arbitrary 
       _ → PlainText <$> SC.arbitrary
 
 instance coarbitraryTextBox :: (Functor f, SC.CoArbitrary (f String), SC.CoArbitrary (f Number), SC.CoArbitrary (f DateValueP), SC.CoArbitrary (f TimeValueP), SC.CoArbitrary (f DateTimeValueP)) ⇒ SC.CoArbitrary (TextBox f) where
-  coarbitrary t =
-    case t of
+  coarbitrary =
+    case _ of
       PlainText d -> SC.coarbitrary d
       Numeric d -> SC.coarbitrary $ HN.toNumber <$> d
       Date d -> SC.coarbitrary $ DateValueP <$> d

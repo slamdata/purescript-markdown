@@ -19,7 +19,6 @@ import Data.Functor.Compose (Compose(..), decompose)
 import Data.NaturalTransformation (Natural)
 import Data.List as L
 import Data.Maybe as M
-import Data.HugeNum as HN
 import Data.Set as Set
 import Data.Traversable as TR
 import Data.Tuple (uncurry)
@@ -67,18 +66,39 @@ instance functorFormField ∷ (Functor f) ⇒ Functor (FormFieldP f) where
       CheckBoxes sel ls → CheckBoxes (map f <$> sel) (map f <$> ls)
       DropDown sel ls → DropDown (map f <$> sel) (map f <$> ls)
 
-instance showFormField ∷ (Functor f, Show (f a), Show (f (L.List a)), Show (f (L.List Boolean)), Show (f String), Show (f HN.HugeNum), Show (f TB.TimeValueP), Show (f TB.DateValueP), Show (f TB.DateTimeValueP), Show a) ⇒ Show (FormFieldP f a) where
-  show (TextBox tb) = "(TextBox " ++ show tb ++ ")"
-  show (RadioButtons sel ls) = "(RadioButtons " ++ show sel ++ " " ++ show ls ++ ")"
-  show (CheckBoxes sel ls) = "(CheckBoxes " ++ show sel ++ " " ++ show ls ++ ")"
-  show (DropDown sel ls) = "(DropDown " ++ show sel ++ " " ++ show ls ++ ")"
+instance showFormField ∷ (Functor f, Show (f a), Show (TB.TextBox (Compose M.Maybe f)), Show (f (L.List a))) ⇒ Show (FormFieldP f a) where
+  show =
+    case _ of
+      TextBox tb → "(TextBox " ++ show tb ++ ")"
+      RadioButtons sel ls → "(RadioButtons " ++ show sel ++ " " ++ show ls ++ ")"
+      CheckBoxes sel ls → "(CheckBoxes " ++ show sel ++ " " ++ show ls ++ ")"
+      DropDown sel ls → "(DropDown " ++ show sel ++ " " ++ show ls ++ ")"
 
-instance eqFormField ∷ (Functor f, Eq (f a), Eq (f (L.List a)), Eq (f (Set.Set a)), Eq (f (L.List Boolean)), Eq (f String), Eq (f HN.HugeNum), Eq (f TB.TimeValueP), Eq (f TB.DateValueP), Eq (f TB.DateTimeValueP), Eq a, Ord a) ⇒ Eq (FormFieldP f a) where
-  eq (TextBox tb1) (TextBox tb2) = tb1 == tb2
-  eq (RadioButtons sel1 ls1) (RadioButtons sel2 ls2) = sel1 == sel2 && ls1 == ls2
-  eq (CheckBoxes sel1 ls1) (CheckBoxes sel2 ls2) = (Set.fromList <$> sel1 == Set.fromList <$> sel2) && ls1 == ls2
-  eq (DropDown sel1 ls1) (DropDown sel2 ls2) = sel1 == sel2 && ls1 == ls2
-  eq _ _ = false
+instance ordFormField ∷ (Functor f, Ord (f a), Ord (TB.TextBox (Compose M.Maybe f)), Eq (TB.TextBox (Compose M.Maybe f)), Ord (f (L.List a)), Ord (f (Set.Set a)), Ord a) ⇒ Ord (FormFieldP f a) where
+  compare =
+    case _, _ of
+      TextBox tb1, TextBox tb2 → compare tb1 tb2
+      TextBox _, _ → LT
+      _, TextBox _ → GT
+
+      RadioButtons sel1 ls1, RadioButtons sel2 ls2 → compare sel1 sel2 <> compare ls1 ls2
+      RadioButtons _ _, _ → LT
+      _, RadioButtons _ _ → GT
+
+      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → compare (Set.fromList <$> sel1) (Set.fromList <$> sel2) <> compare ls1 ls2
+      CheckBoxes _ _, _ → LT
+      _, CheckBoxes _ _ → GT
+
+      DropDown sel1 ls1, DropDown sel2 ls2 → compare sel1 sel2 <> compare ls1 ls2
+
+instance eqFormField ∷ (Functor f, Eq (f a), Eq (TB.TextBox (Compose M.Maybe f)), Eq (f (L.List a)), Eq (f (Set.Set a)), Ord a) ⇒ Eq (FormFieldP f a) where
+  eq =
+    case _, _ of
+      TextBox tb1, TextBox tb2 → tb1 == tb2
+      RadioButtons sel1 ls1, RadioButtons sel2 ls2 → sel1 == sel2 && ls1 == ls2
+      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → (Set.fromList <$> sel1 == Set.fromList <$> sel2) && ls1 == ls2
+      DropDown sel1 ls1, DropDown sel2 ls2 → sel1 == sel2 && ls1 == ls2
+      _, _ → false
 
 newtype ArbIdentity a = ArbIdentity a
 
@@ -262,17 +282,19 @@ getLiteral (Literal e) = M.Just e
 getLiteral _ = M.Nothing
 
 instance functorExpr ∷ Functor Expr where
-  map f (Literal a) = Literal (f a)
-  map f (Unevaluated e) = Unevaluated e
-
-instance eqExpr ∷ (Eq a) ⇒ Eq (Expr a) where
-  eq (Literal a) (Literal b) = a == b
-  eq (Unevaluated e) (Unevaluated f) = e == f
-  eq _ _ = false
+  map f =
+    case _ of
+      Literal a → Literal $ f a
+      Unevaluated e → Unevaluated e
 
 instance showExpr ∷ (Show a) ⇒ Show (Expr a) where
-  show (Literal a) = "(Literal " ++ show a ++ ")"
-  show (Unevaluated e) = "(Unevaluated " ++ show e ++ ")"
+  show =
+    case _ of
+      Literal a → "(Literal " ++ show a ++ ")"
+      Unevaluated e → "(Unevaluated " ++ show e ++ ")"
+
+derive instance eqExpr ∷ Eq a => Eq (Expr a)
+derive instance ordExpr ∷ Ord a => Ord (Expr a)
 
 genExpr ∷ ∀ a. Gen.Gen a → Gen.Gen (Expr a)
 genExpr g = do

@@ -26,8 +26,8 @@ data Inline a
   | FormField String Boolean (FormField a)
 
 instance functorInline ∷ Functor Inline where
-  map f x =
-    case x of
+  map f =
+    case _ of
       Str s → Str s
       Entity s → Entity s
       Space → Space
@@ -53,19 +53,8 @@ instance showInline ∷ (Show a) ⇒ Show (Inline a) where
   show (Image is uri) = "(Image " ++ show is ++ " " ++ show uri ++ ")"
   show (FormField l r f) = "(FormField " ++ show l ++ " " ++ show r ++ " " ++ show f ++ ")"
 
-instance eqInline ∷ (Eq a, Ord a) ⇒ Eq (Inline a) where
-  eq (Str s1) (Str s2) = s1 == s2
-  eq (Entity s1) (Entity s2) = s1 == s2
-  eq Space Space = true
-  eq SoftBreak SoftBreak = true
-  eq LineBreak LineBreak = true
-  eq (Emph is1) (Emph is2) = is1 == is2
-  eq (Strong is1) (Strong is2) = is1 == is2
-  eq (Code b1 s1) (Code b2 s2) = b1 == b2 && s1 == s2
-  eq (Link is1 tgt1) (Link is2 tgt2) = is1 == is2 && tgt1 == tgt2
-  eq (Image is1 s1) (Image is2 s2) = is1 == is2 && s1 == s2
-  eq (FormField s1 b1 f1) (FormField s2 b2 f2) = s1 == s2 && b1 == b2 && f1 == f2
-  eq _ _ = false
+derive instance eqInline ∷ (Eq a, Ord a) => Eq (Inline a)
+derive instance ordInline ∷ (Ord a) => Ord (Inline a)
 
 -- | Nota bene: this does not generate any recursive structure
 instance arbitraryInline ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (Inline a) where
@@ -89,14 +78,12 @@ data LinkTarget
   = InlineLink String
   | ReferenceLink (M.Maybe String)
 
+derive instance eqLinkTarget ∷ Eq LinkTarget
+derive instance ordLinkTarget ∷ Ord LinkTarget
+
 instance showLinkTarget ∷ Show LinkTarget where
   show (InlineLink uri) = "(InlineLink " ++ show uri ++ ")"
   show (ReferenceLink tgt) = "(ReferenceLink " ++ show tgt ++ ")"
-
-instance eqLinkTarget ∷ Eq LinkTarget where
-  eq (InlineLink uri1) (InlineLink uri2) = uri1 == uri2
-  eq (ReferenceLink tgt1) (ReferenceLink tgt2) = tgt1 == tgt2
-  eq _ _ = false
 
 instance arbitraryLinkTarget ∷ SC.Arbitrary LinkTarget where
   arbitrary = do
