@@ -39,7 +39,7 @@ derive instance eqNonEmptyString ∷ Eq NonEmptyString
 derive instance ordNonEmptyString ∷ Ord NonEmptyString
 
 genChar ∷ Gen.Gen Char
-genChar = Gen.elements '-' $ L.toList $ S.toCharArray "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "
+genChar = Gen.elements '-' $ L.toList $ S.toCharArray "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 @!#$%^"
 
 instance arbitraryNonEmptyString ∷ SC.Arbitrary NonEmptyString where
   arbitrary =
