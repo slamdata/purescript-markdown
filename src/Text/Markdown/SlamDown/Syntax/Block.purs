@@ -40,7 +40,7 @@ instance showBlock ∷ (Show a) ⇒ Show (Block a) where
   show (LinkReference l uri) = "(LinkReference " ++ show l ++ " " ++ show uri ++ ")"
   show Rule = "Rule"
 
-instance eqBlock ∷ (Eq a) ⇒ Eq (Block a) where
+instance eqBlock ∷ (Eq a, Ord a) ⇒ Eq (Block a) where
   eq (Paragraph is1) (Paragraph is2) = is1 == is2
   eq (Header n1 is1) (Header n2 is2) = n1 == n2 && is1 == is2
   eq (Blockquote bs1) (Blockquote bs2) = bs1 == bs2
@@ -101,4 +101,3 @@ instance arbitraryCodeBlockType ∷ SC.Arbitrary CodeBlockType where
   arbitrary = do
     b ← SC.arbitrary
     if b then pure Indented else Fenced <$> SC.arbitrary <*> SC.arbitrary
-

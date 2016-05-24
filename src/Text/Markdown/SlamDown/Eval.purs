@@ -4,12 +4,10 @@ module Text.Markdown.SlamDown.Eval
   ) where
 
 import Prelude
-import Control.Bind ((>=>))
 import Control.Alt ((<|>))
 import Data.Const (Const(..))
 import Data.Identity (Identity(..), runIdentity)
 import Data.Functor.Compose (Compose(..), decompose)
-import Data.Foldable as F
 import Data.List as L
 import Data.Maybe as M
 import Data.String as S
@@ -64,23 +62,20 @@ eval fs = everywhereM b i
   f (SD.RadioButtons sel opts) = do
     sel' ← evalExpr fs.value sel
     opts' ← evalExpr fs.list opts
-    pure $ SD.RadioButtons sel' (mergeSelection sel' opts')
+    pure $ SD.RadioButtons sel' (mergeSelection (L.singleton <$> sel') opts')
 
-  f (SD.CheckBoxes checkeds vals) = do
+  f (SD.CheckBoxes sel vals) = do
+    sel' ← evalExpr fs.list sel
     vals' ← evalExpr fs.list vals
-    checkeds' ← evalExpr (fs.list >=> \cs → pure $ map (_ `F.elem` cs) (getValues vals')) checkeds
-    pure $ SD.CheckBoxes checkeds' vals'
+    pure $ SD.CheckBoxes sel' (mergeSelection sel' vals')
 
   f (SD.DropDown msel opts) = do
     msel' ← T.traverse (evalExpr fs.value) msel
     opts' ← evalExpr fs.list opts
-    pure $ SD.DropDown msel' $ M.maybe opts' (flip mergeSelection opts') msel'
+    pure $ SD.DropDown msel' $ M.maybe opts' (flip mergeSelection opts' <<< map L.singleton) msel'
 
-  mergeSelection ∷ SD.Expr a → SD.Expr (L.List a) → SD.Expr (L.List a)
-  mergeSelection (SD.Literal x) (SD.Literal xs) =
-    if F.elem x xs
-    then SD.Literal xs
-    else SD.Literal $ L.Cons x xs
+  mergeSelection ∷ SD.Expr (L.List a) → SD.Expr (L.List a) → SD.Expr (L.List a)
+  mergeSelection (SD.Literal sel) (SD.Literal xs) = SD.Literal $ L.union sel xs
   mergeSelection _ exs = exs
 
   evalExpr ∷ ∀ e. (String → m e) → SD.Expr e → m (SD.Expr e)

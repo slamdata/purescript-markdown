@@ -20,6 +20,7 @@ import Data.NaturalTransformation (Natural)
 import Data.List as L
 import Data.Maybe as M
 import Data.HugeNum as HN
+import Data.Set as Set
 import Data.Traversable as TR
 import Data.Tuple (uncurry)
 
@@ -32,7 +33,7 @@ import Text.Markdown.SlamDown.Syntax.TextBox as TB
 data FormFieldP f a
   = TextBox (TB.TextBox (Compose M.Maybe f))
   | RadioButtons (f a) (f (L.List a))
-  | CheckBoxes (f (L.List Boolean)) (f (L.List a))
+  | CheckBoxes (f (L.List a)) (f (L.List a))
   | DropDown (M.Maybe (f a)) (f (L.List a))
 
 type FormField a = FormFieldP Expr a
@@ -55,7 +56,7 @@ traverseFormField eta field =
   case field of
     TextBox tb → TextBox <$> TB.traverseTextBox (decompose >>> TR.traverse eta >>> map Compose) tb
     RadioButtons sel ls → RadioButtons <$> eta sel <*> eta ls
-    CheckBoxes bs ls → CheckBoxes <$> eta bs <*> eta ls
+    CheckBoxes sel ls → CheckBoxes <$> eta ls <*> eta ls
     DropDown sel ls → DropDown <$> TR.traverse eta sel <*> eta ls
 
 instance functorFormField ∷ (Functor f) ⇒ Functor (FormFieldP f) where
@@ -63,19 +64,19 @@ instance functorFormField ∷ (Functor f) ⇒ Functor (FormFieldP f) where
     case x of
       TextBox tb → TextBox tb
       RadioButtons sel ls → RadioButtons (f <$> sel) (map f <$> ls)
-      CheckBoxes bs ls → CheckBoxes bs (map f <$> ls)
+      CheckBoxes sel ls → CheckBoxes (map f <$> sel) (map f <$> ls)
       DropDown sel ls → DropDown (map f <$> sel) (map f <$> ls)
 
 instance showFormField ∷ (Functor f, Show (f a), Show (f (L.List a)), Show (f (L.List Boolean)), Show (f String), Show (f HN.HugeNum), Show (f TB.TimeValueP), Show (f TB.DateValueP), Show (f TB.DateTimeValueP), Show a) ⇒ Show (FormFieldP f a) where
   show (TextBox tb) = "(TextBox " ++ show tb ++ ")"
   show (RadioButtons sel ls) = "(RadioButtons " ++ show sel ++ " " ++ show ls ++ ")"
-  show (CheckBoxes bs ls) = "(CheckBoxes " ++ show bs ++ " " ++ show ls ++ ")"
+  show (CheckBoxes sel ls) = "(CheckBoxes " ++ show sel ++ " " ++ show ls ++ ")"
   show (DropDown sel ls) = "(DropDown " ++ show sel ++ " " ++ show ls ++ ")"
 
-instance eqFormField ∷ (Functor f, Eq (f a), Eq (f (L.List a)), Eq (f (L.List Boolean)), Eq (f String), Eq (f HN.HugeNum), Eq (f TB.TimeValueP), Eq (f TB.DateValueP), Eq (f TB.DateTimeValueP), Eq a) ⇒ Eq (FormFieldP f a) where
+instance eqFormField ∷ (Functor f, Eq (f a), Eq (f (L.List a)), Eq (f (Set.Set a)), Eq (f (L.List Boolean)), Eq (f String), Eq (f HN.HugeNum), Eq (f TB.TimeValueP), Eq (f TB.DateValueP), Eq (f TB.DateTimeValueP), Eq a, Ord a) ⇒ Eq (FormFieldP f a) where
   eq (TextBox tb1) (TextBox tb2) = tb1 == tb2
   eq (RadioButtons sel1 ls1) (RadioButtons sel2 ls2) = sel1 == sel2 && ls1 == ls2
-  eq (CheckBoxes bs1 ls1) (CheckBoxes bs2 ls2) = bs1 == bs2 && ls1 == ls2
+  eq (CheckBoxes sel1 ls1) (CheckBoxes sel2 ls2) = (Set.fromList <$> sel1 == Set.fromList <$> sel2) && ls1 == ls2
   eq (DropDown sel1 ls1) (DropDown sel2 ls2) = sel1 == sel2 && ls1 == ls2
   eq _ _ = false
 
@@ -124,38 +125,40 @@ instance coarbitraryArbCompose ∷ (SC.CoArbitrary (f (g a))) ⇒ SC.CoArbitrary
   coarbitrary (ArbCompose t) =
     SC.coarbitrary t
 
+unsafeElements ∷ ∀ a. L.List a → Gen.Gen a
+unsafeElements =
+  Gen.elements
+    <$> (Data.Maybe.Unsafe.fromJust <<< L.head)
+    <*> id
+
 instance arbitraryFormField ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (FormFieldP Expr a) where
   arbitrary = do
     k ← Gen.chooseInt 0.0 3.0
     case k of
       0 → TextBox <<< TB.transTextBox getArbCompose <$> SC.arbitrary
       1 → do
-        xse ← genExpr $ distinctListOf SC.arbitrary
+        xse ← genExpr $ distinctListOf1 SC.arbitrary
         case xse of
           Literal xs → do
-            x ← do
-              let def = Data.Maybe.Unsafe.fromJust (L.head xs)
-              Literal <$> Gen.elements def xs
+            x ← Literal <$> unsafeElements xs
             pure $ RadioButtons x xse
           Unevaluated e → do
             x ← Unevaluated <$> genUnevaluated
             pure $ RadioButtons x xse
       2 → do
-        xse ← genExpr $ distinctListOf SC.arbitrary
+        xse ← genExpr $ distinctListOf1 SC.arbitrary
         case xse of
           Literal xs → do
-            bs ← Literal <$> listOfLength (L.length xs) SC.arbitrary
-            pure $ CheckBoxes bs xse
+            ys ← Literal <$> distinctListOf (unsafeElements xs)
+            pure $ CheckBoxes ys xse
           Unevaluated e → do
-            bse ← Unevaluated <$> genUnevaluated
-            pure $ CheckBoxes bse xse
+            yse ← Unevaluated <$> genUnevaluated
+            pure $ CheckBoxes yse xse
       _ → do
-        xse ← genExpr $ distinctListOf SC.arbitrary
+        xse ← genExpr $ distinctListOf1 SC.arbitrary
         case xse of
           Literal xs → do
-            mx ← genMaybe do
-              let def = Data.Maybe.Unsafe.fromJust (L.head xs)
-              Literal <$> Gen.elements def xs
+            mx ← genMaybe $ Literal <$> unsafeElements xs
             pure $ DropDown mx xse
           Unevaluated e → do
             mx ← genMaybe $ Unevaluated <$> genUnevaluated
@@ -167,20 +170,16 @@ instance arbitraryFormFieldIdentity ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary 
     case k of
       0 → TextBox <<< TB.transTextBox (\(ArbCompose x) → Compose $ map getArbIdentity x) <$> SC.arbitrary
       1 → do
-        xs ← distinctListOf $ getArbIdentity <$> SC.arbitrary
-        x ← do
-          let def = Data.Maybe.Unsafe.fromJust (L.head xs)
-          Gen.elements def xs
+        xs ← distinctListOf1 $ getArbIdentity <$> SC.arbitrary
+        x ← unsafeElements xs
         pure $ RadioButtons x $ TR.sequence xs
       2 → do
-        xs ← map TR.sequence <<< distinctListOf $ getArbIdentity <$> SC.arbitrary
-        bs ← listOfLength (L.length $ runIdentity xs) SC.arbitrary
-        pure $ CheckBoxes (Identity bs) xs
+        xs ← map TR.sequence <<< distinctListOf1 $ getArbIdentity <$> SC.arbitrary
+        ys ← TR.traverse (distinctListOf <<< unsafeElements) xs
+        pure $ CheckBoxes ys xs
       _ → do
-        xs ← distinctListOf $ getArbIdentity <$> SC.arbitrary
-        mx ← genMaybe do
-          let def = Data.Maybe.Unsafe.fromJust (L.head xs)
-          Gen.elements def xs
+        xs ← distinctListOf1 $ getArbIdentity <$> SC.arbitrary
+        mx ← genMaybe $ unsafeElements xs
         pure $ DropDown mx $ TR.sequence xs
 
 
@@ -199,12 +198,21 @@ instance coarbitraryFormFieldIdentity ∷ (SC.CoArbitrary a) ⇒ SC.CoArbitrary 
       RadioButtons x xs → \gen → do
         SC.coarbitrary (ArbIdentity $ runIdentity x) gen
         SC.coarbitrary (ArbIdentity $ runIdentity xs) gen
-      CheckBoxes bs xs → \gen → do
-        SC.coarbitrary (ArbIdentity $ runIdentity bs) gen
+      CheckBoxes sel xs → \gen → do
+        SC.coarbitrary (ArbIdentity $ runIdentity sel) gen
         SC.coarbitrary (ArbIdentity $ runIdentity xs) gen
       DropDown mx xs → \gen → do
         SC.coarbitrary (ArbIdentity <<< runIdentity <$> mx) gen
         SC.coarbitrary (ArbIdentity $ runIdentity xs) gen
+
+listOf1
+  ∷ ∀ f a
+  . (Monad f)
+  ⇒ Gen.GenT f a
+  → Gen.GenT f (L.List a)
+listOf1 =
+  map (L.toList <<< uncurry A.cons)
+    <<< Gen.arrayOf1
 
 listOf
   ∷ ∀ f a
@@ -212,8 +220,8 @@ listOf
   ⇒ Gen.GenT f a
   → Gen.GenT f (L.List a)
 listOf =
-  map (L.toList <<< uncurry A.cons)
-    <<< Gen.arrayOf1
+  map L.toList
+    <<< Gen.arrayOf
 
 listOfLength
   ∷ ∀ f a
@@ -224,6 +232,14 @@ listOfLength
 listOfLength i =
   map L.toList
     <<< Gen.vectorOf i
+
+distinctListOf1
+  ∷ ∀ f a
+  . (Monad f, Eq a)
+  ⇒ Gen.GenT f a
+  → Gen.GenT f (L.List a)
+distinctListOf1 =
+  map (map L.nub) listOf1
 
 distinctListOf
   ∷ ∀ f a

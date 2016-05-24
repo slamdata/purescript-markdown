@@ -30,11 +30,11 @@ instance functorSlamDownP ∷ Functor SlamDownP where
 instance showSlamDownP ∷ (Show a) ⇒ Show (SlamDownP a) where
   show (SlamDown bs) = "(SlamDown " ++ show bs ++ ")"
 
-instance eqSlamDownP ∷ (Eq a) ⇒ Eq (SlamDownP a) where
+instance eqSlamDownP ∷ (Eq a, Ord a) ⇒ Eq (SlamDownP a) where
   eq (SlamDown bs1) (SlamDown bs2) = bs1 == bs2
 
 -- TODO: replace this with a proper `Ord` instance.
-instance ordSlamDownP ∷ (Show a, Eq a) ⇒ Ord (SlamDownP a) where
+instance ordSlamDownP ∷ (Show a, Eq a, Ord a) ⇒ Ord (SlamDownP a) where
   compare = compare `on` show
 
 instance semigroupSlamDownP ∷ Semigroup (SlamDownP a) where
@@ -45,4 +45,3 @@ instance monoidSlamDownP ∷ Monoid (SlamDownP a) where
 
 instance arbitrarySlamDownP ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (SlamDownP a) where
   arbitrary = SlamDown <<< L.toList <$> Gen.arrayOf SC.arbitrary
-

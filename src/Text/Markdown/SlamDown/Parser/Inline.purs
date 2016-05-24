@@ -333,7 +333,7 @@ inlines = L.many inline2 <* PS.eof
             PU.skipSpaces
             l ← item
             return $ Tuple b l
-          return $ SD.CheckBoxes (SD.Literal (map fst ls)) (SD.Literal (map snd ls))
+          return $ SD.CheckBoxes (SD.Literal $ snd <$> L.filter fst ls) (SD.Literal $ snd <$> ls)
 
         evaluatedCheckBoxes =
           SD.CheckBoxes

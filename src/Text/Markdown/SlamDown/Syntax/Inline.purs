@@ -53,7 +53,7 @@ instance showInline ∷ (Show a) ⇒ Show (Inline a) where
   show (Image is uri) = "(Image " ++ show is ++ " " ++ show uri ++ ")"
   show (FormField l r f) = "(FormField " ++ show l ++ " " ++ show r ++ " " ++ show f ++ ")"
 
-instance eqInline ∷ (Eq a) ⇒ Eq (Inline a) where
+instance eqInline ∷ (Eq a, Ord a) ⇒ Eq (Inline a) where
   eq (Str s1) (Str s2) = s1 == s2
   eq (Entity s1) (Entity s2) = s1 == s2
   eq Space Space = true
@@ -102,4 +102,3 @@ instance arbitraryLinkTarget ∷ SC.Arbitrary LinkTarget where
   arbitrary = do
     b ← SC.arbitrary
     if b then InlineLink <$> SC.arbitrary else ReferenceLink <$> SC.arbitrary
-
