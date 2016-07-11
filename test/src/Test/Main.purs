@@ -9,6 +9,7 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Trampoline as Trampoline
 
 import Data.HugeNum as HN
+import Data.Either (Either(..))
 import Data.List as L
 import Data.Maybe as M
 import Data.Traversable as TR
@@ -56,13 +57,18 @@ instance valueNonEmptyString ∷ SD.Value NonEmptyString where
   stringValue = NonEmptyString
   renderValue (NonEmptyString str) = str
 
-testDocument ∷ ∀ e. SD.SlamDownP NonEmptyString → Eff (TestEffects e) Unit
+testDocument ∷ ∀ e. Either String (SD.SlamDownP NonEmptyString) → Eff (TestEffects e) Unit
 testDocument sd = do
+  let printed = SDPR.prettyPrintMd <$> sd
+      parsed = printed >>= SDP.parseMd
 
-  let printed = SDPR.prettyPrintMd sd
-      parsed = SDP.parseMd printed
-
-  C.log $ "Original: \n   " <> show sd <> "\nPrinted:\n   " <> show printed <> "\nParsed:\n   " <> show parsed
+  C.log
+    $ "Original: \n   "
+    <> show sd
+    <> "\nPrinted:\n   "
+    <> show printed
+    <> "\nParsed:\n   "
+    <> show parsed
   SC.assert (parsed == sd SC.<?> "Test failed")
 
 static ∷ ∀ e. Eff (TestEffects e) Unit
@@ -204,25 +210,9 @@ static = do
       \main = log \"Hello World\"\n\
       \~~~"
 
-  testDocument
-    $ ID.runIdentity
-    $ SDE.eval
-        { code: \_ _ → pure $ SD.stringValue "Evaluated code block!"
-        , textBox: \t →
-            case t of
-              SD.PlainText _ → pure $ SD.PlainText $ pure "Evaluated plain text!"
-              SD.Numeric _ → pure $ SD.Numeric $ pure $ HN.fromNumber 42.0
-              SD.Date _ → pure $ SD.Date $ pure { month : 7, day : 30, year : 1992 }
-              SD.Time _ → pure $ SD.Time $ pure { hours : 4, minutes : 52 }
-              SD.DateTime _ →
-                pure $ SD.DateTime $ pure $
-                  { date : { month : 7, day : 30, year : 1992 }
-                  , time : { hours : 4, minutes : 52 }
-                  }
-        , value: \_ → pure $ SD.stringValue "Evaluated value!"
-        , list: \_ → pure $ L.singleton $ SD.stringValue "Evaluated list!"
-        }
-    $ SDP.parseMd
+  let
+    probablyParsedCodeForEvaluation =
+      SDP.parseMd
         "Some evaluated fenced code:\n\
         \\n\
         \!~~~purescript\n\
@@ -230,6 +220,29 @@ static = do
         \\n\
         \main = log \"Hello World\"\n\
         \~~~"
+
+  testDocument
+    case probablyParsedCodeForEvaluation of
+      Right sd →
+        Right
+          $ ID.runIdentity
+          $ SDE.eval
+            { code: \_ _ → pure $ SD.stringValue "Evaluated code block!"
+            , textBox: \t →
+                case t of
+                  SD.PlainText _ → pure $ SD.PlainText $ pure "Evaluated plain text!"
+                  SD.Numeric _ → pure $ SD.Numeric $ pure $ HN.fromNumber 42.0
+                  SD.Date _ → pure $ SD.Date $ pure { month : 7, day : 30, year : 1992 }
+                  SD.Time _ → pure $ SD.Time $ pure { hours : 4, minutes : 52 }
+                  SD.DateTime _ →
+                    pure $ SD.DateTime $ pure $
+                      { date : { month : 7, day : 30, year : 1992 }
+                      , time : { hours : 4, minutes : 52 }
+                      }
+            , value: \_ → pure $ SD.stringValue "Evaluated value!"
+            , list: \_ → pure $ L.singleton $ SD.stringValue "Evaluated list!"
+            }  sd
+      a → a
 
   testDocument $ SDP.parseMd "name = __ (Phil Freeman)"
   testDocument $ SDP.parseMd "name = __ (!`name`)"
@@ -262,14 +275,20 @@ generated ∷ ∀ e. Eff (TestEffects e) Unit
 generated = do
   C.log "Random documents"
   seed ← Rand.random
-  let docs = Trampoline.runTrampoline $ Gen.sample' 10 (Gen.GenState { size: 10, seed: seed }) (SDPR.prettyPrintMd <<< runTestSlamDown <$> SC.arbitrary)
+  let
+    docs =
+      Trampoline.runTrampoline
+        $ Gen.sample'
+            10 (Gen.GenState { size: 10, seed: seed })
+            (SDPR.prettyPrintMd <<< runTestSlamDown <$> SC.arbitrary)
+
   TR.traverse C.log docs
 
   SC.quickCheck' 100 \(TestSlamDown sd) →
     let
       printed = SDPR.prettyPrintMd sd
       parsed = SDP.parseMd printed
-    in parsed == sd SC.<?> "Pretty printer and parser incompatible for document: " <>
+    in parsed == (Right sd) SC.<?> "Pretty printer and parser incompatible for document: " <>
       "\nOriginal: \n" <> show sd <>
       "\nPrinted: \n" <> printed <>
       "\nParsed: \n" <> show parsed
