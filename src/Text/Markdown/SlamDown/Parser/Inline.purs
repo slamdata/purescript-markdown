@@ -10,8 +10,11 @@ import Prelude
 import Control.Alt ((<|>))
 import Control.Apply ((<*), (*>))
 import Control.Lazy as Lazy
+import Control.Monad (when)
 
+import Data.Bifunctor (lmap)
 import Data.Const (Const(..))
+import Data.Either (Either(..))
 import Data.Foldable (elem)
 import Data.Functor ((<$))
 import Data.Functor.Compose (Compose(..))
@@ -34,11 +37,11 @@ parseInlines
   ∷ ∀ a
   . (SD.Value a)
   ⇒ L.List String
-  → L.List (SD.Inline a)
+  → Either String (L.List (SD.Inline a))
 parseInlines s =
-  -- Note: `fromRight` is benign, because the parser never fails
-  consolidate <<< Data.Either.Unsafe.fromRight $
-    P.runParser (S.joinWith "\n" $ L.fromList s) inlines
+  map consolidate
+    $ lmap (\(P.ParseError {message}) → message)
+    $ P.runParser (S.joinWith "\n" $ L.fromList s) inlines
 
 consolidate
   ∷ ∀ a
@@ -142,11 +145,15 @@ inlines = L.many inline2 <* PS.eof
       <|> PC.try link
 
   inline2 ∷ P.Parser String (SD.Inline a)
-  inline2 =
-    PC.try formField
-      <|> PC.try inline1
-      <|> PC.try image
-      <|> other
+  inline2 = do
+    res ←
+      PC.try formField
+      <|> PC.try (Right <$> inline1)
+      <|> PC.try (Right <$> image)
+      <|> (Right <$> other)
+    case res of
+      Right v → pure v
+      Left e → P.fail e
 
   alphaNumStr ∷ P.Parser String (SD.Inline a)
   alphaNumStr = SD.Str <$> someOf isAlphaNum
@@ -158,7 +165,11 @@ inlines = L.many inline2 <* PS.eof
     (s >= "0" && s <= "9")
     where s = S.fromChar c
 
-  emphasis ∷ P.Parser String (SD.Inline a) → (L.List (SD.Inline a) → SD.Inline a) → String → P.Parser String (SD.Inline a)
+  emphasis
+    ∷ P.Parser String (SD.Inline a)
+    → (L.List (SD.Inline a) → SD.Inline a)
+    → String
+    → P.Parser String (SD.Inline a)
   emphasis p f s = do
     PS.string s
     f <$> PC.manyTill p (PS.string s)
@@ -233,33 +244,63 @@ inlines = L.many inline2 <* PS.eof
     s ← (S.fromCharArray <<< L.fromList) <$> (PS.noneOf (S.toCharArray ";") `PC.many1Till` PS.string ";")
     return $ SD.Entity $ "&" <> s <> ";"
 
-  formField ∷ P.Parser String (SD.Inline a)
+  formField ∷ P.Parser String (Either String (SD.Inline a))
   formField =
-    SD.FormField
-      <$> label
-      <*> (PU.skipSpaces *> required)
-      <*> (PU.skipSpaces *> PS.string "=" *> PU.skipSpaces *> formElement)
+    do
+      l ← label
+      r ← do
+          PU.skipSpaces
+          required
+      fe ← do
+        PU.skipSpaces
+        PS.string "="
+        PU.skipSpaces
+        formElement
+      pure $ map (SD.FormField l r) fe
     where
-    label = someOf isAlphaNum <|> (S.fromCharArray <<< L.fromList <$> (PS.string "[" *> PC.manyTill PS.anyChar (PS.string "]")))
+    label =
+      someOf isAlphaNum
+      <|> (S.fromCharArray
+             <<< L.fromList
+             <$> (PS.string "[" *> PC.manyTill PS.anyChar (PS.string "]")))
+
     required = PC.option false (PS.string "*" *> pure true)
 
-  formElement ∷ P.Parser String (SD.FormField a)
+  formElement ∷ P.Parser String (Either String (SD.FormField a))
   formElement =
     PC.try textBox
-      <|> PC.try radioButtons
-      <|> PC.try checkBoxes
-      <|> PC.try dropDown
+      <|> PC.try (Right <$> radioButtons)
+      <|> PC.try (Right <$> checkBoxes)
+      <|> PC.try (Right <$> dropDown)
     where
 
-    textBox ∷ P.Parser String (SD.FormField a)
+    textBox ∷ P.Parser String (Either String (SD.FormField a))
     textBox = do
       template ← parseTextBoxTemplate
       PU.skipSpaces
-      mdef ← PC.optionMaybe $ PU.parens $ parseTextBox (\x → x /= ')') (expr id) template
-      pure $ SD.TextBox $
-        case mdef of
-          M.Nothing → SD.transTextBox (const $ Compose M.Nothing) template
-          M.Just def → SD.transTextBox (M.Just >>> Compose) def
+      defVal ← PC.optionMaybe $ PS.string "("
+      case defVal of
+        M.Nothing → pure $ Right $ SD.TextBox $ SD.transTextBox (const $ Compose M.Nothing) template
+        M.Just _ → do
+          PU.skipSpaces
+          mdef ← PC.optionMaybe $ PC.try $ parseTextBox (_ /= ')') (expr id) template
+          case mdef of
+            M.Just def → do
+              PU.skipSpaces
+              PS.string ")"
+              pure $ Right $ SD.TextBox $ SD.transTextBox (M.Just >>> Compose) def
+            M.Nothing →
+              pure $ Left case template of
+                SD.DateTime _ →
+                  "Incorrect datetime default value, please use \"YYYY-MM-DD HH:mm\" or \"YYYY-MM-DDTHH:mm\" format"
+                SD.Date _ →
+                  "Incorrect date default value, please use \"YYYY-MM-DD\" format"
+                SD.Time _ →
+                  "Incorrect time default value, please use \"HH:mm\" or \"HH:mm:ss\" format"
+                SD.Numeric _ →
+                  "Incorrect numeric default value"
+                SD.PlainText _ →
+                  "Incorrect default value"
 
     parseTextBoxTemplate ∷ P.Parser String (SD.TextBox (Const Unit))
     parseTextBoxTemplate =
@@ -372,22 +413,26 @@ parseTextBox isPlainText eta template =
   where
     parseDateTimeValue = do
       date ← parseDateValue
-      PU.skipSpaces
+      (PC.try $ void $ PS.string "T") <|> PU.skipSpaces
       time ← parseTimeValue
       pure { date, time }
 
     parseDateValue = do
-      year ← natural
+      year ← parseYear
       PU.skipSpaces *> dash *> PU.skipSpaces
       month ← natural
+      when (month > 12) $ P.fail "Incorrect month"
       PU.skipSpaces *> dash *> PU.skipSpaces
       day ← natural
+      when (day > 31) $ P.fail "Incorrect day"
       pure { month, day, year }
 
     parseTimeValue = do
       hours ← natural
+      when (hours > 23) $ P.fail "Incorrect hours"
       PU.skipSpaces *> colon *> PU.skipSpaces
       minutes ← natural
+      when (minutes > 59) $ P.fail "Incorrect minutes"
       PU.skipSpaces
       amPm ←
         PC.optionMaybe $
@@ -431,6 +476,21 @@ parseTextBox isPlainText eta template =
 
     digit =
       PS.oneOf ['0','1','2','3','4','5','6','7','8','9']
+
+    digitN = do
+      ds ← digit
+      ds
+        # pure
+        # S.fromCharArray
+        # Data.Int.fromString
+        # M.maybe (P.fail "Failed parsing digit") pure
+
+    parseYear = do
+      millenia ← digitN
+      centuries ← digitN
+      decades ← digitN
+      years ← digitN
+      pure $ 1000 * millenia + 100 * centuries + 10 * decades + years
 
     digits =
       L.some digit <#>

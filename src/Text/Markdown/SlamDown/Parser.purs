@@ -7,6 +7,7 @@ module Text.Markdown.SlamDown.Parser
 import Prelude
 
 import Data.Foldable (any, all)
+import Data.Either (Either)
 import Data.List as L
 import Data.Maybe as M
 import Data.Monoid (mempty)
@@ -17,6 +18,9 @@ import Data.Validation as V
 import Text.Markdown.SlamDown.Syntax as SD
 import Text.Markdown.SlamDown.Parser.Inline as Inline
 import Text.Markdown.SlamDown.Parser.References as Ref
+
+infixr 6 L.Cons as :
+
 
 data Container a
   = CText String
@@ -310,37 +314,43 @@ parseBlocks
   ∷ ∀ a
   . (SD.Value a)
   ⇒ L.List (Container a)
-  → L.List (SD.Block a)
+  → Either String (L.List (SD.Block a))
 parseBlocks cs =
   case cs of
-    L.Nil → L.Nil
-    L.Cons (CText s) (L.Cons (CSetextHeader n) cs) →
-      L.Cons (SD.Header n (Inline.parseInlines $ L.singleton s)) $ parseBlocks cs
-    L.Cons (CText s) cs →
+    L.Nil → pure L.Nil
+    (CText s) : (CSetextHeader n) : cs → do
+      hd ← Inline.parseInlines $ L.singleton s
+      tl ← parseBlocks cs
+      pure $ (SD.Header n hd) : tl
+    (CText s) : cs → do
       let
         sp = L.span isTextContainer cs
-        is = Inline.parseInlines $ L.Cons s (map getCText sp.init)
-      in
-        L.Cons (SD.Paragraph is) $ parseBlocks sp.rest
-    L.Cons CRule cs →
-      L.Cons SD.Rule $ parseBlocks cs
-    L.Cons (CATXHeader n s) cs →
-      L.Cons (SD.Header n (Inline.parseInlines $ L.singleton s)) $ parseBlocks cs
-    L.Cons (CBlockquote cs) cs1 →
-      L.Cons (SD.Blockquote $ parseBlocks cs) $ parseBlocks cs1
-    L.Cons (CListItem lt cs) cs1 →
+      is ← Inline.parseInlines $ s : (map getCText sp.init)
+      tl ← parseBlocks sp.rest
+      pure $ (SD.Paragraph is) : tl
+    CRule : cs →
+      map (SD.Rule : _) $ parseBlocks cs
+    (CATXHeader n s) : cs → do
+      hd ← Inline.parseInlines $ L.singleton s
+      tl ← parseBlocks cs
+      pure $ (SD.Header n hd) : tl
+    (CBlockquote cs) : cs1 → do
+      hd ← parseBlocks cs
+      tl ← parseBlocks cs1
+      pure $ (SD.Blockquote hd) : tl
+    (CListItem lt cs) : cs1 → do
       let
         sp = L.span (isListItem lt) cs1
-        bs = parseBlocks cs
-        bss = map (parseBlocks <<< getCListItem) sp.init
-      in
-        L.Cons (SD.Lst lt (L.Cons bs bss)) $ parseBlocks sp.rest
-    L.Cons (CCodeBlockIndented ss) cs →
-      L.Cons (SD.CodeBlock SD.Indented ss) $ parseBlocks cs
-    L.Cons (CCodeBlockFenced eval info ss) cs →
-      L.Cons (SD.CodeBlock (SD.Fenced eval info) ss) $ parseBlocks cs
-    L.Cons (CLinkReference b) cs →
-      L.Cons b $ parseBlocks cs
+      bs ← parseBlocks cs
+      bss ← traverse (parseBlocks <<< getCListItem) sp.init
+      tl ← parseBlocks sp.rest
+      pure $ (SD.Lst lt (bs : bss)) : tl
+    (CCodeBlockIndented ss) : cs →
+      map ((SD.CodeBlock SD.Indented ss) : _) $ parseBlocks cs
+    (CCodeBlockFenced eval info ss) : cs →
+      map ((SD.CodeBlock (SD.Fenced eval info) ss) : _) $ parseBlocks cs
+    (CLinkReference b) : cs →
+      map (b : _) $ parseBlocks cs
     L.Cons _ cs →
       parseBlocks cs
 
@@ -359,8 +369,8 @@ validateSlamDown (SD.SlamDown bls) = SD.SlamDown <$> traverse validateBlock bls
 tabsToSpaces ∷ String → String
 tabsToSpaces = S.replace "\t" "    "
 
-parseMd ∷ ∀ a. (SD.Value a) ⇒ String → SD.SlamDownP a
-parseMd s = SD.SlamDown bs
+parseMd ∷ ∀ a. (SD.Value a) ⇒ String → Either String (SD.SlamDownP a)
+parseMd s = map SD.SlamDown bs
   where
     lines = L.toList $ S.split "\n" $ S.replace "\r" "" $ tabsToSpaces s
     ctrs = parseContainers mempty lines

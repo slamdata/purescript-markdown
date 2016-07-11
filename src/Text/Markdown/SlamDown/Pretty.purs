@@ -136,7 +136,7 @@ prettyPrintTime { hours, minutes }=
 prettyPrintDateTime ∷ SD.DateTimeValue → String
 prettyPrintDateTime { date, time } =
   prettyPrintDate date
-    <> " "
+    <> "T"
     <> prettyPrintTime time
 
 printIntPadded ∷ Int → Int → String

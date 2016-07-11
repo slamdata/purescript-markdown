@@ -4,7 +4,7 @@ sudo: required
 node_js:
   - 5
 install:
-  - npm install pulp bower -g
+  - npm install pulp@8.2.1 bower -g
   - npm install && bower install
 script:
   - pulp test
