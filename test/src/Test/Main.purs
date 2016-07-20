@@ -26,6 +26,7 @@ import Text.Markdown.SlamDown.Parser as SDP
 import Text.Markdown.SlamDown.Pretty as SDPR
 
 import Test.StrongCheck as SC
+import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
 
 type TestEffects e =
@@ -40,9 +41,9 @@ derive instance eqNonEmptyString ∷ Eq NonEmptyString
 derive instance ordNonEmptyString ∷ Ord NonEmptyString
 
 genChar ∷ Gen.Gen Char
-genChar = Gen.elements '-' $ L.toList $ S.toCharArray "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 @!#$%^"
+genChar = Gen.elements '-' $ L.fromFoldable $ S.toCharArray "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 @!#$%^"
 
-instance arbitraryNonEmptyString ∷ SC.Arbitrary NonEmptyString where
+instance arbitraryNonEmptyString ∷ SCA.Arbitrary NonEmptyString where
   arbitrary =
     Gen.arrayOf1 genChar
       <#> uncurry A.cons
@@ -314,14 +315,14 @@ newtype TestSlamDown = TestSlamDown (SD.SlamDownP NonEmptyString)
 runTestSlamDown ∷ TestSlamDown → SD.SlamDownP NonEmptyString
 runTestSlamDown (TestSlamDown sd) = sd
 
-instance arbSlamDown ∷ SC.Arbitrary TestSlamDown where
-  arbitrary = (TestSlamDown <<< SD.SlamDown <<< L.toList) <$> blocks
+instance arbSlamDown ∷ SCA.Arbitrary TestSlamDown where
+  arbitrary = (TestSlamDown <<< SD.SlamDown <<< L.fromFoldable) <$> blocks
 
 three ∷ ∀ a. a → a → a → Array a
 three a b c = [a, b, c]
 
 
-blocks ∷ ∀ a. (SC.Arbitrary a, SD.Value a) ⇒ Gen.Gen (Array (SD.Block a))
+blocks ∷ ∀ a. (SCA.Arbitrary a, SD.Value a) ⇒ Gen.Gen (Array (SD.Block a))
 blocks =
   Gen.oneOf (smallArrayOf block0)
     [ A.singleton <$> bq
@@ -331,12 +332,12 @@ blocks =
   where
   block0 ∷ Gen.Gen (SD.Block a)
   block0 =
-    Gen.oneOf (SD.Paragraph <<< L.toList <$> inlines)
+    Gen.oneOf (SD.Paragraph <<< L.fromFoldable <$> inlines)
       [ SD.Header <$> Gen.chooseInt 1.0 6.0 <*> (L.singleton <$> simpleText)
       , SD.CodeBlock <$>
         (SD.Fenced <$> (Gen.elements true (L.singleton false)) <*>
          alphaNum)
-        <*> (L.toList <$> smallArrayOf alphaNum)
+        <*> (L.fromFoldable <$> smallArrayOf alphaNum)
       , SD.LinkReference <$> alphaNum <*> alphaNum
       , pure SD.Rule
       ]
@@ -345,15 +346,15 @@ blocks =
   bq = SD.Blockquote <$> (L.singleton <$> block0)
 
   cb ∷ Gen.Gen (SD.Block a)
-  cb = SD.CodeBlock SD.Indented <<< L.toList <$> smallArrayOf alphaNum
+  cb = SD.CodeBlock SD.Indented <<< L.fromFoldable <$> smallArrayOf alphaNum
 
   list ∷ Gen.Gen (SD.Block a)
   list =
     SD.Lst
-      <$> Gen.oneOf (SD.Bullet <$> (Gen.elements "-" $ L.toList ["+", "*"])) [ SD.Ordered <$> (Gen.elements ")" $ L.singleton ".")]
-      <*> (L.toList <$> tinyArrayOf (L.toList <$> (tinyArrayOf block0)))
+      <$> Gen.oneOf (SD.Bullet <$> (Gen.elements "-" $ L.fromFoldable ["+", "*"])) [ SD.Ordered <$> (Gen.elements ")" $ L.singleton ".")]
+      <*> (L.fromFoldable <$> tinyArrayOf (L.fromFoldable <$> (tinyArrayOf block0)))
 
-inlines ∷ ∀ a. (SC.Arbitrary a, SD.Value a) ⇒ Gen.Gen (Array (SD.Inline a))
+inlines ∷ ∀ a. (SCA.Arbitrary a, SD.Value a) ⇒ Gen.Gen (Array (SD.Inline a))
 inlines =
   Gen.oneOf inlines0
     [ A.singleton <$> link
@@ -365,13 +366,13 @@ inlines =
     Gen.oneOf (A.singleton <$> simpleText)
      [ three
          <$> simpleText
-         <*> (Gen.elements SD.Space $ L.toList [SD.SoftBreak, SD.LineBreak])
+         <*> (Gen.elements SD.Space $ L.fromFoldable [SD.SoftBreak, SD.LineBreak])
          <*> simpleText
      , A.singleton <$> (SD.Code <$> (Gen.elements true (L.singleton false)) <*> alphaNum)
      ]
 
   link ∷ Gen.Gen (SD.Inline a)
-  link = SD.Link <$> (L.toList <$> inlines0) <*> linkTarget
+  link = SD.Link <$> (L.fromFoldable <$> inlines0) <*> linkTarget
 
   linkTarget ∷ Gen.Gen SD.LinkTarget
   linkTarget =
@@ -391,7 +392,7 @@ simpleText = SD.Str <$> alphaNum
 alphaNum ∷ Gen.Gen String
 alphaNum = do
   len ← Gen.chooseInt 5.0 10.0
-  S.fromCharArray <$> Gen.vectorOf len (Gen.elements (CH.fromCharCode 97) $ L.toList (S.toCharArray "qwertyuioplkjhgfdszxcvbnm123457890"))
+  S.fromCharArray <$> Gen.vectorOf len (Gen.elements (CH.fromCharCode 97) $ L.fromFoldable (S.toCharArray "qwertyuioplkjhgfdszxcvbnm123457890"))
 
 
 main ∷ ∀ e. Eff (TestEffects e) Unit

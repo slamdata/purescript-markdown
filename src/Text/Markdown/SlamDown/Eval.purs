@@ -4,10 +4,13 @@ module Text.Markdown.SlamDown.Eval
   ) where
 
 import Prelude
+
 import Control.Alt ((<|>))
+
+import Data.Array as A
 import Data.Const (Const(..))
-import Data.Identity (Identity(..), runIdentity)
 import Data.Functor.Compose (Compose(..), decompose)
+import Data.Identity (Identity(..), runIdentity)
 import Data.List as L
 import Data.Maybe as M
 import Data.String as S
@@ -34,7 +37,7 @@ eval fs = everywhereM b i
   b ∷ SD.Block a → m (SD.Block a)
   b (SD.CodeBlock (SD.Fenced true info) code) =
     SD.CodeBlock (SD.Fenced false info) <<< pure <<< SD.renderValue
-      <$> fs.code (M.Just info) (S.joinWith "\n" (L.fromList code))
+      <$> fs.code (M.Just info) (S.joinWith "\n" (A.fromFoldable code))
   b other = pure $ other
 
   i ∷ SD.Inline a → m (SD.Inline a)

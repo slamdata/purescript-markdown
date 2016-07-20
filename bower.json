@@ -22,15 +22,16 @@
     "package.json"
   ],
   "dependencies": {
-    "purescript-const": "^0.5.0",
-    "purescript-functions": "^0.1.0",
-    "purescript-functor-compose": "^0.0.1",
-    "purescript-hugenums": "^1.3.0",
-    "purescript-lists": "^0.7.10",
-    "purescript-parsing": "^0.8.0",
-    "purescript-prelude": "^0.1.3",
-    "purescript-strongcheck": "^0.14.4",
-    "purescript-validation": "^0.2.1",
-    "purescript-sets": "^0.5.7"
+    "purescript-const": "^1.0.0",
+    "purescript-functor-compose": "garyb/purescript-functor-compose#d37327f2daf87dd75a979840a2662d664baf3313",
+    "purescript-hugenums": "^2.0.0",
+    "purescript-lists": "^1.0.0",
+    "purescript-parsing": "^1.0.0",
+    "purescript-partial": "^1.1.2",
+    "purescript-prelude": "^1.0.0",
+    "purescript-sets": "^1.0.0",
+    "purescript-strings": "^1.1.0",
+    "purescript-strongcheck": "^1.0.0",
+    "purescript-validation": "^1.0.0"
   }
 }

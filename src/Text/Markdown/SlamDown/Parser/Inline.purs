@@ -8,10 +8,9 @@ module Text.Markdown.SlamDown.Parser.Inline
 import Prelude
 
 import Control.Alt ((<|>))
-import Control.Apply ((<*), (*>))
 import Control.Lazy as Lazy
-import Control.Monad (when)
 
+import Data.Array as A
 import Data.Bifunctor (lmap)
 import Data.Const (Const(..))
 import Data.Either (Either(..))
@@ -19,19 +18,20 @@ import Data.Foldable (elem)
 import Data.Functor ((<$))
 import Data.Functor.Compose (Compose(..))
 import Data.HugeNum as HN
+import Data.Int as Int
 import Data.List as L
 import Data.Maybe as M
+import Data.String as S
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
-import Data.Validation as V
-import Data.String as S
+import Data.Validation.Semigroup as V
 
 import Text.Parsing.Parser as P
 import Text.Parsing.Parser.Combinators as PC
 import Text.Parsing.Parser.String as PS
 
-import Text.Markdown.SlamDown.Syntax as SD
 import Text.Markdown.SlamDown.Parser.Utils as PU
+import Text.Markdown.SlamDown.Syntax as SD
 
 parseInlines
   ∷ ∀ a
@@ -41,7 +41,7 @@ parseInlines
 parseInlines s =
   map consolidate
     $ lmap (\(P.ParseError {message}) → message)
-    $ P.runParser (S.joinWith "\n" $ L.fromList s) inlines
+    $ P.runParser (S.joinWith "\n" $ A.fromFoldable s) inlines
 
 consolidate
   ∷ ∀ a
@@ -58,7 +58,7 @@ someOf
   ∷ (Char → Boolean)
   → P.Parser String String
 someOf =
-  map (S.fromCharArray <<< L.fromList)
+  map (S.fromCharArray <<< A.fromFoldable)
     <<< L.some
     <<< PS.satisfy
 
@@ -66,7 +66,7 @@ manyOf
   ∷ (Char → Boolean)
   → P.Parser String String
 manyOf =
-  map (S.fromCharArray <<< L.fromList)
+  map (S.fromCharArray <<< A.fromFoldable)
     <<< L.many
     <<< PS.satisfy
 
@@ -74,7 +74,7 @@ isNumeric ∷ Char → Boolean
 isNumeric c =
   s >= "0" && s <= "9"
   where
-    s = S.fromChar c
+    s = S.singleton c
 
 dash ∷ P.Parser String Unit
 dash = void $ PS.string "-"
@@ -163,7 +163,7 @@ inlines = L.many inline2 <* PS.eof
     (s >= "a" && s <= "z") ||
     (s >= "A" && s <= "Z") ||
     (s >= "0" && s <= "9")
-    where s = S.fromChar c
+    where s = S.singleton c
 
   emphasis
     ∷ P.Parser String (SD.Inline a)
@@ -186,7 +186,7 @@ inlines = L.many inline2 <* PS.eof
     f is = SD.Strong $ L.singleton $ SD.Emph is
 
   space ∷ P.Parser String (SD.Inline a)
-  space = (toSpace <<< (S.fromChar <$> _)) <$> L.some (PS.satisfy PU.isWhitespace)
+  space = (toSpace <<< (S.singleton <$> _)) <$> L.some (PS.satisfy PU.isWhitespace)
     where
     toSpace cs
       | "\n" `elem` cs =
@@ -198,9 +198,9 @@ inlines = L.many inline2 <* PS.eof
   code ∷ P.Parser String (SD.Inline a)
   code = do
     eval ← PC.option false (PS.string "!" *> pure true)
-    ticks ← someOf (\x → S.fromChar x == "`")
-    contents ← (S.fromCharArray <<< L.fromList) <$> PC.manyTill PS.anyChar (PS.string ticks)
-    return <<< SD.Code eval <<< S.trim $ contents
+    ticks ← someOf (\x → S.singleton x == "`")
+    contents ← (S.fromCharArray <<< A.fromFoldable) <$> PC.manyTill PS.anyChar (PS.string ticks)
+    pure <<< SD.Code eval <<< S.trim $ contents
 
 
   link ∷ P.Parser String (SD.Inline a)
@@ -213,10 +213,10 @@ inlines = L.many inline2 <* PS.eof
     linkTarget = inlineLink <|> referenceLink
 
     inlineLink ∷ P.Parser String SD.LinkTarget
-    inlineLink = SD.InlineLink <<< S.fromCharArray <<< L.fromList <$> (PS.string "(" *> PC.manyTill PS.anyChar (PS.string ")"))
+    inlineLink = SD.InlineLink <<< S.fromCharArray <<< A.fromFoldable <$> (PS.string "(" *> PC.manyTill PS.anyChar (PS.string ")"))
 
     referenceLink ∷ P.Parser String SD.LinkTarget
-    referenceLink = SD.ReferenceLink <$> PC.optionMaybe ((S.fromCharArray <<< L.fromList) <$> (PS.string "[" *> PC.manyTill PS.anyChar (PS.string "]")))
+    referenceLink = SD.ReferenceLink <$> PC.optionMaybe ((S.fromCharArray <<< A.fromFoldable) <$> (PS.string "[" *> PC.manyTill PS.anyChar (PS.string "]")))
 
   image ∷ P.Parser String (SD.Inline a)
   image = SD.Image <$> imageLabel <*> imageUrl
@@ -225,13 +225,13 @@ inlines = L.many inline2 <* PS.eof
     imageLabel = PS.string "![" *> PC.manyTill (inline1 <|> other) (PS.string "]")
 
     imageUrl ∷ P.Parser String String
-    imageUrl = S.fromCharArray <<< L.fromList <$> (PS.string "(" *> PC.manyTill PS.anyChar (PS.string ")"))
+    imageUrl = S.fromCharArray <<< A.fromFoldable <$> (PS.string "(" *> PC.manyTill PS.anyChar (PS.string ")"))
 
   autolink ∷ P.Parser String (SD.Inline a)
   autolink = do
     PS.string "<"
-    url ← (S.fromCharArray <<< L.fromList) <$> (PS.anyChar `PC.many1Till` PS.string ">")
-    return $ SD.Link (L.singleton $ SD.Str (autoLabel url)) (SD.InlineLink url)
+    url ← (S.fromCharArray <<< A.fromFoldable) <$> (PS.anyChar `PC.many1Till` PS.string ">")
+    pure $ SD.Link (L.singleton $ SD.Str (autoLabel url)) (SD.InlineLink url)
     where
     autoLabel ∷ String → String
     autoLabel s
@@ -241,8 +241,8 @@ inlines = L.many inline2 <* PS.eof
   entity ∷ P.Parser String (SD.Inline a)
   entity = do
     PS.string "&"
-    s ← (S.fromCharArray <<< L.fromList) <$> (PS.noneOf (S.toCharArray ";") `PC.many1Till` PS.string ";")
-    return $ SD.Entity $ "&" <> s <> ";"
+    s ← (S.fromCharArray <<< A.fromFoldable) <$> (PS.noneOf (S.toCharArray ";") `PC.many1Till` PS.string ";")
+    pure $ SD.Entity $ "&" <> s <> ";"
 
   formField ∷ P.Parser String (Either String (SD.Inline a))
   formField =
@@ -261,7 +261,7 @@ inlines = L.many inline2 <* PS.eof
     label =
       someOf isAlphaNum
       <|> (S.fromCharArray
-             <<< L.fromList
+             <<< A.fromFoldable
              <$> (PS.string "[" *> PC.manyTill PS.anyChar (PS.string "]")))
 
     required = PC.option false (PS.string "*" *> pure true)
@@ -371,8 +371,8 @@ inlines = L.many inline2 <* PS.eof
             b ← (PS.string "[x]" *> pure true) <|> (PS.string "[]" *> pure false)
             PU.skipSpaces
             l ← item
-            return $ Tuple b l
-          return $ SD.CheckBoxes (SD.Literal $ snd <$> L.filter fst ls) (SD.Literal $ snd <$> ls)
+            pure $ Tuple b l
+          pure $ SD.CheckBoxes (SD.Literal $ snd <$> L.filter fst ls) (SD.Literal $ snd <$> ls)
 
         evaluatedCheckBoxes =
           SD.CheckBoxes
@@ -384,15 +384,15 @@ inlines = L.many inline2 <* PS.eof
       let item = SD.stringValue <<< S.trim <$> manyOf \c → not $ c `elem` ['{','}',',','!','`','(',')']
       ls ← PU.braces $ expr id $ (PC.try (PU.skipSpaces *> item)) `PC.sepBy` (PU.skipSpaces *> PS.string ",")
       sel ← PC.optionMaybe $ PU.skipSpaces *> (PU.parens $ expr id $ item)
-      return $ SD.DropDown sel ls
+      pure $ SD.DropDown sel ls
 
   other ∷ P.Parser String (SD.Inline a)
   other = do
-    c ← S.fromChar <$> PS.anyChar
+    c ← S.singleton <$> PS.anyChar
     if c == "\\"
       then
-        (SD.Str <<< S.fromChar) <$> PS.anyChar
-          <|> (PS.satisfy (\x → S.fromChar x == "\n") *> pure SD.LineBreak)
+        (SD.Str <<< S.singleton) <$> PS.anyChar
+          <|> (PS.satisfy (\x → S.singleton x == "\n") *> pure SD.LineBreak)
           <|> pure (SD.Str "\\")
       else pure (SD.Str c)
 
@@ -471,7 +471,7 @@ parseTextBox isPlainText eta template =
 
     natural = do
       xs ← digits
-      Data.Int.fromString xs
+      Int.fromString xs
         # M.maybe (P.fail "Failed parsing natural") pure
 
     digit =
@@ -482,7 +482,7 @@ parseTextBox isPlainText eta template =
       ds
         # pure
         # S.fromCharArray
-        # Data.Int.fromString
+        # Int.fromString
         # M.maybe (P.fail "Failed parsing digit") pure
 
     parseYear = do
@@ -494,7 +494,7 @@ parseTextBox isPlainText eta template =
 
     digits =
       L.some digit <#>
-        L.fromList >>> S.fromCharArray
+        A.fromFoldable >>> S.fromCharArray
 
 expr
   ∷ ∀ b
@@ -508,5 +508,5 @@ expr f p =
 unevaluated ∷ ∀ b. P.Parser String (SD.Expr b)
 unevaluated = do
   PS.string "!"
-  ticks ← someOf (\x → S.fromChar x == "`")
-  SD.Unevaluated <<< S.fromCharArray <<< L.fromList <$> PC.manyTill PS.anyChar (PS.string ticks)
+  ticks ← someOf (\x → S.singleton x == "`")
+  SD.Unevaluated <<< S.fromCharArray <<< A.fromFoldable <$> PC.manyTill PS.anyChar (PS.string ticks)

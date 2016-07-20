@@ -7,18 +7,19 @@ import Prelude
 
 import Data.Array as A
 import Data.Foldable (fold, elem)
-import Data.Identity (Identity(..))
-import Data.Functor.Compose (Compose(), decompose)
+import Data.Functor.Compose (Compose, decompose)
 import Data.HugeNum as HN
+import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
 import Data.Monoid (mempty)
 import Data.String as S
+import Data.Unfoldable as U
 
 import Text.Markdown.SlamDown.Syntax as SD
 
 unlines ∷ L.List String → String
-unlines lst = S.joinWith "\n" $ L.fromList lst
+unlines lst = S.joinWith "\n" $ A.fromFoldable lst
 
 prettyPrintMd ∷ ∀ a. (SD.Value a) ⇒ SD.SlamDownP a → String
 prettyPrintMd (SD.SlamDown bs) = unlines $ L.concatMap prettyPrintBlock bs
@@ -34,7 +35,7 @@ overLines f = map f <<< L.concatMap lines
 
 lines ∷ String → L.List String
 lines "" = mempty
-lines s = L.toList $ S.split "\n" s
+lines s = L.fromFoldable $ S.split "\n" s
 
 prettyPrintBlock ∷ ∀ a. (SD.Value a) ⇒ SD.Block a → L.List String
 prettyPrintBlock bl =
@@ -75,7 +76,7 @@ prettyPrintBlock bl =
     SD.Rule → L.singleton "***"
 
 prettyPrintInlines ∷ ∀ a. (SD.Value a) ⇒ L.List (SD.Inline a) → String
-prettyPrintInlines is = S.joinWith "" $ L.fromList $ (map prettyPrintInline is)
+prettyPrintInlines is = S.joinWith "" $ A.fromFoldable $ (map prettyPrintInline is)
 
 prettyPrintInline ∷ ∀ a. (SD.Value a) ⇒ SD.Inline a → String
 prettyPrintInline il =
@@ -142,7 +143,7 @@ prettyPrintDateTime { date, time } =
 printIntPadded ∷ Int → Int → String
 printIntPadded l i =
   if dl > 0
-  then S.fromCharArray (A.replicate dl '0') <> s
+  then S.fromCharArray (U.replicate dl '0') <> s
   else s
   where
     s = show i
@@ -180,18 +181,18 @@ prettyPrintFormElement el =
       let
         radioButton l = (if l == sel then "(x) " else "() ") <> SD.renderValue l
       in
-        S.joinWith " " $ L.fromList (map radioButton ls)
+        S.joinWith " " $ A.fromFoldable (map radioButton ls)
     SD.RadioButtons (SD.Unevaluated bs) (SD.Unevaluated ls) →
       "(!`" <> bs <> "`) !`" <> ls <> "`"
     SD.CheckBoxes (SD.Literal sel) (SD.Literal ls) →
       let
         checkBox l = (if elem l sel then "[x] " else "[] ") <> SD.renderValue l
       in
-        S.joinWith " " <<< L.fromList $ checkBox <$> ls
+        S.joinWith " " <<< A.fromFoldable $ checkBox <$> ls
     SD.CheckBoxes (SD.Unevaluated bs) (SD.Unevaluated ls) →
       "[!`" <> bs <> "`] !`" <> ls <> "`"
     SD.DropDown sel lbls →
-      braces (prettyPrintExpr id (L.fromList >>> map SD.renderValue >>> S.joinWith ", ") lbls)
+      braces (prettyPrintExpr id (A.fromFoldable >>> map SD.renderValue >>> S.joinWith ", ") lbls)
         <> M.maybe "" (parens <<< prettyPrintExpr id SD.renderValue) sel
     _ → "Unsupported form element"
 
