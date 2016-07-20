@@ -1,5 +1,9 @@
 # purescript-markdown
 
+[![Latest release](http://img.shields.io/bower/v/purescript-markdown.svg)](https://github.com/slamdata/purescript-markdown/releases)
+[![Build Status](https://travis-ci.org/slamdata/purescript-markdown.svg?branch=master)](https://travis-ci.org/slamdata/purescript-markdown)
+[![Dependency Status](https://www.versioneye.com/user/projects/578f7ce40ca92d004c89e13e/badge.svg?style=flat)](https://www.versioneye.com/user/projects/578f7ce40ca92d004c89e13e)
+
 A Purescript library for parsing SlamData's dialect of Markdown, called *SlamDown*, which is mostly a safe, clean subset of CommonMark.
 
 ## Usage
