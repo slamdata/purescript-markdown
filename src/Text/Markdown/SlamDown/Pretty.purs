@@ -117,8 +117,8 @@ prettyPrintTextBoxValue t =
       let s = HN.toString def in
       M.fromMaybe s $ S.stripSuffix "." $ HN.toString def
     SD.Date (Identity def) → prettyPrintDate def
-    SD.Time (Identity def) → prettyPrintTime def
-    SD.DateTime (Identity def) → prettyPrintDateTime def
+    SD.Time prec (Identity def) → prettyPrintTime prec def
+    SD.DateTime prec (Identity def) → prettyPrintDateTime prec def
 
 prettyPrintDate ∷ SD.DateValue → String
 prettyPrintDate { day, month, year } =
@@ -128,17 +128,20 @@ prettyPrintDate { day, month, year } =
     <> "-"
     <> printIntPadded 2 day
 
-prettyPrintTime ∷ SD.TimeValue → String
-prettyPrintTime { hours, minutes }=
+prettyPrintTime ∷ SD.TimePrecision → SD.TimeValue → String
+prettyPrintTime prec { hours, minutes, seconds }=
   printIntPadded 2 hours
     <> ":"
     <> printIntPadded 2 minutes
+    <> case prec of
+        SD.Seconds -> ":" <> printIntPadded 2 (M.fromMaybe 0 seconds)
+        _ -> ""
 
-prettyPrintDateTime ∷ SD.DateTimeValue → String
-prettyPrintDateTime { date, time } =
+prettyPrintDateTime ∷ SD.TimePrecision → SD.DateTimeValue → String
+prettyPrintDateTime prec { date, time } =
   prettyPrintDate date
     <> "T"
-    <> prettyPrintTime time
+    <> prettyPrintTime prec time
 
 printIntPadded ∷ Int → Int → String
 printIntPadded l i =
@@ -160,8 +163,10 @@ prettyPrintTextBox t =
         SD.PlainText _ → "______"
         SD.Numeric _ → "#______"
         SD.Date _ → "__-__-____"
-        SD.Time _ → "__:__"
-        SD.DateTime _ → "__-__-____ __:__"
+        SD.Time SD.Minutes _ → "__:__"
+        SD.Time SD.Seconds _ → "__:__:__"
+        SD.DateTime SD.Minutes _ → "__-__-____ __:__"
+        SD.DateTime SD.Seconds _ → "__-__-____ __:__:__"
 
     prettyPrintDefault ∷ SD.TextBox SD.Expr → String
     prettyPrintDefault t =
@@ -169,8 +174,8 @@ prettyPrintTextBox t =
         SD.PlainText def → prettyPrintExpr id id def
         SD.Numeric def → prettyPrintExpr id HN.toString def
         SD.Date def → prettyPrintExpr id prettyPrintDate def
-        SD.Time def → prettyPrintExpr id prettyPrintTime def
-        SD.DateTime def → prettyPrintExpr id prettyPrintDateTime def
+        SD.Time prec def → prettyPrintExpr id (prettyPrintTime prec) def
+        SD.DateTime prec def → prettyPrintExpr id (prettyPrintDateTime prec) def
 
 
 prettyPrintFormElement ∷ ∀ a. (SD.Value a) ⇒ SD.FormField a → String
