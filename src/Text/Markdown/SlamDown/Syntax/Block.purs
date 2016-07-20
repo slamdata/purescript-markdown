@@ -5,8 +5,10 @@ module Text.Markdown.SlamDown.Syntax.Block
   ) where
 
 import Prelude
+
 import Data.List as L
-import Test.StrongCheck as SC
+
+import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
 
 import Text.Markdown.SlamDown.Syntax.Inline (Inline)
@@ -32,48 +34,48 @@ instance functorBlock ∷ Functor Block where
       Rule → Rule
 
 instance showBlock ∷ (Show a) ⇒ Show (Block a) where
-  show (Paragraph is) = "(Paragraph " ++ show is ++ ")"
-  show (Header n is) = "(Header " ++ show n ++ " " ++ show is ++ ")"
-  show (Blockquote bs) = "(Blockquote " ++ show bs ++ ")"
-  show (Lst lt bss) = "(List " ++ show lt ++ " " ++ show bss ++ ")"
-  show (CodeBlock ca s) = "(CodeBlock " ++ show ca ++ " " ++ show s ++ ")"
-  show (LinkReference l uri) = "(LinkReference " ++ show l ++ " " ++ show uri ++ ")"
+  show (Paragraph is) = "(Paragraph " <> show is <> ")"
+  show (Header n is) = "(Header " <> show n <> " " <> show is <> ")"
+  show (Blockquote bs) = "(Blockquote " <> show bs <> ")"
+  show (Lst lt bss) = "(List " <> show lt <> " " <> show bss <> ")"
+  show (CodeBlock ca s) = "(CodeBlock " <> show ca <> " " <> show s <> ")"
+  show (LinkReference l uri) = "(LinkReference " <> show l <> " " <> show uri <> ")"
   show Rule = "Rule"
 
 derive instance eqBlock ∷ (Eq a, Ord a) ⇒ Eq (Block a)
 derive instance ordBlock ∷ (Ord a) ⇒ Ord (Block a)
 
 -- | Nota bene: this does not generate any recursive structure
-instance arbitraryBlock ∷ (SC.Arbitrary a, Eq a) ⇒ SC.Arbitrary (Block a) where
+instance arbitraryBlock ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (Block a) where
   arbitrary = do
     k ← Gen.chooseInt 0.0 6.0
     case k of
-      0 → Paragraph <$> listOf SC.arbitrary
-      1 → Header <$> SC.arbitrary <*> listOf SC.arbitrary
+      0 → Paragraph <$> listOf SCA.arbitrary
+      1 → Header <$> SCA.arbitrary <*> listOf SCA.arbitrary
       2 → pure $ Blockquote L.Nil
-      3 → Lst <$> SC.arbitrary <*> listOf (pure L.Nil)
-      4 → CodeBlock <$> SC.arbitrary <*> listOf SC.arbitrary
-      5 → LinkReference <$> SC.arbitrary <*> SC.arbitrary
+      3 → Lst <$> SCA.arbitrary <*> listOf (pure L.Nil)
+      4 → CodeBlock <$> SCA.arbitrary <*> listOf SCA.arbitrary
+      5 → LinkReference <$> SCA.arbitrary <*> SCA.arbitrary
       _ → pure Rule
 
 listOf ∷ ∀ f a. (Monad f) ⇒ Gen.GenT f a → Gen.GenT f (L.List a)
-listOf = map L.toList <<< Gen.arrayOf
+listOf = map L.fromFoldable <<< Gen.arrayOf
 
 data ListType
   = Bullet String
   | Ordered String
 
 instance showListType ∷ Show ListType where
-  show (Bullet s) = "(Bullet " ++ show s ++ ")"
-  show (Ordered s) = "(Ordered " ++ show s ++ ")"
+  show (Bullet s) = "(Bullet " <> show s <> ")"
+  show (Ordered s) = "(Ordered " <> show s <> ")"
 
 derive instance eqListType ∷ Eq ListType
 derive instance ordListType ∷ Ord ListType
 
-instance arbitraryListType ∷ SC.Arbitrary ListType where
+instance arbitraryListType ∷ SCA.Arbitrary ListType where
   arbitrary = do
-    b ← SC.arbitrary
-    if b then Bullet <$> SC.arbitrary else Ordered <$> SC.arbitrary
+    b ← SCA.arbitrary
+    if b then Bullet <$> SCA.arbitrary else Ordered <$> SCA.arbitrary
 
 data CodeBlockType
   = Indented
@@ -81,12 +83,12 @@ data CodeBlockType
 
 instance showCodeBlockType ∷ Show CodeBlockType where
   show Indented = "Indented"
-  show (Fenced evaluated info) = "(Fenced " ++ show evaluated ++ " " ++ show info ++ ")"
+  show (Fenced evaluated info) = "(Fenced " <> show evaluated <> " " <> show info <> ")"
 
 derive instance eqCodeBlockType ∷ Eq CodeBlockType
 derive instance ordCodeBlockType ∷ Ord CodeBlockType
 
-instance arbitraryCodeBlockType ∷ SC.Arbitrary CodeBlockType where
+instance arbitraryCodeBlockType ∷ SCA.Arbitrary CodeBlockType where
   arbitrary = do
-    b ← SC.arbitrary
-    if b then pure Indented else Fenced <$> SC.arbitrary <*> SC.arbitrary
+    b ← SCA.arbitrary
+    if b then pure Indented else Fenced <$> SCA.arbitrary <*> SCA.arbitrary

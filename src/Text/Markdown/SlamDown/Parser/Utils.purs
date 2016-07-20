@@ -9,26 +9,29 @@ module Text.Markdown.SlamDown.Parser.Utils
 
 import Prelude
 
-import Control.Apply ((<*), (*>))
-
-import Data.String (fromChar)
+import Data.Either (fromRight)
+import Data.String (singleton)
 import Data.String.Regex as R
 
-import Text.Parsing.Parser (Parser())
+import Partial.Unsafe (unsafePartial)
+
+import Text.Parsing.Parser (Parser)
 import Text.Parsing.Parser.Combinators (skipMany)
 import Text.Parsing.Parser.String (string, satisfy)
 
 isWhitespace ∷ Char → Boolean
-isWhitespace = R.test wsRegex <<< fromChar
+isWhitespace = R.test wsRegex <<< singleton
   where
   wsRegex ∷ R.Regex
-  wsRegex = R.regex "^\\s$" flags
+  wsRegex = unsafePartial fromRight $
+    R.regex "^\\s$" flags
 
 isEmailAddress ∷ String → Boolean
 isEmailAddress = R.test wsEmail
   where
   wsEmail ∷ R.Regex
-  wsEmail = R.regex """^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""" flags
+  wsEmail = unsafePartial fromRight $
+    R.regex """^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""" flags
 
 flags ∷ R.RegexFlags
 flags =

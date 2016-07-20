@@ -8,11 +8,12 @@ module Text.Markdown.SlamDown.Traverse
   ) where
 
 import Prelude
-import Control.Bind ((<=<), join)
-import Data.Monoid (class Monoid)
-import Data.Identity as Id
+
 import Data.Foldable as F
+import Data.Identity as Id
+import Data.Monoid (class Monoid)
 import Data.Traversable as T
+
 import Text.Markdown.SlamDown.Syntax as SD
 
 everywhereM
@@ -95,7 +96,7 @@ everythingM
   → SD.SlamDownP a
   → m r
 everythingM b i (SD.SlamDown bs) =
-  F.mconcat <$> T.traverse b' bs
+  F.fold <$> T.traverse b' bs
   where
   b' ∷ SD.Block a → m r
   b' x@(SD.Paragraph is) = b x >>= \r → F.foldl (<>) r <$> T.traverse i' is

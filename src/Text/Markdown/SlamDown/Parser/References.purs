@@ -4,8 +4,8 @@ module Text.Markdown.SlamDown.Parser.References
 
 import Prelude
 
+import Data.Array as A
 import Data.Either as E
-import Data.List as L
 import Data.Maybe as M
 import Data.String as S
 
@@ -13,8 +13,8 @@ import Text.Parsing.Parser as P
 import Text.Parsing.Parser.Combinators as PC
 import Text.Parsing.Parser.String as PS
 
-import Text.Markdown.SlamDown.Syntax as SD
 import Text.Markdown.SlamDown.Parser.Utils as PU
+import Text.Markdown.SlamDown.Syntax as SD
 
 parseLinkReference ∷ ∀ a. String → M.Maybe (SD.Block a)
 parseLinkReference = E.either (const M.Nothing) M.Just <<< flip P.runParser linkReference
@@ -35,4 +35,4 @@ linkReference = do
     charsToString =
       S.trim
         <<< S.fromCharArray
-        <<< L.fromList
+        <<< A.fromFoldable

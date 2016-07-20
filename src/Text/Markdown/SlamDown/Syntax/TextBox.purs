@@ -1,22 +1,23 @@
 module Text.Markdown.SlamDown.Syntax.TextBox
-  ( TimeValue()
-  , DateValue()
-  , DateTimeValue()
+  ( TimeValue
+  , DateValue
+  , DateTimeValue
   , TextBox(..)
   , transTextBox
   , traverseTextBox
 
-  , TimeValueP()
-  , DateValueP()
-  , DateTimeValueP()
+  , TimeValueP
+  , DateValueP
+  , DateTimeValueP
   ) where
 
 import Prelude
+
 import Data.Function (on)
 import Data.HugeNum as HN
 import Data.Identity (Identity(..), runIdentity)
-import Data.NaturalTransformation (Natural)
-import Test.StrongCheck as SC
+
+import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
 
 type TimeValue =
@@ -50,16 +51,16 @@ instance showTimeValueP ∷ Show TimeValueP where
        <> show minutes
        <> " }"
 
-instance arbitraryTimeValueP ∷ SC.Arbitrary TimeValueP where
+instance arbitraryTimeValueP ∷ SCA.Arbitrary TimeValueP where
   arbitrary = do
     hours ← Gen.chooseInt 0.0 12.0
     minutes ← Gen.chooseInt 0.0 60.0
     pure $ TimeValueP { hours , minutes }
 
-instance coarbitraryTimeValueP :: SC.CoArbitrary TimeValueP where
+instance coarbitraryTimeValueP :: SCA.Coarbitrary TimeValueP where
   coarbitrary (TimeValueP { hours, minutes }) gen = do
-    SC.coarbitrary hours gen
-    SC.coarbitrary minutes gen
+    SCA.coarbitrary hours gen
+    SCA.coarbitrary minutes gen
 
 type DateValue =
   { month ∷ Int
@@ -97,18 +98,18 @@ instance showDateValueP ∷ Show DateValueP where
        <> show year
        <> " }"
 
-instance arbitraryDateValueP ∷ SC.Arbitrary DateValueP where
+instance arbitraryDateValueP ∷ SCA.Arbitrary DateValueP where
   arbitrary = do
     month ← Gen.chooseInt 0.0 12.0
     day ← Gen.chooseInt 0.0 30.0
     year ← Gen.chooseInt 0.0 3000.0
     pure $ DateValueP { month , day, year }
 
-instance coarbitraryDateValueP :: SC.CoArbitrary DateValueP where
+instance coarbitraryDateValueP :: SCA.Coarbitrary DateValueP where
   coarbitrary (DateValueP { month, day, year }) gen = do
-    SC.coarbitrary month gen
-    SC.coarbitrary day gen
-    SC.coarbitrary year gen
+    SCA.coarbitrary month gen
+    SCA.coarbitrary day gen
+    SCA.coarbitrary year gen
 
 type DateTimeValue =
   { date ∷ DateValue
@@ -141,16 +142,16 @@ instance showDateTimeValueP ∷ Show DateTimeValueP where
        <> show (TimeValueP time)
        <> " }"
 
-instance arbitraryDateTimeValueP ∷ SC.Arbitrary DateTimeValueP where
+instance arbitraryDateTimeValueP ∷ SCA.Arbitrary DateTimeValueP where
   arbitrary = do
-    DateValueP date ← SC.arbitrary
-    TimeValueP time ← SC.arbitrary
+    DateValueP date ← SCA.arbitrary
+    TimeValueP time ← SCA.arbitrary
     pure $ DateTimeValueP { date, time }
 
-instance coarbitraryDateTimeValueP :: SC.CoArbitrary DateTimeValueP where
+instance coarbitraryDateTimeValueP :: SCA.Coarbitrary DateTimeValueP where
   coarbitrary (DateTimeValueP { date, time }) gen = do
-    SC.coarbitrary (DateValueP date) gen
-    SC.coarbitrary (TimeValueP time) gen
+    SCA.coarbitrary (DateValueP date) gen
+    SCA.coarbitrary (TimeValueP time) gen
 
 data TextBox f
   = PlainText (f String)
@@ -161,7 +162,7 @@ data TextBox f
 
 transTextBox
   ∷ ∀ f g
-  . Natural f g
+  . (f ~> g)
   → TextBox f
   → TextBox g
 transTextBox eta =
@@ -222,22 +223,22 @@ instance eqTextBox ∷ (Functor f, Eq (f String), Eq (f HN.HugeNum), Eq (f TimeV
       DateTime d1, DateTime d2 → on eq (map DateTimeValueP) d1 d2
       _, _ → false
 
-instance arbitraryTextBox ∷ (Functor f, SC.Arbitrary (f String), SC.Arbitrary (f Number), SC.Arbitrary (f TimeValueP), SC.Arbitrary (f DateValueP), SC.Arbitrary (f DateTimeValueP)) ⇒ SC.Arbitrary (TextBox f) where
+instance arbitraryTextBox ∷ (Functor f, SCA.Arbitrary (f String), SCA.Arbitrary (f Number), SCA.Arbitrary (f TimeValueP), SCA.Arbitrary (f DateValueP), SCA.Arbitrary (f DateTimeValueP)) ⇒ SCA.Arbitrary (TextBox f) where
   arbitrary = do
     i ← Gen.chooseInt 0.0 5.0
     case i of
-      0 → PlainText <$> SC.arbitrary
-      1 → Numeric <<< map HN.fromNumber <$> SC.arbitrary
-      2 → Date <<< map getDateValueP <$> SC.arbitrary
-      3 → Time <<< map getTimeValueP <$> SC.arbitrary
-      4 → DateTime <<< map getDateTimeValueP <$> SC.arbitrary
-      _ → PlainText <$> SC.arbitrary
+      0 → PlainText <$> SCA.arbitrary
+      1 → Numeric <<< map HN.fromNumber <$> SCA.arbitrary
+      2 → Date <<< map getDateValueP <$> SCA.arbitrary
+      3 → Time <<< map getTimeValueP <$> SCA.arbitrary
+      4 → DateTime <<< map getDateTimeValueP <$> SCA.arbitrary
+      _ → PlainText <$> SCA.arbitrary
 
-instance coarbitraryTextBox :: (Functor f, SC.CoArbitrary (f String), SC.CoArbitrary (f Number), SC.CoArbitrary (f DateValueP), SC.CoArbitrary (f TimeValueP), SC.CoArbitrary (f DateTimeValueP)) ⇒ SC.CoArbitrary (TextBox f) where
+instance coarbitraryTextBox :: (Functor f, SCA.Coarbitrary (f String), SCA.Coarbitrary (f Number), SCA.Coarbitrary (f DateValueP), SCA.Coarbitrary (f TimeValueP), SCA.Coarbitrary (f DateTimeValueP)) ⇒ SCA.Coarbitrary (TextBox f) where
   coarbitrary =
     case _ of
-      PlainText d -> SC.coarbitrary d
-      Numeric d -> SC.coarbitrary $ HN.toNumber <$> d
-      Date d -> SC.coarbitrary $ DateValueP <$> d
-      Time d -> SC.coarbitrary $ TimeValueP <$> d
-      DateTime d -> SC.coarbitrary $ DateTimeValueP <$> d
+      PlainText d -> SCA.coarbitrary d
+      Numeric d -> SCA.coarbitrary $ HN.toNumber <$> d
+      Date d -> SCA.coarbitrary $ DateValueP <$> d
+      Time d -> SCA.coarbitrary $ TimeValueP <$> d
+      DateTime d -> SCA.coarbitrary $ DateTimeValueP <$> d

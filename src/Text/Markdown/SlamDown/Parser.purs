@@ -4,23 +4,23 @@ module Text.Markdown.SlamDown.Parser
   , validateSlamDown
   ) where
 
-import Prelude
+import Prelude hiding (min)
 
-import Data.Foldable (any, all)
 import Data.Either (Either)
+import Data.Foldable (any, all)
+import Data.List ((:))
 import Data.List as L
 import Data.Maybe as M
 import Data.Monoid (mempty)
 import Data.String as S
 import Data.Traversable (traverse)
-import Data.Validation as V
+import Data.Validation.Semigroup as V
 
-import Text.Markdown.SlamDown.Syntax as SD
+import Partial.Unsafe (unsafePartial)
+
 import Text.Markdown.SlamDown.Parser.Inline as Inline
 import Text.Markdown.SlamDown.Parser.References as Ref
-
-infixr 6 L.Cons as :
-
+import Text.Markdown.SlamDown.Syntax as SD
 
 data Container a
   = CText String
@@ -56,7 +56,7 @@ allChars p = all p <<< S.split ""
 
 removeNonIndentingSpaces ∷ String → String
 removeNonIndentingSpaces s
-  | S.count (isSpace <<< S.fromChar) s < 4 = S.dropWhile (isSpace <<< S.fromChar) s
+  | S.count (isSpace <<< S.singleton) s < 4 = S.dropWhile (isSpace <<< S.singleton) s
   | otherwise = s
 
 isRuleChar ∷ String → Boolean
@@ -74,7 +74,7 @@ isRule s =
 isATXHeader ∷ String → Boolean
 isATXHeader s =
   let
-    level = S.count (\c → S.fromChar c == "#") s
+    level = S.count (\c → S.singleton c == "#") s
     rest = S.drop level s
   in
     level >= 1 && level <= 6 && S.take 1 rest == " "
@@ -82,7 +82,7 @@ isATXHeader s =
 splitATXHeader ∷ String → { level ∷ Int, contents ∷ String }
 splitATXHeader s =
   let
-    level = S.count (\c → S.fromChar c == "#") s
+    level = S.count (\c → S.singleton c == "#") s
     contents = S.drop (level + 1) s
   in
     { level: level
@@ -117,7 +117,7 @@ splitBlockquote ss =
   blockquoteContents s = S.drop (if S.take 2 s == "> " then 2 else 1) s
 
 countLeadingSpaces ∷ String → Int
-countLeadingSpaces = S.count (isSpace <<< S.fromChar)
+countLeadingSpaces = S.count (isSpace <<< S.singleton)
 
 isBulleted ∷ String → Boolean
 isBulleted s =
@@ -136,7 +136,7 @@ isBulleted s =
 isOrderedListMarker ∷ String → Boolean
 isOrderedListMarker s =
   let
-    n = S.count (isDigit <<< S.fromChar) s
+    n = S.count (isDigit <<< S.singleton) s
     next = S.take 1 (S.drop n s)
     ls = countLeadingSpaces (S.drop (n + 1) s)
   in
@@ -146,14 +146,14 @@ listItemType ∷ String → SD.ListType
 listItemType s
   | isBulleted s = SD.Bullet (S.take 1 s)
   | otherwise =
-      let n = S.count (isDigit <<< S.fromChar) s
+      let n = S.count (isDigit <<< S.singleton) s
       in SD.Ordered (S.take 1 (S.drop n s))
 
 listItemIndent ∷ String → Int
 listItemIndent s
   | isBulleted s = 1 + min 4 (countLeadingSpaces (S.drop 1 s))
   | otherwise =
-      let n = S.count (isDigit <<< S.fromChar) s
+      let n = S.count (isDigit <<< S.singleton) s
       in n + 1 + min 4 (countLeadingSpaces (S.drop (n + 1) s))
 
 isListItemLine ∷ String → Boolean
@@ -207,7 +207,7 @@ splitIndentedChunks ss =
 isCodeFence ∷ String → Boolean
 isCodeFence s = isSimpleFence s || (isEvaluatedCode s && isSimpleFence (S.drop 1 s))
   where
-  isSimpleFence s = S.count (isFenceChar <<< S.fromChar) s >= 3
+  isSimpleFence s = S.count (isFenceChar <<< S.singleton) s >= 3
 
 isEvaluatedCode ∷ String → Boolean
 isEvaluatedCode s = S.take 1 s == "!"
@@ -218,7 +218,7 @@ isFenceChar "`" = true
 isFenceChar _ = false
 
 codeFenceInfo ∷ String → String
-codeFenceInfo = S.trim <<< S.dropWhile (isFenceChar <<< S.fromChar)
+codeFenceInfo = S.trim <<< S.dropWhile (isFenceChar <<< S.singleton)
 
 codeFenceChar ∷ String → String
 codeFenceChar = S.take 1
@@ -240,7 +240,7 @@ splitCodeFence indent fence ss =
     }
   where
   isClosingFence ∷ String → Boolean
-  isClosingFence s = S.count (\c → S.fromChar c == fence) (removeNonIndentingSpaces s) >= 3
+  isClosingFence s = S.count (\c → S.singleton c == fence) (removeNonIndentingSpaces s) >= 3
 
   removeIndentTo ∷ String → String
   removeIndentTo s = S.drop (min indent (countLeadingSpaces s)) s
@@ -289,7 +289,7 @@ parseContainers acc (L.Cons s ss)
   | isLinkReference (removeNonIndentingSpaces s) =
       let
         s1 = removeNonIndentingSpaces s
-        b = Data.Maybe.Unsafe.fromJust $ Ref.parseLinkReference s1
+        b = unsafePartial M.fromJust $ Ref.parseLinkReference s1
       in
         parseContainers (L.Cons (CLinkReference b) acc) ss
   | otherwise = parseContainers (L.Cons (CText s) acc) ss
@@ -372,6 +372,6 @@ tabsToSpaces = S.replace "\t" "    "
 parseMd ∷ ∀ a. (SD.Value a) ⇒ String → Either String (SD.SlamDownP a)
 parseMd s = map SD.SlamDown bs
   where
-    lines = L.toList $ S.split "\n" $ S.replace "\r" "" $ tabsToSpaces s
+    lines = L.fromFoldable $ S.split "\n" $ S.replace "\r" "" $ tabsToSpaces s
     ctrs = parseContainers mempty lines
     bs = parseBlocks ctrs
