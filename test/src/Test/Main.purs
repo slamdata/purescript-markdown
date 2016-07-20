@@ -281,7 +281,7 @@ generated = do
       Trampoline.runTrampoline
         $ Gen.sample'
             10 (Gen.GenState { size: 10, seed: seed })
-            (SDPR.prettyPrintMd <<< runTestSlamDown <$> SC.arbitrary)
+            (SDPR.prettyPrintMd <<< runTestSlamDown <$> SCA.arbitrary)
 
   TR.traverse C.log docs
 
@@ -384,7 +384,7 @@ inlines =
     SD.FormField
       <$> alphaNum
       <*> Gen.elements true (L.singleton false)
-      <*> SC.arbitrary
+      <*> SCA.arbitrary
 
 simpleText ∷ ∀ a. Gen.Gen (SD.Inline a)
 simpleText = SD.Str <$> alphaNum
