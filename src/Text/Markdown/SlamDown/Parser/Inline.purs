@@ -15,7 +15,6 @@ import Data.Bifunctor (lmap)
 import Data.Const (Const(..))
 import Data.Either (Either(..))
 import Data.Foldable (elem)
-import Data.Functor ((<$))
 import Data.Functor.Compose (Compose(..))
 import Data.HugeNum as HN
 import Data.Int as Int
@@ -291,12 +290,16 @@ inlines = L.many inline2 <* PS.eof
               pure $ Right $ SD.TextBox $ SD.transTextBox (M.Just >>> Compose) def
             M.Nothing →
               pure $ Left case template of
-                SD.DateTime _ →
+                SD.DateTime SD.Minutes _ →
                   "Incorrect datetime default value, please use \"YYYY-MM-DD HH:mm\" or \"YYYY-MM-DDTHH:mm\" format"
+                SD.DateTime SD.Seconds _ →
+                  "Incorrect datetime default value, please use \"YYYY-MM-DD HH:mm:ss\" or \"YYYY-MM-DDTHH:mm:ss\" format"
                 SD.Date _ →
                   "Incorrect date default value, please use \"YYYY-MM-DD\" format"
-                SD.Time _ →
-                  "Incorrect time default value, please use \"HH:mm\" or \"HH:mm:ss\" format"
+                SD.Time SD.Minutes _ →
+                  "Incorrect time default value, please use \"HH:mm\" format"
+                SD.Time SD.Seconds _ →
+                  "Incorrect time default value, please use \"HH:mm:ss\" format"
                 SD.Numeric _ →
                   "Incorrect numeric default value"
                 SD.PlainText _ →
@@ -304,17 +307,19 @@ inlines = L.many inline2 <* PS.eof
 
     parseTextBoxTemplate ∷ P.Parser String (SD.TextBox (Const Unit))
     parseTextBoxTemplate =
-      SD.DateTime (Const unit) <$ PC.try parseDateTimeTemplate
+      SD.DateTime SD.Seconds (Const unit) <$ PC.try (parseDateTimeTemplate SD.Seconds)
+        <|> SD.DateTime SD.Minutes (Const unit) <$ PC.try (parseDateTimeTemplate SD.Minutes)
         <|> SD.Date (Const unit) <$ PC.try parseDateTemplate
-        <|> SD.Time (Const unit) <$ PC.try parseTimeTemplate
+        <|> SD.Time SD.Seconds (Const unit) <$ PC.try (parseTimeTemplate SD.Seconds)
+        <|> SD.Time SD.Minutes (Const unit) <$ PC.try (parseTimeTemplate SD.Minutes)
         <|> SD.Numeric (Const unit) <$ PC.try parseNumericTemplate
         <|> SD.PlainText (Const unit) <$ parsePlainTextTemplate
 
       where
-        parseDateTimeTemplate = do
+        parseDateTimeTemplate prec = do
           parseDateTemplate
           PU.skipSpaces
-          parseTimeTemplate
+          parseTimeTemplate prec
 
         parseDateTemplate = do
           und
@@ -323,10 +328,13 @@ inlines = L.many inline2 <* PS.eof
           PU.skipSpaces *> dash *> PU.skipSpaces
           und
 
-        parseTimeTemplate = do
+        parseTimeTemplate prec = do
           und
           PU.skipSpaces *> colon *> PU.skipSpaces
           und
+          when (prec == SD.Seconds) do
+            PU.skipSpaces *> colon *> PU.skipSpaces
+            void und
 
         parseNumericTemplate = do
           hash
@@ -404,17 +412,17 @@ parseTextBox
   → P.Parser String (SD.TextBox g)
 parseTextBox isPlainText eta template =
   case template of
-    SD.DateTime _ → SD.DateTime <$> eta parseDateTimeValue
+    SD.DateTime prec _ → SD.DateTime prec <$> eta (parseDateTimeValue prec)
     SD.Date _ → SD.Date <$> eta parseDateValue
-    SD.Time _ → SD.Time <$> eta parseTimeValue
+    SD.Time prec _ → SD.Time prec <$> eta (parseTimeValue prec)
     SD.Numeric _ → SD.Numeric <$> eta parseNumericValue
     SD.PlainText _ → SD.PlainText <$> eta parsePlainTextValue
 
   where
-    parseDateTimeValue = do
+    parseDateTimeValue prec = do
       date ← parseDateValue
       (PC.try $ void $ PS.string "T") <|> PU.skipSpaces
-      time ← parseTimeValue
+      time ← parseTimeValue prec
       pure { date, time }
 
     parseDateValue = do
@@ -427,12 +435,23 @@ parseTextBox isPlainText eta template =
       when (day > 31) $ P.fail "Incorrect day"
       pure { month, day, year }
 
-    parseTimeValue = do
+    parseTimeValue prec = do
       hours ← natural
       when (hours > 23) $ P.fail "Incorrect hours"
       PU.skipSpaces *> colon *> PU.skipSpaces
       minutes ← natural
       when (minutes > 59) $ P.fail "Incorrect minutes"
+      seconds ← case prec of
+        SD.Minutes -> do
+          scolon ← PC.try $ PC.optionMaybe $ PU.skipSpaces *> colon
+          when (M.isJust scolon) $ P.fail "Unexpected seconds component"
+          pure M.Nothing
+        SD.Seconds -> do
+          PU.skipSpaces *> colon *> PU.skipSpaces
+          secs ← natural
+          when (secs > 59) $ P.fail "Incorrect seconds"
+          PU.skipSpaces
+          pure $ M.Just secs
       PU.skipSpaces
       amPm ←
         PC.optionMaybe $
@@ -447,7 +466,7 @@ parseTextBox isPlainText eta template =
                 else if isAM && hours == 12
                 then 0
                 else hours
-      pure { hours : hours', minutes }
+      pure { hours : hours', minutes, seconds }
 
     parseNumericValue = do
       sign ← PC.try (-1 <$ PS.char '-') <|> pure 1

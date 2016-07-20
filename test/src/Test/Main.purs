@@ -9,7 +9,7 @@ import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Trampoline as Trampoline
 
 import Data.HugeNum as HN
-import Data.Either (Either(..))
+import Data.Either (Either(..), isLeft)
 import Data.List as L
 import Data.Maybe as M
 import Data.Traversable as TR
@@ -71,6 +71,9 @@ testDocument sd = do
     <> "\nParsed:\n   "
     <> show parsed
   SC.assert (parsed == sd SC.<?> "Test failed")
+
+failDocument ∷ ∀ e. Either String (SD.SlamDownP NonEmptyString) → Eff (TestEffects e) Unit
+failDocument sd = SC.assert (isLeft sd SC.<?> "Test failed")
 
 static ∷ ∀ e. Eff (TestEffects e) Unit
 static = do
@@ -234,11 +237,17 @@ static = do
                   SD.PlainText _ → pure $ SD.PlainText $ pure "Evaluated plain text!"
                   SD.Numeric _ → pure $ SD.Numeric $ pure $ HN.fromNumber 42.0
                   SD.Date _ → pure $ SD.Date $ pure { month : 7, day : 30, year : 1992 }
-                  SD.Time _ → pure $ SD.Time $ pure { hours : 4, minutes : 52 }
-                  SD.DateTime _ →
-                    pure $ SD.DateTime $ pure $
+                  SD.Time (prec@SD.Minutes) _ → pure $ SD.Time prec $ pure { hours : 4, minutes : 52, seconds : M.Nothing }
+                  SD.Time (prec@SD.Seconds) _ → pure $ SD.Time prec $ pure { hours : 4, minutes : 52, seconds : M.Just 10 }
+                  SD.DateTime (prec@SD.Minutes) _ →
+                    pure $ SD.DateTime prec $ pure $
                       { date : { month : 7, day : 30, year : 1992 }
-                      , time : { hours : 4, minutes : 52 }
+                      , time : { hours : 4, minutes : 52, seconds : M.Nothing }
+                      }
+                  SD.DateTime (prec@SD.Seconds) _ →
+                    pure $ SD.DateTime prec $ pure $
+                      { date : { month : 7, day : 30, year : 1992 }
+                      , time : { hours : 4, minutes : 52, seconds : M.Just 10 }
                       }
             , value: \_ → pure $ SD.stringValue "Evaluated value!"
             , list: \_ → pure $ L.singleton $ SD.stringValue "Evaluated list!"
@@ -256,6 +265,9 @@ static = do
   testDocument $ SDP.parseMd "start = __ - __ - ____ (06-06-2015)"
   testDocument $ SDP.parseMd "start = __ - __ - ____ (!`...`)"
   testDocument $ SDP.parseMd "start = __ : __ (10:32 PM)"
+  failDocument $ SDP.parseMd "start = __ : __ (10:32:46 PM)"
+  failDocument $ SDP.parseMd "start = __ : __ : __ (10:32 PM)"
+  testDocument $ SDP.parseMd "start = __ : __ : __ (10:32:46 PM)"
   testDocument $ SDP.parseMd "start = __ : __ (!`...`)"
   testDocument $ SDP.parseMd "start = __-__-____ __:__ (06-06-2015 12:00 PM)"
   testDocument $ SDP.parseMd "start = __ - __ - ____ __ : __ (!`...`)"
@@ -264,7 +276,8 @@ static = do
   testDocument $ SDP.parseMd "city = {BOS, SFO, NYC}"
   testDocument $ SDP.parseMd "start = __ - __ - ____"
   testDocument $ SDP.parseMd "start = __ : __"
-  testDocument $ SDP.parseMd "start = __ - __ - ____ __ : __"
+  testDocument $ SDP.parseMd "start = __ : __ : __"
+  testDocument $ SDP.parseMd "start = __ - __ - ____ __ : __ : __"
   testDocument $ SDP.parseMd "zip* = ________"
   testDocument $ SDP.parseMd "[numeric field] = #______ (23)"
   testDocument $ SDP.parseMd "i9a0qvg8* = ______ (9a0qvg8h)"

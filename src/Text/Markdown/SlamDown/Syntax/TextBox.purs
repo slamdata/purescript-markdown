@@ -2,6 +2,7 @@ module Text.Markdown.SlamDown.Syntax.TextBox
   ( TimeValue
   , DateValue
   , DateTimeValue
+  , TimePrecision(..)
   , TextBox(..)
   , transTextBox
   , traverseTextBox
@@ -16,6 +17,7 @@ import Prelude
 import Data.Function (on)
 import Data.HugeNum as HN
 import Data.Identity (Identity(..), runIdentity)
+import Data.Maybe (Maybe(..))
 
 import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
@@ -23,6 +25,7 @@ import Test.StrongCheck.Gen as Gen
 type TimeValue =
   { hours ∷ Int
   , minutes ∷ Int
+  , seconds ∷ Maybe Int
   }
 
 newtype TimeValueP = TimeValueP TimeValue
@@ -55,12 +58,16 @@ instance arbitraryTimeValueP ∷ SCA.Arbitrary TimeValueP where
   arbitrary = do
     hours ← Gen.chooseInt 0.0 12.0
     minutes ← Gen.chooseInt 0.0 60.0
-    pure $ TimeValueP { hours , minutes }
+    secs ← Gen.chooseInt 0.0 60.0
+    b <- (_ < 0.5) <$> Gen.choose 0.0 1.0
+    let seconds = if b then Nothing else Just secs
+    pure $ TimeValueP { hours , minutes , seconds }
 
 instance coarbitraryTimeValueP :: SCA.Coarbitrary TimeValueP where
-  coarbitrary (TimeValueP { hours, minutes }) gen = do
+  coarbitrary (TimeValueP { hours, minutes, seconds }) gen = do
     SCA.coarbitrary hours gen
     SCA.coarbitrary minutes gen
+    SCA.coarbitrary seconds gen
 
 type DateValue =
   { month ∷ Int
@@ -153,12 +160,33 @@ instance coarbitraryDateTimeValueP :: SCA.Coarbitrary DateTimeValueP where
     SCA.coarbitrary (DateValueP date) gen
     SCA.coarbitrary (TimeValueP time) gen
 
+data TimePrecision
+  = Minutes
+  | Seconds
+
+derive instance eqTimePrecision :: Eq TimePrecision
+derive instance ordTimePrecision :: Ord TimePrecision
+
+instance showTimePrecision :: Show TimePrecision where
+  show Minutes = "Minutes"
+  show Seconds = "Seconds"
+
+instance arbitraryTimePrecision ∷ SCA.Arbitrary TimePrecision where
+  arbitrary =
+    Gen.chooseInt 0.0 1.0 <#> case _ of
+      0 → Minutes
+      _ → Seconds
+
+instance coarbitraryTimePrecision :: SCA.Coarbitrary TimePrecision where
+  coarbitrary Minutes = SCA.coarbitrary 1
+  coarbitrary Seconds = SCA.coarbitrary 2
+
 data TextBox f
   = PlainText (f String)
   | Numeric (f HN.HugeNum)
   | Date (f DateValue)
-  | Time (f TimeValue)
-  | DateTime (f DateTimeValue)
+  | Time TimePrecision (f TimeValue)
+  | DateTime TimePrecision (f DateTimeValue)
 
 transTextBox
   ∷ ∀ f g
@@ -180,8 +208,8 @@ traverseTextBox eta t =
     PlainText def → PlainText <$> eta def
     Numeric def → Numeric <$> eta def
     Date def → Date <$> eta def
-    Time def → Time <$> eta def
-    DateTime def → DateTime <$> eta def
+    Time prec def → Time prec <$> eta def
+    DateTime prec def → DateTime prec <$> eta def
 
 instance showTextBox ∷ (Functor f, Show (f String), Show (f HN.HugeNum), Show (f TimeValueP), Show (f DateValueP), Show (f DateTimeValueP)) ⇒ Show (TextBox f) where
   show =
@@ -189,8 +217,8 @@ instance showTextBox ∷ (Functor f, Show (f String), Show (f HN.HugeNum), Show 
       PlainText def → "(PlainText " <> show def <> ")"
       Numeric def → "(Numeric " <> show def <> ")"
       Date def → "(Date " <> show (DateValueP <$> def) <> ")"
-      Time def → "(Time " <> show (TimeValueP <$> def) <> ")"
-      DateTime def → "(DateTime " <> show (DateTimeValueP <$> def) <> ")"
+      Time prec def → "(Time " <> show prec <> " " <> show (TimeValueP <$> def) <> ")"
+      DateTime prec def → "(DateTime " <> show prec <> " " <> show (DateTimeValueP <$> def) <> ")"
 
 instance ordTextBox ∷ (Functor f, Ord (f String), Ord (f HN.HugeNum), Ord (f TimeValueP), Ord (f DateValueP), Ord (f DateTimeValueP)) ⇒ Ord (TextBox f) where
   compare =
@@ -207,11 +235,11 @@ instance ordTextBox ∷ (Functor f, Ord (f String), Ord (f HN.HugeNum), Ord (f T
       Date _, _ → LT
       _, Date _ → GT
 
-      Time t1, Time t2 → on compare (map TimeValueP) t1 t2
-      Time _, _ → LT
-      _, Time _ → GT
+      Time prec1 t1, Time prec2 t2 → compare prec1 prec2 <> on compare (map TimeValueP) t1 t2
+      Time _ _, _ → LT
+      _, Time _ _ → GT
 
-      DateTime d1, DateTime d2 → on compare (map DateTimeValueP) d1 d2
+      DateTime prec1 d1, DateTime prec2 d2 → compare prec1 prec2 <> on compare (map DateTimeValueP) d1 d2
 
 instance eqTextBox ∷ (Functor f, Eq (f String), Eq (f HN.HugeNum), Eq (f TimeValueP), Eq (f DateValueP), Eq (f DateTimeValueP)) ⇒ Eq (TextBox f) where
   eq =
@@ -219,8 +247,8 @@ instance eqTextBox ∷ (Functor f, Eq (f String), Eq (f HN.HugeNum), Eq (f TimeV
       PlainText d1, PlainText d2 → d1 == d2
       Numeric d1, Numeric d2 → d1 == d2
       Date d1, Date d2 → on eq (map DateValueP) d1 d2
-      Time d1, Time d2 → on eq (map TimeValueP) d1 d2
-      DateTime d1, DateTime d2 → on eq (map DateTimeValueP) d1 d2
+      Time prec1 d1, Time prec2 d2 → prec1 == prec2 && on eq (map TimeValueP) d1 d2
+      DateTime prec1 d1, DateTime prec2 d2 → prec1 == prec2 && on eq (map DateTimeValueP) d1 d2
       _, _ → false
 
 instance arbitraryTextBox ∷ (Functor f, SCA.Arbitrary (f String), SCA.Arbitrary (f Number), SCA.Arbitrary (f TimeValueP), SCA.Arbitrary (f DateValueP), SCA.Arbitrary (f DateTimeValueP)) ⇒ SCA.Arbitrary (TextBox f) where
@@ -230,8 +258,8 @@ instance arbitraryTextBox ∷ (Functor f, SCA.Arbitrary (f String), SCA.Arbitrar
       0 → PlainText <$> SCA.arbitrary
       1 → Numeric <<< map HN.fromNumber <$> SCA.arbitrary
       2 → Date <<< map getDateValueP <$> SCA.arbitrary
-      3 → Time <<< map getTimeValueP <$> SCA.arbitrary
-      4 → DateTime <<< map getDateTimeValueP <$> SCA.arbitrary
+      3 → Time <$> SCA.arbitrary <*> (map getTimeValueP <$> SCA.arbitrary)
+      4 → DateTime <$> SCA.arbitrary <*> (map getDateTimeValueP <$> SCA.arbitrary)
       _ → PlainText <$> SCA.arbitrary
 
 instance coarbitraryTextBox :: (Functor f, SCA.Coarbitrary (f String), SCA.Coarbitrary (f Number), SCA.Coarbitrary (f DateValueP), SCA.Coarbitrary (f TimeValueP), SCA.Coarbitrary (f DateTimeValueP)) ⇒ SCA.Coarbitrary (TextBox f) where
@@ -240,5 +268,9 @@ instance coarbitraryTextBox :: (Functor f, SCA.Coarbitrary (f String), SCA.Coarb
       PlainText d -> SCA.coarbitrary d
       Numeric d -> SCA.coarbitrary $ HN.toNumber <$> d
       Date d -> SCA.coarbitrary $ DateValueP <$> d
-      Time d -> SCA.coarbitrary $ TimeValueP <$> d
-      DateTime d -> SCA.coarbitrary $ DateTimeValueP <$> d
+      Time prec d -> do
+        SCA.coarbitrary prec
+        SCA.coarbitrary $ TimeValueP <$> d
+      DateTime prec d -> do
+        SCA.coarbitrary prec
+        SCA.coarbitrary $ DateTimeValueP <$> d
