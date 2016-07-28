@@ -23,7 +23,7 @@
   ],
   "dependencies": {
     "purescript-const": "^1.0.0",
-    "purescript-functor-compose": "garyb/purescript-functor-compose#d37327f2daf87dd75a979840a2662d664baf3313",
+    "purescript-functor-compose": "#384edff4e5606f0db7b5f06903b3defd807d8a27",
     "purescript-hugenums": "^2.0.0",
     "purescript-lists": "^1.0.0",
     "purescript-parsing": "^1.0.0",
