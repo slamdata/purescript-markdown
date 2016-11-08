@@ -7,13 +7,14 @@ import Prelude
 
 import Data.Array as A
 import Data.Foldable (fold, elem)
-import Data.Functor.Compose (Compose, decompose)
+import Data.Functor.Compose (Compose)
 import Data.HugeNum as HN
 import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
 import Data.Monoid (mempty)
 import Data.String as S
+import Data.Newtype (unwrap)
 import Data.Unfoldable as U
 
 import Text.Markdown.SlamDown.Syntax as SD
@@ -35,7 +36,7 @@ overLines f = map f <<< L.concatMap lines
 
 lines ∷ String → L.List String
 lines "" = mempty
-lines s = L.fromFoldable $ S.split "\n" s
+lines s = L.fromFoldable $ S.split (S.Pattern "\n") s
 
 prettyPrintBlock ∷ ∀ a. (SD.Value a) ⇒ SD.Block a → L.List String
 prettyPrintBlock bl =
@@ -102,7 +103,7 @@ prettyPrintInline il =
         esc l <> star <> " = " <> prettyPrintFormElement e
       where
 
-      esc s = M.maybe s (const $ "[" <> s <> "]") $ S.indexOf " " s
+      esc s = M.maybe s (const $ "[" <> s <> "]") $ S.indexOf (S.Pattern " ") s
 
       printTarget ∷ SD.LinkTarget → String
       printTarget (SD.InlineLink url) = parens url
@@ -115,7 +116,7 @@ prettyPrintTextBoxValue t =
     SD.PlainText (Identity def) → def
     SD.Numeric (Identity def) →
       let s = HN.toString def in
-      M.fromMaybe s $ S.stripSuffix "." $ HN.toString def
+      M.fromMaybe s $ S.stripSuffix (S.Pattern ".") $ HN.toString def
     SD.Date (Identity def) → prettyPrintDate def
     SD.Time prec (Identity def) → prettyPrintTime prec def
     SD.DateTime prec (Identity def) → prettyPrintDateTime prec def
@@ -155,7 +156,7 @@ printIntPadded l i =
 prettyPrintTextBox ∷ SD.TextBox (Compose M.Maybe SD.Expr) → String
 prettyPrintTextBox t =
   prettyPrintTemplate t
-    <> M.maybe "" (\x → " (" <> prettyPrintDefault x <> ")") (SD.traverseTextBox decompose t)
+    <> M.maybe "" (\x → " (" <> prettyPrintDefault x <> ")") (SD.traverseTextBox unwrap t)
   where
     prettyPrintTemplate ∷ ∀ f. SD.TextBox f → String
     prettyPrintTemplate t =

@@ -48,7 +48,7 @@ derive instance ordBlock ∷ (Ord a) ⇒ Ord (Block a)
 -- | Nota bene: this does not generate any recursive structure
 instance arbitraryBlock ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (Block a) where
   arbitrary = do
-    k ← Gen.chooseInt 0.0 6.0
+    k ← Gen.chooseInt 0 6
     case k of
       0 → Paragraph <$> listOf SCA.arbitrary
       1 → Header <$> SCA.arbitrary <*> listOf SCA.arbitrary

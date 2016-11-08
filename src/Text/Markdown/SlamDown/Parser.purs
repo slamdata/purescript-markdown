@@ -52,7 +52,7 @@ isDigit "9" = true
 isDigit _ = false
 
 allChars ∷ (String → Boolean) → String → Boolean
-allChars p = all p <<< S.split ""
+allChars p = all p <<< S.split (S.Pattern "")
 
 removeNonIndentingSpaces ∷ String → String
 removeNonIndentingSpaces s
@@ -367,11 +367,11 @@ validateSlamDown ∷ ∀ a. SD.SlamDownP a → V.V (Array String) (SD.SlamDownP 
 validateSlamDown (SD.SlamDown bls) = SD.SlamDown <$> traverse validateBlock bls
 
 tabsToSpaces ∷ String → String
-tabsToSpaces = S.replace "\t" "    "
+tabsToSpaces = S.replace (S.Pattern "\t") (S.Replacement "    ")
 
 parseMd ∷ ∀ a. (SD.Value a) ⇒ String → Either String (SD.SlamDownP a)
 parseMd s = map SD.SlamDown bs
   where
-    lines = L.fromFoldable $ S.split "\n" $ S.replace "\r" "" $ tabsToSpaces s
+    lines = L.fromFoldable $ S.split (S.Pattern "\n") $ S.replace (S.Pattern "\r") (S.Replacement "") $ tabsToSpaces s
     ctrs = parseContainers mempty lines
     bs = parseBlocks ctrs

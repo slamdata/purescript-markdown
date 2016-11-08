@@ -15,10 +15,11 @@ module Text.Markdown.SlamDown.Syntax.FormField
 import Prelude
 
 import Data.Array as A
-import Data.Functor.Compose (Compose(..), decompose)
-import Data.Identity (Identity(..), runIdentity)
+import Data.Functor.Compose (Compose(..))
+import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
+import Data.Newtype (unwrap)
 import Data.Set as Set
 import Data.Traversable as TR
 import Data.Tuple (uncurry)
@@ -45,7 +46,7 @@ transFormField
   → FormFieldP f
   ~> FormFieldP g
 transFormField eta =
-  runIdentity <<<
+  unwrap <<<
     traverseFormField (eta >>> Identity)
 
 traverseFormField
@@ -56,7 +57,7 @@ traverseFormField
   → h (FormFieldP g a)
 traverseFormField eta field =
   case field of
-    TextBox tb → TextBox <$> TB.traverseTextBox (decompose >>> TR.traverse eta >>> map Compose) tb
+    TextBox tb → TextBox <$> TB.traverseTextBox (unwrap >>> TR.traverse eta >>> map Compose) tb
     RadioButtons sel ls → RadioButtons <$> eta sel <*> eta ls
     CheckBoxes sel ls → CheckBoxes <$> eta sel <*> eta ls
     DropDown sel ls → DropDown <$> TR.traverse eta sel <*> eta ls
@@ -156,7 +157,7 @@ unsafeElements =
 
 instance arbitraryFormField ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (FormFieldP Expr a) where
   arbitrary = do
-    k ← Gen.chooseInt 0.0 3.0
+    k ← Gen.chooseInt 0 3
     case k of
       0 → TextBox <<< TB.transTextBox getArbCompose <$> SCA.arbitrary
       1 → do
@@ -189,7 +190,7 @@ instance arbitraryFormField ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (FormF
 
 instance arbitraryFormFieldIdentity ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (FormFieldP Identity a) where
   arbitrary = do
-    k ← Gen.chooseInt 0.0 3.0
+    k ← Gen.chooseInt 0 3
     case k of
       0 → TextBox <<< TB.transTextBox (\(ArbCompose x) → Compose $ map getArbIdentity x) <$> SCA.arbitrary
       1 → do
@@ -217,16 +218,16 @@ genMaybe gen = do
 instance coarbitraryFormFieldIdentity ∷ (SCA.Coarbitrary a) ⇒ SCA.Coarbitrary (FormFieldP Identity a) where
   coarbitrary field =
     case field of
-      TextBox tb → SCA.coarbitrary $ TB.transTextBox (decompose >>> map (runIdentity >>> ArbIdentity) >>> ArbCompose) tb
+      TextBox tb → SCA.coarbitrary $ TB.transTextBox (unwrap >>> map (unwrap >>> ArbIdentity) >>> ArbCompose) tb
       RadioButtons x xs → \gen → do
-        SCA.coarbitrary (ArbIdentity $ runIdentity x) gen
-        SCA.coarbitrary (ArbIdentity $ runIdentity xs) gen
+        SCA.coarbitrary (ArbIdentity $ unwrap x) gen
+        SCA.coarbitrary (ArbIdentity $ unwrap xs) gen
       CheckBoxes sel xs → \gen → do
-        SCA.coarbitrary (ArbIdentity $ runIdentity sel) gen
-        SCA.coarbitrary (ArbIdentity $ runIdentity xs) gen
+        SCA.coarbitrary (ArbIdentity $ unwrap sel) gen
+        SCA.coarbitrary (ArbIdentity $ unwrap xs) gen
       DropDown mx xs → \gen → do
-        SCA.coarbitrary (ArbIdentity <<< runIdentity <$> mx) gen
-        SCA.coarbitrary (ArbIdentity $ runIdentity xs) gen
+        SCA.coarbitrary (ArbIdentity <<< unwrap <$> mx) gen
+        SCA.coarbitrary (ArbIdentity $ unwrap xs) gen
 
 listOf1
   ∷ ∀ f a

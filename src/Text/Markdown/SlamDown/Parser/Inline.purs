@@ -39,7 +39,7 @@ parseInlines
   → Either String (L.List (SD.Inline a))
 parseInlines s =
   map consolidate
-    $ lmap (\(P.ParseError {message}) → message)
+    $ lmap P.parseErrorMessage
     $ P.runParser (S.joinWith "\n" $ A.fromFoldable s) inlines
 
 consolidate

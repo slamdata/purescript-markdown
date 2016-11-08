@@ -60,7 +60,7 @@ derive instance ordInline ∷ (Ord a) ⇒ Ord (Inline a)
 -- | Nota bene: this does not generate any recursive structure
 instance arbitraryInline ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (Inline a) where
   arbitrary = do
-    k ← Gen.chooseInt 0.0 10.0
+    k ← Gen.chooseInt 0 10
     case k of
       0 → Str <$> SCA.arbitrary
       1 → Entity <$> SCA.arbitrary
