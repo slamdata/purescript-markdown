@@ -12,6 +12,7 @@ import Prelude
 import Data.Foldable as F
 import Data.Identity as Id
 import Data.Monoid (class Monoid)
+import Data.Newtype (un)
 import Data.Traversable as T
 
 import Text.Markdown.SlamDown.Syntax as SD
@@ -48,7 +49,7 @@ everywhere
   → SD.SlamDownP a
   → SD.SlamDownP a
 everywhere b i =
-  Id.runIdentity
+  un Id.Identity
     <<< everywhereM (pure <<< b) (pure <<< i)
 
 everywhereTopDownM
@@ -83,7 +84,7 @@ everywhereTopDown
   → SD.SlamDownP a
   → SD.SlamDownP a
 everywhereTopDown b i =
-  Id.runIdentity <<<
+  un Id.Identity <<<
     everywhereTopDownM
       (pure <<< b)
       (pure <<< i)
@@ -120,7 +121,7 @@ everything
   → SD.SlamDownP a
   → r
 everything b i =
-  Id.runIdentity <<<
+  un Id.Identity <<<
     everythingM
       (pure <<< b)
       (pure <<< i)

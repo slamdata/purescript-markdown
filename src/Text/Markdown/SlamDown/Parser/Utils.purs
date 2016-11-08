@@ -12,6 +12,7 @@ import Prelude
 import Data.Either (fromRight)
 import Data.String (singleton)
 import Data.String.Regex as R
+import Data.String.Regex.Flags as RF
 
 import Partial.Unsafe (unsafePartial)
 
@@ -24,23 +25,14 @@ isWhitespace = R.test wsRegex <<< singleton
   where
   wsRegex ∷ R.Regex
   wsRegex = unsafePartial fromRight $
-    R.regex "^\\s$" flags
+    R.regex "^\\s$" RF.noFlags
 
 isEmailAddress ∷ String → Boolean
 isEmailAddress = R.test wsEmail
   where
   wsEmail ∷ R.Regex
   wsEmail = unsafePartial fromRight $
-    R.regex """^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""" flags
-
-flags ∷ R.RegexFlags
-flags =
-  { unicode: false
-  , sticky: false
-  , multiline: false
-  , ignoreCase: false
-  , global: false
-  }
+    R.regex """^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""" RF.noFlags
 
 parens ∷ ∀ a. Parser String a → Parser String a
 parens p = string "(" *> skipSpaces *> p <* skipSpaces <* string ")"

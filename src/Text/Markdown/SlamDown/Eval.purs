@@ -9,10 +9,11 @@ import Control.Alt ((<|>))
 
 import Data.Array as A
 import Data.Const (Const(..))
-import Data.Functor.Compose (Compose(..), decompose)
-import Data.Identity (Identity(..), runIdentity)
+import Data.Functor.Compose (Compose(..))
+import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
+import Data.Newtype (unwrap)
 import Data.String as S
 import Data.Traversable as T
 
@@ -56,11 +57,11 @@ eval fs = everywhereM b i
       evalTextBox ∷ SD.TextBox (Compose M.Maybe SD.Expr) → m (M.Maybe (SD.TextBox Identity))
       evalTextBox tb = T.sequence $ fs.textBox <$> asCode tb <|> pure <$> asLit tb
         where
-          asLit = SD.traverseTextBox (decompose >>> (_ >>= SD.getLiteral) >>> map Identity)
-          asCode = SD.traverseTextBox (decompose >>> (_ >>= SD.getUnevaluated) >>> map Const)
+          asLit = SD.traverseTextBox (unwrap >>> (_ >>= SD.getLiteral) >>> map Identity)
+          asCode = SD.traverseTextBox (unwrap >>> (_ >>= SD.getUnevaluated) >>> map Const)
 
       quoteTextBox ∷ SD.TextBox Identity → SD.TextBox (Compose M.Maybe SD.Expr)
-      quoteTextBox = SD.transTextBox (runIdentity >>> SD.Literal >>> M.Just >>> Compose)
+      quoteTextBox = SD.transTextBox (unwrap >>> SD.Literal >>> M.Just >>> Compose)
 
   f (SD.RadioButtons sel opts) = do
     sel' ← evalExpr fs.value sel

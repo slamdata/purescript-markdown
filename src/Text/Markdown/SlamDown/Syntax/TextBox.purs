@@ -16,8 +16,9 @@ import Prelude
 
 import Data.Function (on)
 import Data.HugeNum as HN
-import Data.Identity (Identity(..), runIdentity)
+import Data.Identity (Identity(..))
 import Data.Maybe (Maybe(..))
+import Data.Newtype (unwrap)
 
 import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
@@ -56,9 +57,9 @@ instance showTimeValueP ∷ Show TimeValueP where
 
 instance arbitraryTimeValueP ∷ SCA.Arbitrary TimeValueP where
   arbitrary = do
-    hours ← Gen.chooseInt 0.0 12.0
-    minutes ← Gen.chooseInt 0.0 60.0
-    secs ← Gen.chooseInt 0.0 60.0
+    hours ← Gen.chooseInt 0 12
+    minutes ← Gen.chooseInt 0 60
+    secs ← Gen.chooseInt 0 60
     b <- (_ < 0.5) <$> Gen.choose 0.0 1.0
     let seconds = if b then Nothing else Just secs
     pure $ TimeValueP { hours , minutes , seconds }
@@ -107,9 +108,9 @@ instance showDateValueP ∷ Show DateValueP where
 
 instance arbitraryDateValueP ∷ SCA.Arbitrary DateValueP where
   arbitrary = do
-    month ← Gen.chooseInt 0.0 12.0
-    day ← Gen.chooseInt 0.0 30.0
-    year ← Gen.chooseInt 0.0 3000.0
+    month ← Gen.chooseInt 0 12
+    day ← Gen.chooseInt 0 30
+    year ← Gen.chooseInt 0 3000
     pure $ DateValueP { month , day, year }
 
 instance coarbitraryDateValueP :: SCA.Coarbitrary DateValueP where
@@ -173,7 +174,7 @@ instance showTimePrecision :: Show TimePrecision where
 
 instance arbitraryTimePrecision ∷ SCA.Arbitrary TimePrecision where
   arbitrary =
-    Gen.chooseInt 0.0 1.0 <#> case _ of
+    Gen.chooseInt 0 1 <#> case _ of
       0 → Minutes
       _ → Seconds
 
@@ -194,7 +195,7 @@ transTextBox
   → TextBox f
   → TextBox g
 transTextBox eta =
-  runIdentity <<<
+  unwrap <<<
     traverseTextBox (eta >>> Identity)
 
 traverseTextBox
@@ -253,7 +254,7 @@ instance eqTextBox ∷ (Functor f, Eq (f String), Eq (f HN.HugeNum), Eq (f TimeV
 
 instance arbitraryTextBox ∷ (Functor f, SCA.Arbitrary (f String), SCA.Arbitrary (f Number), SCA.Arbitrary (f TimeValueP), SCA.Arbitrary (f DateValueP), SCA.Arbitrary (f DateTimeValueP)) ⇒ SCA.Arbitrary (TextBox f) where
   arbitrary = do
-    i ← Gen.chooseInt 0.0 5.0
+    i ← Gen.chooseInt 0 5
     case i of
       0 → PlainText <$> SCA.arbitrary
       1 → Numeric <<< map HN.fromNumber <$> SCA.arbitrary

@@ -12,6 +12,7 @@ import Data.HugeNum as HN
 import Data.Either (Either(..), isLeft)
 import Data.List as L
 import Data.Maybe as M
+import Data.Newtype (un)
 import Data.Traversable as TR
 import Data.Identity as ID
 import Data.Array as A
@@ -28,6 +29,7 @@ import Text.Markdown.SlamDown.Pretty as SDPR
 import Test.StrongCheck as SC
 import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
+import Test.StrongCheck.LCG as LCG
 
 type TestEffects e =
   ( console ∷ C.CONSOLE
@@ -229,7 +231,7 @@ static = do
     case probablyParsedCodeForEvaluation of
       Right sd →
         Right
-          $ ID.runIdentity
+          $ un ID.Identity
           $ SDE.eval
             { code: \_ _ → pure $ SD.stringValue "Evaluated code block!"
             , textBox: \t →
@@ -288,12 +290,12 @@ static = do
 generated ∷ ∀ e. Eff (TestEffects e) Unit
 generated = do
   C.log "Random documents"
-  seed ← Rand.random
+  seed ← LCG.randomSeed
   let
     docs =
       Trampoline.runTrampoline
         $ Gen.sample'
-            10 (Gen.GenState { size: 10, seed: seed })
+            10 (Gen.GenState { size: 10, seed })
             (SDPR.prettyPrintMd <<< runTestSlamDown <$> SCA.arbitrary)
 
   TR.traverse C.log docs
@@ -315,12 +317,12 @@ deferGen g = do
 
 tinyArrayOf ∷ ∀ a. Gen.Gen a → Gen.Gen (Array a)
 tinyArrayOf g = do
-  len ← Gen.chooseInt 0.0 1.0
+  len ← Gen.chooseInt 0 1
   Gen.vectorOf len g
 
 smallArrayOf ∷ ∀ a. Gen.Gen a → Gen.Gen (Array a)
 smallArrayOf g = do
-  len ← Gen.chooseInt 1.0 2.0
+  len ← Gen.chooseInt 1 2
   Gen.vectorOf len g
 
 newtype TestSlamDown = TestSlamDown (SD.SlamDownP NonEmptyString)
@@ -346,7 +348,7 @@ blocks =
   block0 ∷ Gen.Gen (SD.Block a)
   block0 =
     Gen.oneOf (SD.Paragraph <<< L.fromFoldable <$> inlines)
-      [ SD.Header <$> Gen.chooseInt 1.0 6.0 <*> (L.singleton <$> simpleText)
+      [ SD.Header <$> Gen.chooseInt 1 6 <*> (L.singleton <$> simpleText)
       , SD.CodeBlock <$>
         (SD.Fenced <$> (Gen.elements true (L.singleton false)) <*>
          alphaNum)
@@ -404,7 +406,7 @@ simpleText = SD.Str <$> alphaNum
 
 alphaNum ∷ Gen.Gen String
 alphaNum = do
-  len ← Gen.chooseInt 5.0 10.0
+  len ← Gen.chooseInt 5 10
   S.fromCharArray <$> Gen.vectorOf len (Gen.elements (CH.fromCharCode 97) $ L.fromFoldable (S.toCharArray "qwertyuioplkjhgfdszxcvbnm123457890"))
 
 
