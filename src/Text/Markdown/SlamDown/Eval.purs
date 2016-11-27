@@ -55,7 +55,7 @@ eval fs = everywhereM b i
       nbeTextBox = evalTextBox >>> map (map quoteTextBox)
 
       evalTextBox ∷ SD.TextBox (Compose M.Maybe SD.Expr) → m (M.Maybe (SD.TextBox Identity))
-      evalTextBox tb = T.sequence $ fs.textBox <$> asCode tb <|> pure <$> asLit tb
+      evalTextBox tb' = T.sequence $ fs.textBox <$> asCode tb' <|> pure <$> asLit tb'
         where
           asLit = SD.traverseTextBox (unwrap >>> (_ >>= SD.getLiteral) >>> map Identity)
           asCode = SD.traverseTextBox (unwrap >>> (_ >>= SD.getUnevaluated) >>> map Const)

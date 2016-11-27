@@ -207,7 +207,7 @@ splitIndentedChunks ss =
 isCodeFence ∷ String → Boolean
 isCodeFence s = isSimpleFence s || (isEvaluatedCode s && isSimpleFence (S.drop 1 s))
   where
-  isSimpleFence s = S.count (isFenceChar <<< S.singleton) s >= 3
+  isSimpleFence s' = S.count (isFenceChar <<< S.singleton) s' >= 3
 
 isEvaluatedCode ∷ String → Boolean
 isEvaluatedCode s = S.take 1 s == "!"
@@ -315,8 +315,8 @@ parseBlocks
   . (SD.Value a)
   ⇒ L.List (Container a)
   → Either String (L.List (SD.Block a))
-parseBlocks cs =
-  case cs of
+parseBlocks =
+  case _ of
     L.Nil → pure L.Nil
     (CText s) : (CSetextHeader n) : cs → do
       hd ← Inline.parseInlines $ L.singleton s
@@ -355,13 +355,13 @@ parseBlocks cs =
       parseBlocks cs
 
 validateBlock ∷ ∀ a. SD.Block a → V.V (Array String) (SD.Block a)
-validateBlock b =
-  case b of
+validateBlock =
+  case _ of
     SD.Paragraph inls → SD.Paragraph <$> traverse Inline.validateInline inls
     SD.Header i inls → SD.Header i <$> traverse Inline.validateInline inls
     SD.Blockquote bls → SD.Blockquote <$> traverse validateBlock bls
     SD.Lst lt blss → SD.Lst lt <$> traverse (traverse validateBlock) blss
-    _ → pure b
+    b → pure b
 
 validateSlamDown ∷ ∀ a. SD.SlamDownP a → V.V (Array String) (SD.SlamDownP a)
 validateSlamDown (SD.SlamDown bls) = SD.SlamDown <$> traverse validateBlock bls

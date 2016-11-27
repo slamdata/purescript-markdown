@@ -31,7 +31,7 @@ everywhereM b i (SD.SlamDown bs) =
   b' ∷ SD.Block a → m (SD.Block a)
   b' (SD.Paragraph is) = (SD.Paragraph <$> T.traverse i' is) >>= b
   b' (SD.Header n is) = (SD.Header n <$> T.traverse i' is) >>= b
-  b' (SD.Blockquote bs) = (SD.Blockquote <$> T.traverse b' bs) >>= b
+  b' (SD.Blockquote bs') = (SD.Blockquote <$> T.traverse b' bs') >>= b
   b' (SD.Lst lt bss) = (SD.Lst lt <$> T.traverse (T.traverse b') bss) >>= b
   b' other = b other
 
@@ -66,7 +66,7 @@ everywhereTopDownM b i (SD.SlamDown bs) =
   b' ∷ SD.Block a → m (SD.Block a)
   b' (SD.Paragraph is) = SD.Paragraph <$> T.traverse (i' <=< i) is
   b' (SD.Header n is) = SD.Header n <$> T.traverse (i' <=< i) is
-  b' (SD.Blockquote bs) = SD.Blockquote <$> T.traverse (b' <=< b) bs
+  b' (SD.Blockquote bs') = SD.Blockquote <$> T.traverse (b' <=< b) bs'
   b' (SD.Lst ty bss) = SD.Lst ty <$> T.traverse (T.traverse (b' <=< b)) bss
   b' other = b other
 
@@ -102,8 +102,8 @@ everythingM b i (SD.SlamDown bs) =
   b' ∷ SD.Block a → m r
   b' x@(SD.Paragraph is) = b x >>= \r → F.foldl (<>) r <$> T.traverse i' is
   b' x@(SD.Header _ is) = b x >>= \r → F.foldl (<>) r <$> T.traverse i' is
-  b' x@(SD.Blockquote bs) = b x >>= \r → F.foldl (<>) r <$> T.traverse b' bs
-  b' x@(SD.Lst _ bss) = b x >>= \r → F.foldl (<>) r <<< join <$> T.traverse (\bs → T.traverse b' bs) bss
+  b' x@(SD.Blockquote bs') = b x >>= \r → F.foldl (<>) r <$> T.traverse b' bs'
+  b' x@(SD.Lst _ bss) = b x >>= \r → F.foldl (<>) r <<< join <$> T.traverse (\bs' → T.traverse b' bs') bss
   b' x = b x
 
   i' ∷ SD.Inline a → m r
