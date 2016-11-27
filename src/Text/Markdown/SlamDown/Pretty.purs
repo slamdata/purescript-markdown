@@ -159,8 +159,8 @@ prettyPrintTextBox t =
     <> M.maybe "" (\x → " (" <> prettyPrintDefault x <> ")") (SD.traverseTextBox unwrap t)
   where
     prettyPrintTemplate ∷ ∀ f. SD.TextBox f → String
-    prettyPrintTemplate t =
-      case t of
+    prettyPrintTemplate =
+      case _ of
         SD.PlainText _ → "______"
         SD.Numeric _ → "#______"
         SD.Date _ → "__-__-____"
@@ -170,8 +170,8 @@ prettyPrintTextBox t =
         SD.DateTime SD.Seconds _ → "__-__-____ __:__:__"
 
     prettyPrintDefault ∷ SD.TextBox SD.Expr → String
-    prettyPrintDefault t =
-      case t of
+    prettyPrintDefault =
+      case _ of
         SD.PlainText def → prettyPrintExpr id id def
         SD.Numeric def → prettyPrintExpr id HN.toString def
         SD.Date def → prettyPrintExpr id prettyPrintDate def
