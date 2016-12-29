@@ -124,7 +124,7 @@ inlines
   ∷ ∀ a
   . (SD.Value a)
   ⇒ P.Parser String (L.List (SD.Inline a))
-inlines = L.many inline2 <* PS.eof
+inlines = L.many inline1 <* PS.eof
   where
   inline0 ∷ P.Parser String (SD.Inline a)
   inline0 =
@@ -134,21 +134,17 @@ inlines = L.many inline2 <* PS.eof
         <|> strongEmph p
         <|> strong p
         <|> emph p
+        <|> link p
+        <|> image p
         <|> code
         <|> autolink
         <|> entity
 
   inline1 ∷ P.Parser String (SD.Inline a)
-  inline1 =
-    PC.try inline0
-      <|> PC.try link
-
-  inline2 ∷ P.Parser String (SD.Inline a)
-  inline2 = do
+  inline1 = do
     res ←
       PC.try formField
-      <|> PC.try (Right <$> inline1)
-      <|> PC.try (Right <$> image)
+      <|> PC.try (Right <$> inline0)
       <|> (Right <$> other)
     case res of
       Right v → pure v
@@ -202,11 +198,11 @@ inlines = L.many inline2 <* PS.eof
     pure <<< SD.Code eval <<< S.trim $ contents
 
 
-  link ∷ P.Parser String (SD.Inline a)
-  link = SD.Link <$> linkLabel <*> linkTarget
+  link ∷ P.Parser String (SD.Inline a) → P.Parser String (SD.Inline a)
+  link p = SD.Link <$> linkLabel <*> linkTarget
     where
     linkLabel ∷ P.Parser String (L.List (SD.Inline a))
-    linkLabel = PS.string "[" *> PC.manyTill (inline0 <|> other) (PS.string "]")
+    linkLabel = PS.string "[" *> PC.manyTill p (PS.string "]")
 
     linkTarget ∷ P.Parser String SD.LinkTarget
     linkTarget = inlineLink <|> referenceLink
@@ -217,11 +213,11 @@ inlines = L.many inline2 <* PS.eof
     referenceLink ∷ P.Parser String SD.LinkTarget
     referenceLink = SD.ReferenceLink <$> PC.optionMaybe ((S.fromCharArray <<< A.fromFoldable) <$> (PS.string "[" *> PC.manyTill PS.anyChar (PS.string "]")))
 
-  image ∷ P.Parser String (SD.Inline a)
-  image = SD.Image <$> imageLabel <*> imageUrl
+  image ∷ P.Parser String (SD.Inline a) → P.Parser String (SD.Inline a)
+  image p = SD.Image <$> imageLabel <*> imageUrl
     where
     imageLabel ∷ P.Parser String (L.List (SD.Inline a))
-    imageLabel = PS.string "![" *> PC.manyTill (inline1 <|> other) (PS.string "]")
+    imageLabel = PS.string "![" *> PC.manyTill p (PS.string "]")
 
     imageUrl ∷ P.Parser String String
     imageUrl = S.fromCharArray <<< A.fromFoldable <$> (PS.string "(" *> PC.manyTill PS.anyChar (PS.string ")"))
