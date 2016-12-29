@@ -124,7 +124,7 @@ inlines
   ∷ ∀ a
   . (SD.Value a)
   ⇒ P.Parser String (L.List (SD.Inline a))
-inlines = L.many inline1 <* PS.eof
+inlines = L.many inline2 <* PS.eof
   where
   inline0 ∷ P.Parser String (SD.Inline a)
   inline0 =
@@ -134,17 +134,23 @@ inlines = L.many inline1 <* PS.eof
         <|> strongEmph p
         <|> strong p
         <|> emph p
-        <|> link p
-        <|> image p
         <|> code
         <|> autolink
         <|> entity
 
   inline1 ∷ P.Parser String (SD.Inline a)
-  inline1 = do
+  inline1 =
+    PC.try inline0
+      <|> PC.try (image (inline0 <|> other))
+      <|> PC.try (link (inline0 <|> other))
+
+  inline2 ∷ P.Parser String (SD.Inline a)
+  inline2 = do
     res ←
       PC.try formField
       <|> PC.try (Right <$> inline0)
+      <|> PC.try (Right <$> image (inline1 <|> other))
+      <|> PC.try (Right <$> link (inline1 <|> other))
       <|> (Right <$> other)
     case res of
       Right v → pure v
