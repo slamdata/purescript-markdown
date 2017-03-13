@@ -143,7 +143,7 @@ prettyPrintTime prec t =
 prettyPrintDateTime ∷ SD.TimePrecision → DT.DateTime → String
 prettyPrintDateTime prec dt =
   prettyPrintDate (DT.date dt)
-    <> " "
+    <> "T"
     <> prettyPrintTime prec (DT.time dt)
 
 printIntPadded ∷ Int → Int → String
