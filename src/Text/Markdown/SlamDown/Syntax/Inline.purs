@@ -55,7 +55,7 @@ instance showInline ∷ (Show a) ⇒ Show (Inline a) where
   show (FormField l r f) = "(FormField " <> show l <> " " <> show r <> " " <> show f <> ")"
 
 derive instance eqInline ∷ (Eq a, Ord a) ⇒ Eq (Inline a)
-derive instance ordInline ∷ (Ord a) ⇒ Ord (Inline a)
+derive instance ordInline ∷ Ord a ⇒ Ord (Inline a)
 
 -- | Nota bene: this does not generate any recursive structure
 instance arbitraryInline ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (Inline a) where
@@ -73,7 +73,6 @@ instance arbitraryInline ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (Inline a
       8 → pure (Strong L.Nil)
       9 → Link L.Nil <$> SCA.arbitrary
       _ → Image L.Nil <$> SCA.arbitrary
-
 
 data LinkTarget
   = InlineLink String

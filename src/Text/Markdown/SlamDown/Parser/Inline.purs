@@ -13,7 +13,9 @@ import Control.Lazy as Lazy
 import Data.Array as A
 import Data.Bifunctor (lmap)
 import Data.Const (Const(..))
+import Data.DateTime as DT
 import Data.Either (Either(..))
+import Data.Enum (toEnum)
 import Data.Foldable (elem)
 import Data.Functor.Compose (Compose(..))
 import Data.HugeNum as HN
@@ -291,19 +293,19 @@ inlines = L.many inline2 <* PS.eof
             M.Nothing →
               pure $ Left case template of
                 SD.DateTime SD.Minutes _ →
-                  "Incorrect datetime default value, please use \"YYYY-MM-DD HH:mm\" or \"YYYY-MM-DDTHH:mm\" format"
+                  "Invalid datetime default value, please use \"YYYY-MM-DD HH:mm\" format"
                 SD.DateTime SD.Seconds _ →
-                  "Incorrect datetime default value, please use \"YYYY-MM-DD HH:mm:ss\" or \"YYYY-MM-DDTHH:mm:ss\" format"
+                  "Invalid datetime default value, please use \"YYYY-MM-DD HH:mm:ss\" format"
                 SD.Date _ →
-                  "Incorrect date default value, please use \"YYYY-MM-DD\" format"
+                  "Invalid date default value, please use \"YYYY-MM-DD\" format"
                 SD.Time SD.Minutes _ →
-                  "Incorrect time default value, please use \"HH:mm\" format"
+                  "Invalid time default value, please use \"HH:mm\" format"
                 SD.Time SD.Seconds _ →
-                  "Incorrect time default value, please use \"HH:mm:ss\" format"
+                  "Invalid time default value, please use \"HH:mm:ss\" format"
                 SD.Numeric _ →
-                  "Incorrect numeric default value"
+                  "Invalid numeric default value"
                 SD.PlainText _ →
-                  "Incorrect default value"
+                  "Invalid default value"
 
     parseTextBoxTemplate ∷ P.Parser String (SD.TextBox (Const Unit))
     parseTextBoxTemplate =
@@ -419,28 +421,33 @@ parseTextBox isPlainText eta template =
     SD.PlainText _ → SD.PlainText <$> eta parsePlainTextValue
 
   where
+    parseDateTimeValue ∷ SD.TimePrecision → P.Parser String DT.DateTime
     parseDateTimeValue prec = do
       date ← parseDateValue
       (PC.try $ void $ PS.string "T") <|> PU.skipSpaces
       time ← parseTimeValue prec
-      pure { date, time }
+      pure $ DT.DateTime date time
 
+    parseDateValue ∷ P.Parser String DT.Date
     parseDateValue = do
       year ← parseYear
       PU.skipSpaces *> dash *> PU.skipSpaces
       month ← natural
-      when (month > 12) $ P.fail "Incorrect month"
+      when (month > 12) $ P.fail "Invalid month"
       PU.skipSpaces *> dash *> PU.skipSpaces
       day ← natural
-      when (day > 31) $ P.fail "Incorrect day"
-      pure { month, day, year }
+      when (day > 31) $ P.fail "Invalid day"
+      case DT.canonicalDate <$> toEnum year <*> toEnum month <*> toEnum day of
+        M.Nothing → P.fail "Invalid date"
+        M.Just dt → pure dt
 
+    parseTimeValue ∷ SD.TimePrecision → P.Parser String DT.Time
     parseTimeValue prec = do
       hours ← natural
-      when (hours > 23) $ P.fail "Incorrect hours"
+      when (hours > 23) $ P.fail "Invalid hours"
       PU.skipSpaces *> colon *> PU.skipSpaces
       minutes ← natural
-      when (minutes > 59) $ P.fail "Incorrect minutes"
+      when (minutes > 59) $ P.fail "Invalid minutes"
       seconds ← case prec of
         SD.Minutes -> do
           scolon ← PC.try $ PC.optionMaybe $ PU.skipSpaces *> colon
@@ -449,7 +456,7 @@ parseTextBox isPlainText eta template =
         SD.Seconds -> do
           PU.skipSpaces *> colon *> PU.skipSpaces
           secs ← natural
-          when (secs > 59) $ P.fail "Incorrect seconds"
+          when (secs > 59) $ P.fail "Invalid seconds"
           PU.skipSpaces
           pure $ M.Just secs
       PU.skipSpaces
@@ -466,7 +473,9 @@ parseTextBox isPlainText eta template =
                 else if isAM && hours == 12
                 then 0
                 else hours
-      pure { hours : hours', minutes, seconds }
+      case DT.Time <$> toEnum hours' <*> toEnum minutes <*> toEnum (M.fromMaybe 0 seconds) <*> pure bottom of
+        M.Nothing → P.fail "Invalid time"
+        M.Just t → pure t
 
     parseNumericValue = do
       sign ← PC.try (-1 <$ PS.char '-') <|> pure 1

@@ -6,15 +6,17 @@ module Text.Markdown.SlamDown.Pretty
 import Prelude
 
 import Data.Array as A
+import Data.DateTime as DT
 import Data.Foldable (fold, elem)
 import Data.Functor.Compose (Compose)
 import Data.HugeNum as HN
 import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
+import Data.Enum (fromEnum)
 import Data.Monoid (mempty)
-import Data.String as S
 import Data.Newtype (unwrap)
+import Data.String as S
 import Data.Unfoldable as U
 
 import Text.Markdown.SlamDown.Syntax as SD
@@ -121,28 +123,28 @@ prettyPrintTextBoxValue t =
     SD.Time prec (Identity def) → prettyPrintTime prec def
     SD.DateTime prec (Identity def) → prettyPrintDateTime prec def
 
-prettyPrintDate ∷ SD.DateValue → String
-prettyPrintDate { day, month, year } =
-  printIntPadded 4 year
+prettyPrintDate ∷ DT.Date → String
+prettyPrintDate d =
+  printIntPadded 4 (fromEnum $ DT.year d)
     <> "-"
-    <> printIntPadded 2 month
+    <> printIntPadded 2 (fromEnum $ DT.month d)
     <> "-"
-    <> printIntPadded 2 day
+    <> printIntPadded 2 (fromEnum $ DT.day d)
 
-prettyPrintTime ∷ SD.TimePrecision → SD.TimeValue → String
-prettyPrintTime prec { hours, minutes, seconds }=
-  printIntPadded 2 hours
+prettyPrintTime ∷ SD.TimePrecision → DT.Time → String
+prettyPrintTime prec t =
+  printIntPadded 2 (fromEnum $ DT.hour t)
     <> ":"
-    <> printIntPadded 2 minutes
+    <> printIntPadded 2 (fromEnum $ DT.minute t)
     <> case prec of
-        SD.Seconds -> ":" <> printIntPadded 2 (M.fromMaybe 0 seconds)
+        SD.Seconds -> ":" <> printIntPadded 2 (fromEnum $ DT.second t)
         _ -> ""
 
-prettyPrintDateTime ∷ SD.TimePrecision → SD.DateTimeValue → String
-prettyPrintDateTime prec { date, time } =
-  prettyPrintDate date
+prettyPrintDateTime ∷ SD.TimePrecision → DT.DateTime → String
+prettyPrintDateTime prec dt =
+  prettyPrintDate (DT.date dt)
     <> "T"
-    <> prettyPrintTime prec time
+    <> prettyPrintTime prec (DT.time dt)
 
 printIntPadded ∷ Int → Int → String
 printIntPadded l i =

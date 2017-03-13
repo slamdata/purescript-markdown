@@ -8,16 +8,18 @@ import Control.Monad.Eff.Random as Rand
 import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Trampoline as Trampoline
 
-import Data.HugeNum as HN
+import Data.Array as A
+import Data.Char as CH
+import Data.DateTime as DT
 import Data.Either (Either(..), isLeft)
+import Data.Enum (toEnum)
+import Data.HugeNum as HN
+import Data.Identity as ID
 import Data.List as L
 import Data.Maybe as M
 import Data.Newtype (un)
-import Data.Traversable as TR
-import Data.Identity as ID
-import Data.Array as A
-import Data.Char as CH
 import Data.String as S
+import Data.Traversable as TR
 
 import Data.Tuple (uncurry)
 
@@ -30,6 +32,8 @@ import Test.StrongCheck as SC
 import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.LCG as LCG
+
+import Partial.Unsafe (unsafePartial)
 
 type TestEffects e =
   ( console ∷ C.CONSOLE
@@ -238,19 +242,15 @@ static = do
                 case t of
                   SD.PlainText _ → pure $ SD.PlainText $ pure "Evaluated plain text!"
                   SD.Numeric _ → pure $ SD.Numeric $ pure $ HN.fromNumber 42.0
-                  SD.Date _ → pure $ SD.Date $ pure { month : 7, day : 30, year : 1992 }
-                  SD.Time (prec@SD.Minutes) _ → pure $ SD.Time prec $ pure { hours : 4, minutes : 52, seconds : M.Nothing }
-                  SD.Time (prec@SD.Seconds) _ → pure $ SD.Time prec $ pure { hours : 4, minutes : 52, seconds : M.Just 10 }
+                  SD.Date _ → pure $ SD.Date $ pure $ unsafeDate 1992 7 30
+                  SD.Time (prec@SD.Minutes) _ → pure $ SD.Time prec $ pure $ unsafeTime 4 52 0
+                  SD.Time (prec@SD.Seconds) _ → pure $ SD.Time prec $ pure $ unsafeTime 4 52 10
                   SD.DateTime (prec@SD.Minutes) _ →
                     pure $ SD.DateTime prec $ pure $
-                      { date : { month : 7, day : 30, year : 1992 }
-                      , time : { hours : 4, minutes : 52, seconds : M.Nothing }
-                      }
+                      DT.DateTime (unsafeDate 1992 7 30) (unsafeTime 4 52 0)
                   SD.DateTime (prec@SD.Seconds) _ →
                     pure $ SD.DateTime prec $ pure $
-                      { date : { month : 7, day : 30, year : 1992 }
-                      , time : { hours : 4, minutes : 52, seconds : M.Just 10 }
-                      }
+                      DT.DateTime (unsafeDate 1992 7 30) (unsafeTime 4 52 10)
             , value: \_ → pure $ SD.stringValue "Evaluated value!"
             , list: \_ → pure $ L.singleton $ SD.stringValue "Evaluated list!"
             }  sd
@@ -286,6 +286,12 @@ static = do
   testDocument $ SDP.parseMd "xeiodbdy  = [x] "
 
   C.log "All static tests passed!"
+
+unsafeDate ∷ Int → Int → Int → DT.Date
+unsafeDate y m d = unsafePartial $ M.fromJust $ join $ DT.exactDate <$> toEnum y <*> toEnum m <*> toEnum d
+
+unsafeTime ∷ Int → Int → Int → DT.Time
+unsafeTime h m s = unsafePartial $ M.fromJust $ DT.Time <$> toEnum h <*> toEnum m <*> toEnum s <*> toEnum bottom
 
 generated ∷ ∀ e. Eff (TestEffects e) Unit
 generated = do
