@@ -19,7 +19,7 @@ import Text.Markdown.SlamDown.Syntax as SD
 
 everywhereM
   ∷ ∀ m a
-  . (Monad m)
+  . Monad m
   ⇒ (SD.Block a → m (SD.Block a))
   → (SD.Inline a → m (SD.Inline a))
   → SD.SlamDownP a
@@ -54,7 +54,7 @@ everywhere b i =
 
 everywhereTopDownM
   ∷ ∀ m a
-  . (Monad m)
+  . Monad m
   ⇒ (SD.Block a → m (SD.Block a))
   → (SD.Inline a → m (SD.Inline a))
   → SD.SlamDownP a
@@ -91,7 +91,8 @@ everywhereTopDown b i =
 
 everythingM
   ∷ ∀ m a r
-  . (Monad m, Monoid r)
+  . Monad m
+  ⇒ Monoid r
   ⇒ (SD.Block a → m r)
   → (SD.Inline a → m r)
   → SD.SlamDownP a
@@ -115,7 +116,7 @@ everythingM b i (SD.SlamDown bs) =
 
 everything
   ∷ ∀ r a
-  . (Monoid r)
+  . Monoid r
   ⇒ (SD.Block a → r)
   → (SD.Inline a → r)
   → SD.SlamDownP a

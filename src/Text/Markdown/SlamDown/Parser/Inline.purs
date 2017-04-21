@@ -172,7 +172,7 @@ inlines = L.many inline2 <* PS.eof
     → String
     → P.Parser String (SD.Inline a)
   emphasis p f s = do
-    PS.string s
+    _ ← PS.string s
     f <$> PC.manyTill p (PS.string s)
 
   emph ∷ P.Parser String (SD.Inline a) → P.Parser String (SD.Inline a)
@@ -230,7 +230,7 @@ inlines = L.many inline2 <* PS.eof
 
   autolink ∷ P.Parser String (SD.Inline a)
   autolink = do
-    PS.string "<"
+    _ ← PS.string "<"
     url ← (S.fromCharArray <<< A.fromFoldable) <$> (PS.anyChar `PC.many1Till` PS.string ">")
     pure $ SD.Link (L.singleton $ SD.Str (autoLabel url)) (SD.InlineLink url)
     where
@@ -241,7 +241,7 @@ inlines = L.many inline2 <* PS.eof
 
   entity ∷ P.Parser String (SD.Inline a)
   entity = do
-    PS.string "&"
+    _ ← PS.string "&"
     s ← (S.fromCharArray <<< A.fromFoldable) <$> (PS.noneOf (S.toCharArray ";") `PC.many1Till` PS.string ";")
     pure $ SD.Entity $ "&" <> s <> ";"
 
@@ -254,7 +254,7 @@ inlines = L.many inline2 <* PS.eof
           required
       fe ← do
         PU.skipSpaces
-        PS.string "="
+        _ ← PS.string "="
         PU.skipSpaces
         formElement
       pure $ map (SD.FormField l r) fe
@@ -288,7 +288,7 @@ inlines = L.many inline2 <* PS.eof
           case mdef of
             M.Just def → do
               PU.skipSpaces
-              PS.string ")"
+              _ ← PS.string ")"
               pure $ Right $ SD.TextBox $ SD.transTextBox (M.Just >>> Compose) def
             M.Nothing →
               pure $ Left case template of
@@ -319,21 +319,21 @@ inlines = L.many inline2 <* PS.eof
 
       where
         parseDateTimeTemplate prec = do
-          parseDateTemplate
+          _ ← parseDateTemplate
           PU.skipSpaces
           parseTimeTemplate prec
 
         parseDateTemplate = do
-          und
+          _ ← und
           PU.skipSpaces *> dash *> PU.skipSpaces
-          und
+          _ ← und
           PU.skipSpaces *> dash *> PU.skipSpaces
           und
 
         parseTimeTemplate prec = do
-          und
+          _ ← und
           PU.skipSpaces *> colon *> PU.skipSpaces
-          und
+          _ ← und
           when (prec == SD.Seconds) do
             PU.skipSpaces *> colon *> PU.skipSpaces
             void und
@@ -535,6 +535,6 @@ expr f p =
 
 unevaluated ∷ ∀ b. P.Parser String (SD.Expr b)
 unevaluated = do
-  PS.string "!"
+  _ ← PS.string "!"
   ticks ← someOf (\x → S.singleton x == "`")
   SD.Unevaluated <<< S.fromCharArray <<< A.fromFoldable <$> PC.manyTill PS.anyChar (PS.string ticks)

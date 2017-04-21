@@ -38,7 +38,7 @@ import Partial.Unsafe (unsafePartial)
 type TestEffects e =
   ( console ∷ C.CONSOLE
   , random ∷ Rand.RANDOM
-  , err ∷ Exn.EXCEPTION
+  , exception ∷ Exn.EXCEPTION
   | e
   )
 
@@ -304,7 +304,7 @@ generated = do
             10 (Gen.GenState { size: 10, seed })
             (SDPR.prettyPrintMd <<< runTestSlamDown <$> SCA.arbitrary)
 
-  TR.traverse C.log docs
+  _ ← TR.traverse C.log docs
 
   SC.quickCheck' 100 \(TestSlamDown sd) →
     let
@@ -343,7 +343,7 @@ three ∷ ∀ a. a → a → a → Array a
 three a b c = [a, b, c]
 
 
-blocks ∷ ∀ a. (SCA.Arbitrary a, SD.Value a) ⇒ Gen.Gen (Array (SD.Block a))
+blocks ∷ ∀ a. SCA.Arbitrary a ⇒ SD.Value a ⇒ Gen.Gen (Array (SD.Block a))
 blocks =
   Gen.oneOf (smallArrayOf block0)
     [ A.singleton <$> bq
@@ -375,7 +375,7 @@ blocks =
       <$> Gen.oneOf (SD.Bullet <$> (Gen.elements "-" $ L.fromFoldable ["+", "*"])) [ SD.Ordered <$> (Gen.elements ")" $ L.singleton ".")]
       <*> (L.fromFoldable <$> tinyArrayOf (L.fromFoldable <$> (tinyArrayOf block0)))
 
-inlines ∷ ∀ a. (SCA.Arbitrary a, SD.Value a) ⇒ Gen.Gen (Array (SD.Inline a))
+inlines ∷ ∀ a. SCA.Arbitrary a ⇒ SD.Value a ⇒ Gen.Gen (Array (SD.Inline a))
 inlines =
   Gen.oneOf inlines0
     [ A.singleton <$> link

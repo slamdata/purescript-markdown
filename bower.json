@@ -22,17 +22,17 @@
     "package.json"
   ],
   "dependencies": {
-    "purescript-const": "^2.0.0",
-    "purescript-functors": "^1.1.0",
-    "purescript-lists": "^3.4.0",
-    "purescript-parsing": "^3.2.1",
+    "purescript-const": "^3.0.0",
+    "purescript-functors": "^2.0.0",
+    "purescript-lists": "^4.0.0",
+    "purescript-parsing": "^4.0.0",
     "purescript-partial": "^1.2.0",
-    "purescript-precise": "^1.1.0",
-    "purescript-prelude": "^2.5.0",
-    "purescript-sets": "^2.0.1",
-    "purescript-strings": "^2.1.0",
-    "purescript-strongcheck": "^2.1.0",
-    "purescript-validation": "^2.0.0",
-    "purescript-datetime": "^2.2.0"
+    "purescript-precise": "^2.0.0",
+    "purescript-prelude": "^3.0.0",
+    "purescript-sets": "^3.0.0",
+    "purescript-strings": "^3.0.0",
+    "purescript-strongcheck": "^3.0.0",
+    "purescript-validation": "^3.0.0",
+    "purescript-datetime": "^3.0.0"
   }
 }
