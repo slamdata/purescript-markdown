@@ -24,7 +24,8 @@ type LanguageId = String
 
 eval
   ∷ ∀ m a
-  . (Monad m, SD.Value a)
+  . Monad m
+  ⇒ SD.Value a
   ⇒ { code ∷ M.Maybe LanguageId → String → m a
     , textBox ∷ SD.TextBox (Const String) → m (SD.TextBox Identity)
     , value ∷ String → m a

@@ -23,10 +23,10 @@ linkReference ∷ ∀ a. P.Parser String (SD.Block a)
 linkReference = do
   l ←
     charsToString <$> do
-      PS.string "["
+      _ ← PS.string "["
       PU.skipSpaces
       PC.manyTill PS.anyChar (PS.string "]")
-  PS.string ":"
+  _ ← PS.string ":"
   PU.skipSpaces
   uri ← charsToString <$> PC.manyTill PS.anyChar PS.eof
   pure $ SD.LinkReference l uri

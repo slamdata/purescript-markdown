@@ -89,10 +89,10 @@ instance coarbitraryTextBox ∷ (Functor f, SCA.Coarbitrary (f String), SCA.Coar
       Numeric d -> SCA.coarbitrary $ HN.toNumber <$> d
       Date d -> SCA.coarbitrary (ADT.ArbDate <$> d)
       Time prec d -> do
-        SCA.coarbitrary prec
+        _ ← SCA.coarbitrary prec
         SCA.coarbitrary (ADT.ArbTime <$> d)
       DateTime prec d -> do
-        SCA.coarbitrary prec
+        _ ← SCA.coarbitrary prec
         SCA.coarbitrary (ADT.ArbDateTime <$> d)
 
 eraseMillis ∷ DT.Time → DT.Time

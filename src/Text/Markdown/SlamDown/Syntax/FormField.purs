@@ -15,11 +15,13 @@ module Text.Markdown.SlamDown.Syntax.FormField
 import Prelude
 
 import Data.Array as A
+import Data.Eq (class Eq1)
 import Data.Functor.Compose (Compose(..))
 import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
 import Data.Newtype (unwrap)
+import Data.Ord (class Ord1)
 import Data.Set as Set
 import Data.Traversable as TR
 import Data.Tuple (uncurry)
@@ -51,7 +53,7 @@ transFormField eta =
 
 traverseFormField
   ∷ ∀ f g h a
-  . (Applicative h)
+  . Applicative h
   ⇒ (∀ x. f x → h (g x))
   → FormFieldP f a
   → h (FormFieldP g a)
@@ -220,18 +222,18 @@ instance coarbitraryFormFieldIdentity ∷ (SCA.Coarbitrary a) ⇒ SCA.Coarbitrar
     case field of
       TextBox tb → SCA.coarbitrary $ TB.transTextBox (unwrap >>> map (unwrap >>> ArbIdentity) >>> ArbCompose) tb
       RadioButtons x xs → \gen → do
-        SCA.coarbitrary (ArbIdentity $ unwrap x) gen
+        _← SCA.coarbitrary (ArbIdentity $ unwrap x) gen
         SCA.coarbitrary (ArbIdentity $ unwrap xs) gen
       CheckBoxes sel xs → \gen → do
-        SCA.coarbitrary (ArbIdentity $ unwrap sel) gen
+        _← SCA.coarbitrary (ArbIdentity $ unwrap sel) gen
         SCA.coarbitrary (ArbIdentity $ unwrap xs) gen
       DropDown mx xs → \gen → do
-        SCA.coarbitrary (ArbIdentity <<< unwrap <$> mx) gen
+        _← SCA.coarbitrary (ArbIdentity <<< unwrap <$> mx) gen
         SCA.coarbitrary (ArbIdentity $ unwrap xs) gen
 
 listOf1
   ∷ ∀ f a
-  . (Monad f)
+  . Monad f
   ⇒ Gen.GenT f a
   → Gen.GenT f (L.List a)
 listOf1 =
@@ -259,7 +261,8 @@ listOfLength i =
 
 distinctListOf1
   ∷ ∀ f a
-  . (Monad f, Eq a)
+  . Monad f
+  ⇒ Eq a
   ⇒ Gen.GenT f a
   → Gen.GenT f (L.List a)
 distinctListOf1 =
@@ -267,7 +270,8 @@ distinctListOf1 =
 
 distinctListOf
   ∷ ∀ f a
-  . (Monad f, Eq a)
+  . Monad f
+  ⇒ Eq a
   ⇒ Gen.GenT f a
   → Gen.GenT f (L.List a)
 distinctListOf =
@@ -299,6 +303,12 @@ instance showExpr ∷ (Show a) ⇒ Show (Expr a) where
 
 derive instance eqExpr ∷ Eq a ⇒ Eq (Expr a)
 derive instance ordExpr ∷ Ord a ⇒ Ord (Expr a)
+
+instance eq1 ∷ Eq1 Expr where
+  eq1 = eq
+
+instance ord1Expr ∷ Ord1 Expr where
+  compare1 = compare
 
 genExpr ∷ ∀ a. Gen.Gen a → Gen.Gen (Expr a)
 genExpr g = do
