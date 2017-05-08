@@ -238,7 +238,7 @@ static = do
           $ un ID.Identity
           $ SDE.eval
             { code: \_ _ → pure $ SD.stringValue "Evaluated code block!"
-            , textBox: \t →
+            , textBox: \_ t →
                 case t of
                   SD.PlainText _ → pure $ SD.PlainText $ pure "Evaluated plain text!"
                   SD.Numeric _ → pure $ SD.Numeric $ pure $ HN.fromNumber 42.0
@@ -251,8 +251,8 @@ static = do
                   SD.DateTime (prec@SD.Seconds) _ →
                     pure $ SD.DateTime prec $ pure $
                       DT.DateTime (unsafeDate 1992 7 30) (unsafeTime 4 52 10)
-            , value: \_ → pure $ SD.stringValue "Evaluated value!"
-            , list: \_ → pure $ L.singleton $ SD.stringValue "Evaluated list!"
+            , value: \_ _ → pure $ SD.stringValue "Evaluated value!"
+            , list: \_ _ → pure $ L.singleton $ SD.stringValue "Evaluated list!"
             }  sd
       a → a
 
