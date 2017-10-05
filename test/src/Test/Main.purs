@@ -413,7 +413,7 @@ simpleText = SD.Str <$> alphaNum
 alphaNum ∷ Gen.Gen String
 alphaNum = do
   len ← Gen.chooseInt 5 10
-  S.fromCharArray <$> Gen.vectorOf len (Gen.elements (CH.fromCharCode 97) $ L.fromFoldable (S.toCharArray "qwertyuioplkjhgfdszxcvbnm123457890"))
+  S.fromCharArray <$> Gen.vectorOf len (Gen.elements (CH.fromCharCode 97) $ L.fromFoldable (S.toCharArray "qwertyuioplkjhgfdszxcvbnm123457890ąćęóśźżĄĆĘÓŚŹŻ"))
 
 
 main ∷ ∀ e. Eff (TestEffects e) Unit
