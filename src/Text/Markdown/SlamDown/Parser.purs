@@ -13,6 +13,9 @@ import Data.List as L
 import Data.Maybe as M
 import Data.Monoid (mempty)
 import Data.String as S
+import Data.String.Regex as RGX
+import Data.String.Regex.Unsafe as URX
+import Data.String.Regex.Flags as RXF
 import Data.Traversable (traverse)
 import Data.Validation.Semigroup as V
 
@@ -372,6 +375,7 @@ tabsToSpaces = S.replace (S.Pattern "\t") (S.Replacement "    ")
 parseMd ∷ ∀ a. (SD.Value a) ⇒ String → Either String (SD.SlamDownP a)
 parseMd s = map SD.SlamDown bs
   where
-    lines = L.fromFoldable $ S.split (S.Pattern "\n") $ S.replace (S.Pattern "\r") (S.Replacement "") $ tabsToSpaces s
+    slashR = URX.unsafeRegex "\\r" RXF.global
+    lines = L.fromFoldable $ S.split (S.Pattern "\n") $ RGX.replace slashR "" $ tabsToSpaces s
     ctrs = parseContainers mempty lines
     bs = parseBlocks ctrs
