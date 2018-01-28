@@ -12,6 +12,7 @@ import Control.Lazy as Lazy
 
 import Data.Array as A
 import Data.Bifunctor (lmap)
+import Data.Char.Unicode (isAlphaNum)
 import Data.Const (Const(..))
 import Data.DateTime as DT
 import Data.Either (Either(..))
@@ -158,13 +159,6 @@ inlines = L.many inline2 <* PS.eof
 
   alphaNumStr ∷ P.Parser String (SD.Inline a)
   alphaNumStr = SD.Str <$> someOf isAlphaNum
-
-  isAlphaNum ∷ Char → Boolean
-  isAlphaNum c =
-    (s >= "a" && s <= "z") ||
-    (s >= "A" && s <= "Z") ||
-    (s >= "0" && s <= "9")
-    where s = S.singleton c
 
   emphasis
     ∷ P.Parser String (SD.Inline a)

@@ -32,6 +32,7 @@
     "purescript-sets": "^3.0.0",
     "purescript-strings": "^3.0.0",
     "purescript-strongcheck": "^3.0.0",
+    "purescript-unicode": "^3.0.1",
     "purescript-validation": "^3.0.0",
     "purescript-datetime": "^3.0.0"
   }
