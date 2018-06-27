@@ -11,8 +11,8 @@ import Data.Foldable (any, all)
 import Data.List ((:))
 import Data.List as L
 import Data.Maybe as M
-import Data.Monoid (mempty)
-import Data.String as S
+import Data.String (Pattern(..), Replacement(..), drop, length, replace, split, take, trim) as S
+import Data.String.CodeUnits (countPrefix, dropWhile, singleton) as S
 import Data.String.Regex as RGX
 import Data.String.Regex.Unsafe as URX
 import Data.String.Regex.Flags as RXF
@@ -59,7 +59,7 @@ allChars p = all p <<< S.split (S.Pattern "")
 
 removeNonIndentingSpaces ∷ String → String
 removeNonIndentingSpaces s
-  | S.count (isSpace <<< S.singleton) s < 4 = S.dropWhile (isSpace <<< S.singleton) s
+  | S.countPrefix (isSpace <<< S.singleton) s < 4 = S.dropWhile (isSpace <<< S.singleton) s
   | otherwise = s
 
 isRuleChar ∷ String → Boolean
@@ -77,7 +77,7 @@ isRule s =
 isATXHeader ∷ String → Boolean
 isATXHeader s =
   let
-    level = S.count (\c → S.singleton c == "#") s
+    level = S.countPrefix (\c → S.singleton c == "#") s
     rest = S.drop level s
   in
     level >= 1 && level <= 6 && S.take 1 rest == " "
@@ -85,7 +85,7 @@ isATXHeader s =
 splitATXHeader ∷ String → { level ∷ Int, contents ∷ String }
 splitATXHeader s =
   let
-    level = S.count (\c → S.singleton c == "#") s
+    level = S.countPrefix (\c → S.singleton c == "#") s
     contents = S.drop (level + 1) s
   in
     { level: level
@@ -120,7 +120,7 @@ splitBlockquote ss =
   blockquoteContents s = S.drop (if S.take 2 s == "> " then 2 else 1) s
 
 countLeadingSpaces ∷ String → Int
-countLeadingSpaces = S.count (isSpace <<< S.singleton)
+countLeadingSpaces = S.countPrefix (isSpace <<< S.singleton)
 
 isBulleted ∷ String → Boolean
 isBulleted s =
@@ -139,7 +139,7 @@ isBulleted s =
 isOrderedListMarker ∷ String → Boolean
 isOrderedListMarker s =
   let
-    n = S.count (isDigit <<< S.singleton) s
+    n = S.countPrefix (isDigit <<< S.singleton) s
     next = S.take 1 (S.drop n s)
     ls = countLeadingSpaces (S.drop (n + 1) s)
   in
@@ -149,14 +149,14 @@ listItemType ∷ String → SD.ListType
 listItemType s
   | isBulleted s = SD.Bullet (S.take 1 s)
   | otherwise =
-      let n = S.count (isDigit <<< S.singleton) s
+      let n = S.countPrefix (isDigit <<< S.singleton) s
       in SD.Ordered (S.take 1 (S.drop n s))
 
 listItemIndent ∷ String → Int
 listItemIndent s
   | isBulleted s = 1 + min 4 (countLeadingSpaces (S.drop 1 s))
   | otherwise =
-      let n = S.count (isDigit <<< S.singleton) s
+      let n = S.countPrefix (isDigit <<< S.singleton) s
       in n + 1 + min 4 (countLeadingSpaces (S.drop (n + 1) s))
 
 isListItemLine ∷ String → Boolean
@@ -210,7 +210,7 @@ splitIndentedChunks ss =
 isCodeFence ∷ String → Boolean
 isCodeFence s = isSimpleFence s || (isEvaluatedCode s && isSimpleFence (S.drop 1 s))
   where
-  isSimpleFence s' = S.count (isFenceChar <<< S.singleton) s' >= 3
+  isSimpleFence s' = S.countPrefix (isFenceChar <<< S.singleton) s' >= 3
 
 isEvaluatedCode ∷ String → Boolean
 isEvaluatedCode s = S.take 1 s == "!"
@@ -243,7 +243,7 @@ splitCodeFence indent fence ss =
     }
   where
   isClosingFence ∷ String → Boolean
-  isClosingFence s = S.count (\c → S.singleton c == fence) (removeNonIndentingSpaces s) >= 3
+  isClosingFence s = S.countPrefix (\c → S.singleton c == fence) (removeNonIndentingSpaces s) >= 3
 
   removeIndentTo ∷ String → String
   removeIndentTo s = S.drop (min indent (countLeadingSpaces s)) s

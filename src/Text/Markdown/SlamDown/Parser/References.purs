@@ -7,7 +7,8 @@ import Prelude
 import Data.Array as A
 import Data.Either as E
 import Data.Maybe as M
-import Data.String as S
+import Data.String (trim) as S
+import Data.String.CodeUnits (fromCharArray) as S
 
 import Text.Parsing.Parser as P
 import Text.Parsing.Parser.Combinators as PC

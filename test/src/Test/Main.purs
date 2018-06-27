@@ -2,26 +2,26 @@ module Test.Main where
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console as C
-import Control.Monad.Eff.Random as Rand
-import Control.Monad.Eff.Exception as Exn
 import Control.Monad.Trampoline as Trampoline
 
 import Data.Array as A
 import Data.Char as CH
 import Data.DateTime as DT
+import Data.Decimal as D
 import Data.Either (Either(..), isLeft)
 import Data.Enum (toEnum)
-import Data.HugeNum as HN
 import Data.Identity as ID
 import Data.List as L
 import Data.Maybe as M
 import Data.Newtype (un)
-import Data.String as S
+import Data.String (trim) as S
+import Data.String.CodeUnits (fromCharArray, toCharArray) as S
 import Data.Traversable as TR
 
 import Data.Tuple (uncurry)
+
+import Effect (Effect)
+import Effect.Console as C
 
 import Text.Markdown.SlamDown.Syntax as SD
 import Text.Markdown.SlamDown.Eval as SDE
@@ -34,13 +34,6 @@ import Test.StrongCheck.Gen as Gen
 import Test.StrongCheck.LCG as LCG
 
 import Partial.Unsafe (unsafePartial)
-
-type TestEffects e =
-  ( console ∷ C.CONSOLE
-  , random ∷ Rand.RANDOM
-  , exception ∷ Exn.EXCEPTION
-  | e
-  )
 
 newtype NonEmptyString = NonEmptyString String
 derive instance eqNonEmptyString ∷ Eq NonEmptyString
@@ -64,7 +57,7 @@ instance valueNonEmptyString ∷ SD.Value NonEmptyString where
   stringValue = NonEmptyString
   renderValue (NonEmptyString str) = str
 
-testDocument ∷ ∀ e. Either String (SD.SlamDownP NonEmptyString) → Eff (TestEffects e) Unit
+testDocument ∷ Either String (SD.SlamDownP NonEmptyString) → Effect Unit
 testDocument sd = do
   let printed = SDPR.prettyPrintMd <$> sd
       parsed = printed >>= SDP.parseMd
@@ -78,10 +71,10 @@ testDocument sd = do
     <> show parsed
   SC.assert (parsed == sd SC.<?> "Test failed")
 
-failDocument ∷ ∀ e. Either String (SD.SlamDownP NonEmptyString) → Eff (TestEffects e) Unit
+failDocument ∷ Either String (SD.SlamDownP NonEmptyString) → Effect Unit
 failDocument sd = SC.assert (isLeft sd SC.<?> "Test failed")
 
-static ∷ ∀ e. Eff (TestEffects e) Unit
+static ∷ Effect Unit
 static = do
   testDocument $ SDP.parseMd "Paragraph"
   testDocument $ SDP.parseMd "Paragraph with spaces"
@@ -241,7 +234,7 @@ static = do
             , textBox: \_ t →
                 case t of
                   SD.PlainText _ → pure $ SD.PlainText $ pure "Evaluated plain text!"
-                  SD.Numeric _ → pure $ SD.Numeric $ pure $ HN.fromNumber 42.0
+                  SD.Numeric _ → pure $ SD.Numeric $ pure $ D.fromNumber 42.0
                   SD.Date _ → pure $ SD.Date $ pure $ unsafeDate 1992 7 30
                   SD.Time (prec@SD.Minutes) _ → pure $ SD.Time prec $ pure $ unsafeTime 4 52 0
                   SD.Time (prec@SD.Seconds) _ → pure $ SD.Time prec $ pure $ unsafeTime 4 52 10
@@ -293,7 +286,7 @@ unsafeDate y m d = unsafePartial $ M.fromJust $ join $ DT.exactDate <$> toEnum y
 unsafeTime ∷ Int → Int → Int → DT.Time
 unsafeTime h m s = unsafePartial $ M.fromJust $ DT.Time <$> toEnum h <*> toEnum m <*> toEnum s <*> toEnum bottom
 
-generated ∷ ∀ e. Eff (TestEffects e) Unit
+generated ∷ Effect Unit
 generated = do
   C.log "Random documents"
   seed ← LCG.randomSeed
@@ -413,10 +406,10 @@ simpleText = SD.Str <$> alphaNum
 alphaNum ∷ Gen.Gen String
 alphaNum = do
   len ← Gen.chooseInt 5 10
-  S.fromCharArray <$> Gen.vectorOf len (Gen.elements (CH.fromCharCode 97) $ L.fromFoldable (S.toCharArray "qwertyuioplkjhgfdszxcvbnm123457890ąćęóśźżĄĆĘÓŚŹŻ"))
+  S.fromCharArray <$> Gen.vectorOf len (Gen.elements (unsafePartial $ M.fromJust $ CH.fromCharCode 97) $ L.fromFoldable (S.toCharArray "qwertyuioplkjhgfdszxcvbnm123457890ąćęóśźżĄĆĘÓŚŹŻ"))
 
 
-main ∷ ∀ e. Eff (TestEffects e) Unit
+main ∷ Effect Unit
 main = do
   static
   generated

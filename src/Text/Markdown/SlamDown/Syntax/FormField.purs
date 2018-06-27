@@ -31,8 +31,8 @@ import Partial.Unsafe (unsafePartial)
 import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
 
-import Text.Markdown.SlamDown.Syntax.TextBox as TB
-import Text.Markdown.SlamDown.Syntax.Value as Value
+import Text.Markdown.SlamDown.Syntax.TextBox (TextBox(..), TimePrecision(..), transTextBox, traverseTextBox) as TB
+import Text.Markdown.SlamDown.Syntax.Value (class Value, renderValue, stringValue) as Value
 
 data FormFieldP f a
   = TextBox (TB.TextBox (Compose M.Maybe f))
@@ -102,7 +102,7 @@ instance eqFormField ∷ (Functor f, Eq (f a), Eq (TB.TextBox (Compose M.Maybe f
     case _, _ of
       TextBox tb1, TextBox tb2 → tb1 == tb2
       RadioButtons sel1 ls1, RadioButtons sel2 ls2 → sel1 == sel2 && ls1 == ls2
-      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → (Set.fromFoldable <$> sel1 == Set.fromFoldable <$> sel2) && ls1 == ls2
+      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → ((Set.fromFoldable <$> sel1) == (Set.fromFoldable <$> sel2)) && ls1 == ls2
       DropDown sel1 ls1, DropDown sel2 ls2 → sel1 == sel2 && ls1 == ls2
       _, _ → false
 
@@ -155,7 +155,7 @@ unsafeElements ∷ ∀ a. L.List a → Gen.Gen a
 unsafeElements =
   Gen.elements
     <$> (unsafePartial M.fromJust <<< L.head)
-    <*> id
+    <*> identity
 
 instance arbitraryFormField ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (FormFieldP Expr a) where
   arbitrary = do
