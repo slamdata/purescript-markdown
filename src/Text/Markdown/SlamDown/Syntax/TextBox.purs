@@ -70,8 +70,8 @@ instance showTextBox ∷ (Functor f, Show (f String), Show (f HN.HugeNum), Show 
     Time prec def → "(Time " <> show prec <> " " <> show def <> ")"
     DateTime prec def → "(DateTime " <> show prec <> " " <> show def <> ")"
 
-derive instance eqTextBox ∷ (Functor f, Eq (f String), Eq (f HN.HugeNum), Eq (f DT.Time), Eq (f DT.Date), Eq (f DT.DateTime), Eq1 f) ⇒ Eq (TextBox f)
-derive instance ordTextBox ∷ (Functor f, Ord (f String), Ord (f HN.HugeNum), Ord (f DT.Time), Ord (f DT.Date), Ord (f DT.DateTime), Ord1 f) ⇒ Ord (TextBox f)
+derive instance eqTextBox ∷ (Functor f, Eq1 f) ⇒ Eq (TextBox f)
+derive instance ordTextBox ∷ (Functor f, Ord1 f) ⇒ Ord (TextBox f)
 
 instance arbitraryTextBox ∷ (Functor f, SCA.Arbitrary (f String), SCA.Arbitrary (f Number), SCA.Arbitrary (f ADT.ArbTime), SCA.Arbitrary (f ADT.ArbDate), SCA.Arbitrary (f ADT.ArbDateTime)) ⇒ SCA.Arbitrary (TextBox f) where
   arbitrary = do
