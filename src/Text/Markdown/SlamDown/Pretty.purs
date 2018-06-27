@@ -7,9 +7,9 @@ import Prelude
 
 import Data.Array as A
 import Data.DateTime as DT
-import Data.Decimal as D
 import Data.Foldable (fold, elem)
 import Data.Functor.Compose (Compose)
+import Data.HugeNum as HN
 import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
@@ -117,8 +117,8 @@ prettyPrintTextBoxValue t =
   case t of
     SD.PlainText (Identity def) → def
     SD.Numeric (Identity def) →
-      let s = D.toString def in
-      M.fromMaybe s $ S.stripSuffix (S.Pattern ".") $ D.toString def
+      let s = HN.toString def in
+      M.fromMaybe s $ S.stripSuffix (S.Pattern ".") $ HN.toString def
     SD.Date (Identity def) → prettyPrintDate def
     SD.Time prec (Identity def) → prettyPrintTime prec def
     SD.DateTime prec (Identity def) → prettyPrintDateTime prec def
@@ -175,7 +175,7 @@ prettyPrintTextBox t =
     prettyPrintDefault =
       case _ of
         SD.PlainText def → prettyPrintExpr identity identity def
-        SD.Numeric def → prettyPrintExpr identity D.toString def
+        SD.Numeric def → prettyPrintExpr identity HN.toString def
         SD.Date def → prettyPrintExpr identity prettyPrintDate def
         SD.Time prec def → prettyPrintExpr identity (prettyPrintTime prec) def
         SD.DateTime prec def → prettyPrintExpr identity (prettyPrintDateTime prec) def

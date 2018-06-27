@@ -7,9 +7,9 @@ import Control.Monad.Trampoline as Trampoline
 import Data.Array as A
 import Data.Char as CH
 import Data.DateTime as DT
-import Data.Decimal as D
 import Data.Either (Either(..), isLeft)
 import Data.Enum (toEnum)
+import Data.HugeNum as HN
 import Data.Identity as ID
 import Data.List as L
 import Data.Maybe as M
@@ -234,7 +234,7 @@ static = do
             , textBox: \_ t →
                 case t of
                   SD.PlainText _ → pure $ SD.PlainText $ pure "Evaluated plain text!"
-                  SD.Numeric _ → pure $ SD.Numeric $ pure $ D.fromNumber 42.0
+                  SD.Numeric _ → pure $ SD.Numeric $ pure $ HN.fromNumber 42.0
                   SD.Date _ → pure $ SD.Date $ pure $ unsafeDate 1992 7 30
                   SD.Time (prec@SD.Minutes) _ → pure $ SD.Time prec $ pure $ unsafeTime 4 52 0
                   SD.Time (prec@SD.Seconds) _ → pure $ SD.Time prec $ pure $ unsafeTime 4 52 10

@@ -15,11 +15,11 @@ import Data.Bifunctor (lmap)
 import Data.Char.Unicode (isAlphaNum)
 import Data.Const (Const(..))
 import Data.DateTime as DT
-import Data.Decimal as D
 import Data.Either (Either(..))
 import Data.Enum (toEnum)
 import Data.Foldable (elem)
 import Data.Functor.Compose (Compose(..))
+import Data.HugeNum as HN
 import Data.Int as Int
 import Data.List as L
 import Data.Maybe as M
@@ -94,7 +94,7 @@ hash = void $ PS.string "#"
 type TextParserKit
   = { plainText ∷ P.Parser String String
     , natural ∷ P.Parser String Int
-    , decimal ∷ P.Parser String D.Decimal
+    , decimal ∷ P.Parser String HN.HugeNum
     , numericPrefix ∷ P.Parser String Unit
     }
 
@@ -486,7 +486,7 @@ parseTextBox isPlainText eta template =
           M.Nothing →
             pure M.Nothing
 
-      D.fromString (ms <> "." <> M.fromMaybe "" ns)
+      HN.fromString (ms <> "." <> M.fromMaybe "" ns)
         # M.maybe (P.fail "Failed parsing decimal") pure
 
     parsePlainTextValue =

@@ -24,12 +24,12 @@
   "dependencies": {
     "purescript-const": "^4.0.0",
     "purescript-datetime": "^4.0.0",
-    "purescript-decimals": "^4.0.0",
     "purescript-functors": "^3.0.0",
     "purescript-lists": "^5.0.0",
     "purescript-ordered-collections": "^1.0.0",
     "purescript-parsing": "^5.0.1",
     "purescript-partial": "^2.0.0",
+    "purescript-precise": "purescript-contrib/purescript-precise#45ed556854d314b41097837bdbced744bc11818b",
     "purescript-prelude": "^4.0.1",
     "purescript-strings": "^4.0.0",
     "purescript-strongcheck": "^4.1.1",
