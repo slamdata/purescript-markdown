@@ -5,12 +5,12 @@ module Text.Markdown.SlamDown.Syntax.Inline
 
 import Prelude
 
+import Data.Eq (class Eq1)
 import Data.List as L
 import Data.Maybe as M
-
+import Data.Ord (class Ord1)
 import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
-
 import Text.Markdown.SlamDown.Syntax.FormField (FormField)
 
 data Inline a
@@ -26,20 +26,7 @@ data Inline a
   | Image (L.List (Inline a)) String
   | FormField String Boolean (FormField a)
 
-instance functorInline ∷ Functor Inline where
-  map f =
-    case _ of
-      Str s → Str s
-      Entity s → Entity s
-      Space → Space
-      SoftBreak → SoftBreak
-      LineBreak → LineBreak
-      Emph is → Emph (map f <$> is)
-      Strong is → Strong (map f <$> is)
-      Code b s → Code b s
-      Link is tgt → Link (map f <$> is) tgt
-      Image is tgt → Image (map f <$> is) tgt
-      FormField str b ff → FormField str b (f <$> ff)
+derive instance functorInline ∷ Functor Inline
 
 instance showInline ∷ (Show a) ⇒ Show (Inline a) where
   show (Str s) = "(Str " <> show s <> ")"
@@ -54,8 +41,10 @@ instance showInline ∷ (Show a) ⇒ Show (Inline a) where
   show (Image is uri) = "(Image " <> show is <> " " <> show uri <> ")"
   show (FormField l r f) = "(FormField " <> show l <> " " <> show r <> " " <> show f <> ")"
 
-derive instance eqInline ∷ (Eq a, Ord a) ⇒ Eq (Inline a)
+derive instance eqInline ∷ Eq a ⇒ Eq (Inline a)
+derive instance eq1Inline ∷ Eq1 Inline
 derive instance ordInline ∷ Ord a ⇒ Ord (Inline a)
+derive instance ord1Inline ∷ Ord1 Inline
 
 -- | Nota bene: this does not generate any recursive structure
 instance arbitraryInline ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (Inline a) where

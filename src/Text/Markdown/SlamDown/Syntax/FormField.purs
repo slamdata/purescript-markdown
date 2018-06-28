@@ -15,22 +15,18 @@ module Text.Markdown.SlamDown.Syntax.FormField
 import Prelude
 
 import Data.Array as A
-import Data.Eq (class Eq1)
+import Data.Eq (class Eq1, eq1)
 import Data.Functor.Compose (Compose(..))
 import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
 import Data.Newtype (unwrap)
-import Data.Ord (class Ord1)
-import Data.Set as Set
+import Data.Ord (class Ord1, compare1)
 import Data.Traversable as TR
 import Data.Tuple (uncurry)
-
 import Partial.Unsafe (unsafePartial)
-
 import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
-
 import Text.Markdown.SlamDown.Syntax.TextBox (TextBox(..), TimePrecision(..), transTextBox, traverseTextBox) as TB
 import Text.Markdown.SlamDown.Syntax.Value (class Value, renderValue, stringValue) as Value
 
@@ -80,31 +76,39 @@ instance showFormField ∷ (Functor f, Show (f a), Show (TB.TextBox (Compose M.M
       CheckBoxes sel ls → "(CheckBoxes " <> show sel <> " " <> show ls <> ")"
       DropDown sel ls → "(DropDown " <> show sel <> " " <> show ls <> ")"
 
-instance ordFormField ∷ (Functor f, Ord (f a), Ord (TB.TextBox (Compose M.Maybe f)), Eq (TB.TextBox (Compose M.Maybe f)), Ord (f (L.List a)), Ord (f (Set.Set a)), Ord a) ⇒ Ord (FormFieldP f a) where
-  compare =
+instance eq1FormField ∷ Eq1 f ⇒ Eq1 (FormFieldP f) where
+  eq1 = case _, _ of
+    TextBox tb1, TextBox tb2 -> tb1 == tb2
+    RadioButtons sel1 ls1, RadioButtons sel2 ls2 -> sel1 `eq1` sel2 && ls1 `eq1` ls2
+    CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 -> sel1 `eq1` sel2 && ls1 `eq1` ls2
+    DropDown M.Nothing ls1, DropDown M.Nothing ls2 -> ls1 `eq1` ls2
+    DropDown (M.Just sel1) ls1, DropDown (M.Just sel2) ls2 -> sel1 `eq1` sel2 && ls1 `eq1` ls2
+    _, _ -> false
+
+instance eqFormField :: (Eq1 f, Eq a) => Eq (FormFieldP f a) where
+  eq = eq1
+
+instance ord1FormField ∷ Ord1 f ⇒ Ord1 (FormFieldP f) where
+  compare1 =
     case _, _ of
       TextBox tb1, TextBox tb2 → compare tb1 tb2
       TextBox _, _ → LT
       _, TextBox _ → GT
 
-      RadioButtons sel1 ls1, RadioButtons sel2 ls2 → compare sel1 sel2 <> compare ls1 ls2
+      RadioButtons sel1 ls1, RadioButtons sel2 ls2 → compare1 sel1 sel2 <> compare1 ls1 ls2
       RadioButtons _ _, _ → LT
       _, RadioButtons _ _ → GT
 
-      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → compare (Set.fromFoldable <$> sel1) (Set.fromFoldable <$> sel2) <> compare ls1 ls2
+      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → compare1 sel1 sel2 <> compare1 ls1 ls2
       CheckBoxes _ _, _ → LT
       _, CheckBoxes _ _ → GT
 
-      DropDown sel1 ls1, DropDown sel2 ls2 → compare sel1 sel2 <> compare ls1 ls2
+      DropDown M.Nothing ls1, DropDown M.Nothing ls2 → compare1 ls1 ls2
+      DropDown (M.Just sel1) ls1, DropDown (M.Just sel2) ls2 → compare1 sel1 sel2 <> compare1 ls1 ls2
+      _, _ -> EQ
 
-instance eqFormField ∷ (Functor f, Eq (f a), Eq (TB.TextBox (Compose M.Maybe f)), Eq (f (L.List a)), Eq (f (Set.Set a)), Ord a) ⇒ Eq (FormFieldP f a) where
-  eq =
-    case _, _ of
-      TextBox tb1, TextBox tb2 → tb1 == tb2
-      RadioButtons sel1 ls1, RadioButtons sel2 ls2 → sel1 == sel2 && ls1 == ls2
-      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → ((Set.fromFoldable <$> sel1) == (Set.fromFoldable <$> sel2)) && ls1 == ls2
-      DropDown sel1 ls1, DropDown sel2 ls2 → sel1 == sel2 && ls1 == ls2
-      _, _ → false
+instance ordFormField :: (Ord1 f, Ord a) => Ord (FormFieldP f a) where
+  compare = compare1
 
 newtype ArbIdentity a = ArbIdentity a
 
@@ -302,13 +306,10 @@ instance showExpr ∷ (Show a) ⇒ Show (Expr a) where
       Unevaluated e → "(Unevaluated " <> show e <> ")"
 
 derive instance eqExpr ∷ Eq a ⇒ Eq (Expr a)
+derive instance eq1 ∷ Eq1 Expr
+
+derive instance ord1Expr ∷ Ord1 Expr
 derive instance ordExpr ∷ Ord a ⇒ Ord (Expr a)
-
-instance eq1 ∷ Eq1 Expr where
-  eq1 = eq
-
-instance ord1Expr ∷ Ord1 Expr where
-  compare1 = compare
 
 genExpr ∷ ∀ a. Gen.Gen a → Gen.Gen (Expr a)
 genExpr g = do

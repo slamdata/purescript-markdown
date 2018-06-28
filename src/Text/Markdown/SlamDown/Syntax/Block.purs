@@ -6,11 +6,11 @@ module Text.Markdown.SlamDown.Syntax.Block
 
 import Prelude
 
+import Data.Eq (class Eq1)
 import Data.List as L
-
+import Data.Ord (class Ord1)
 import Test.StrongCheck.Arbitrary as SCA
 import Test.StrongCheck.Gen as Gen
-
 import Text.Markdown.SlamDown.Syntax.Inline (Inline)
 
 data Block a
@@ -22,18 +22,9 @@ data Block a
   | LinkReference String String
   | Rule
 
-instance functorBlock ∷ Functor Block where
-  map f x =
-    case x of
-      Paragraph is → Paragraph (map f <$> is)
-      Header n is → Header n (map f <$> is)
-      Blockquote bs → Blockquote (map f <$> bs)
-      Lst ty bss → Lst ty (map (map f) <$> bss)
-      CodeBlock ty ss → CodeBlock ty ss
-      LinkReference l uri → LinkReference l uri
-      Rule → Rule
+derive instance functorBlock ∷ Functor Block
 
-instance showBlock ∷ (Show a) ⇒ Show (Block a) where
+instance showBlock ∷ Show a ⇒ Show (Block a) where
   show (Paragraph is) = "(Paragraph " <> show is <> ")"
   show (Header n is) = "(Header " <> show n <> " " <> show is <> ")"
   show (Blockquote bs) = "(Blockquote " <> show bs <> ")"
@@ -42,8 +33,10 @@ instance showBlock ∷ (Show a) ⇒ Show (Block a) where
   show (LinkReference l uri) = "(LinkReference " <> show l <> " " <> show uri <> ")"
   show Rule = "Rule"
 
-derive instance eqBlock ∷ (Eq a, Ord a) ⇒ Eq (Block a)
-derive instance ordBlock ∷ (Ord a) ⇒ Ord (Block a)
+derive instance eqBlock ∷ Eq a ⇒ Eq (Block a)
+derive instance eq1Block ∷ Eq1 Block
+derive instance ordBlock ∷ Ord a ⇒ Ord (Block a)
+derive instance ord1Block ∷ Ord1 Block
 
 -- | Nota bene: this does not generate any recursive structure
 instance arbitraryBlock ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (Block a) where
