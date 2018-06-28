@@ -34,10 +34,6 @@ import Text.Markdown.SlamDown.Pretty
 Module documentation is [published on
 Pursuit](http://pursuit.purescript.org/packages/purescript-markdown).
 
-### Tests
-
-The tests use [purescript-strongcheck](http://github.com/purescript-contrib/purescript-strongcheck) to verify that an arbitrary `SlamDown` document can be rendered as a `String` and then parsed to a `SlamDown` equal to the original.
-
 ## Features
 
 In general, SlamDown is a subset of [CommonMark](http://spec.commonmark.org/), supporting the following features:

@@ -32,8 +32,10 @@
     "purescript-precise": "^3.0.1",
     "purescript-prelude": "^4.0.1",
     "purescript-strings": "^4.0.0",
-    "purescript-strongcheck": "^4.1.1",
     "purescript-unicode": "^4.0.1",
     "purescript-validation": "^4.0.0"
+  },
+  "devDependencies": {
+    "purescript-assert": "^4.0.0"
   }
 }

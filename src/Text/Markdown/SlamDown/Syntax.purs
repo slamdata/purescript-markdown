@@ -12,8 +12,6 @@ import Prelude
 import Data.Eq (class Eq1)
 import Data.List as L
 import Data.Ord (class Ord1)
-import Test.StrongCheck.Arbitrary as SCA
-import Test.StrongCheck.Gen as Gen
 import Text.Markdown.SlamDown.Syntax.Block (Block(..), CodeBlockType(..), ListType(..)) as SDB
 import Text.Markdown.SlamDown.Syntax.FormField (class Value, Expr(..), FormField, FormFieldP(..), TextBox(..), TimePrecision(..), getLiteral, getUnevaluated, renderValue, stringValue, transFormField, transTextBox, traverseFormField, traverseTextBox) as SDF
 import Text.Markdown.SlamDown.Syntax.Inline (Inline(..), LinkTarget(..)) as SDI
@@ -36,6 +34,3 @@ derive instance ord1SlamDownP ∷ Ord1 SlamDownP
 
 derive newtype instance semigroupSlamDownP ∷ Semigroup (SlamDownP a)
 derive newtype instance monoidSlamDownP ∷ Monoid (SlamDownP a)
-
-instance arbitrarySlamDownP ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (SlamDownP a) where
-  arbitrary = SlamDown <<< L.fromFoldable <$> Gen.arrayOf SCA.arbitrary

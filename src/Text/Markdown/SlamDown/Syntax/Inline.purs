@@ -9,8 +9,6 @@ import Data.Eq (class Eq1)
 import Data.List as L
 import Data.Maybe as M
 import Data.Ord (class Ord1)
-import Test.StrongCheck.Arbitrary as SCA
-import Test.StrongCheck.Gen as Gen
 import Text.Markdown.SlamDown.Syntax.FormField (FormField)
 
 data Inline a
@@ -46,23 +44,6 @@ derive instance eq1Inline ∷ Eq1 Inline
 derive instance ordInline ∷ Ord a ⇒ Ord (Inline a)
 derive instance ord1Inline ∷ Ord1 Inline
 
--- | Nota bene: this does not generate any recursive structure
-instance arbitraryInline ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (Inline a) where
-  arbitrary = do
-    k ← Gen.chooseInt 0 10
-    case k of
-      0 → Str <$> SCA.arbitrary
-      1 → Entity <$> SCA.arbitrary
-      2 → pure Space
-      3 → pure SoftBreak
-      4 → pure LineBreak
-      5 → Code <$> SCA.arbitrary <*> SCA.arbitrary
-      6 → FormField <$> SCA.arbitrary <*> SCA.arbitrary <*> SCA.arbitrary
-      7 → pure (Emph L.Nil)
-      8 → pure (Strong L.Nil)
-      9 → Link L.Nil <$> SCA.arbitrary
-      _ → Image L.Nil <$> SCA.arbitrary
-
 data LinkTarget
   = InlineLink String
   | ReferenceLink (M.Maybe String)
@@ -73,8 +54,3 @@ derive instance ordLinkTarget ∷ Ord LinkTarget
 instance showLinkTarget ∷ Show LinkTarget where
   show (InlineLink uri) = "(InlineLink " <> show uri <> ")"
   show (ReferenceLink tgt) = "(ReferenceLink " <> show tgt <> ")"
-
-instance arbitraryLinkTarget ∷ SCA.Arbitrary LinkTarget where
-  arbitrary = do
-    b ← SCA.arbitrary
-    if b then InlineLink <$> SCA.arbitrary else ReferenceLink <$> SCA.arbitrary
