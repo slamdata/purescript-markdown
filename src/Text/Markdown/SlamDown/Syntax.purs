@@ -9,33 +9,28 @@ module Text.Markdown.SlamDown.Syntax
 
 import Prelude
 
+import Data.Eq (class Eq1)
 import Data.List as L
-import Test.StrongCheck.Arbitrary as SCA
-import Test.StrongCheck.Gen as Gen
-
+import Data.Ord (class Ord1)
 import Text.Markdown.SlamDown.Syntax.Block (Block(..), CodeBlockType(..), ListType(..)) as SDB
 import Text.Markdown.SlamDown.Syntax.FormField (class Value, Expr(..), FormField, FormFieldP(..), TextBox(..), TimePrecision(..), getLiteral, getUnevaluated, renderValue, stringValue, transFormField, transTextBox, traverseFormField, traverseTextBox) as SDF
 import Text.Markdown.SlamDown.Syntax.Inline (Inline(..), LinkTarget(..)) as SDI
 
 -- | `SlamDownP` is the type of SlamDown abstract syntax trees which take values in `a`.
-data SlamDownP a = SlamDown (L.List (SDB.Block a))
+newtype SlamDownP a = SlamDown (L.List (SDB.Block a))
 
 type SlamDown = SlamDownP String
 
-instance functorSlamDownP ∷ Functor SlamDownP where
-  map f (SlamDown bs) = SlamDown (map f <$> bs)
+derive instance functorSlamDownP ∷ Functor SlamDownP
 
 instance showSlamDownP ∷ (Show a) ⇒ Show (SlamDownP a) where
   show (SlamDown bs) = "(SlamDown " <> show bs <> ")"
 
-derive instance eqSlamDownP ∷ (Eq a, Ord a) ⇒ Eq (SlamDownP a)
-derive instance ordSlamDownP ∷ (Eq a, Ord a) ⇒ Ord (SlamDownP a)
+derive newtype instance eqSlamDownP ∷ Eq a ⇒ Eq (SlamDownP a)
+derive instance eq1SlamDownP ∷ Eq1 SlamDownP
 
-instance semigroupSlamDownP ∷ Semigroup (SlamDownP a) where
-  append (SlamDown bs1) (SlamDown bs2) = SlamDown (bs1 <> bs2)
+derive newtype instance ordSlamDownP ∷ Ord a ⇒ Ord (SlamDownP a)
+derive instance ord1SlamDownP ∷ Ord1 SlamDownP
 
-instance monoidSlamDownP ∷ Monoid (SlamDownP a) where
-  mempty = SlamDown mempty
-
-instance arbitrarySlamDownP ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (SlamDownP a) where
-  arbitrary = SlamDown <<< L.fromFoldable <$> Gen.arrayOf SCA.arbitrary
+derive newtype instance semigroupSlamDownP ∷ Semigroup (SlamDownP a)
+derive newtype instance monoidSlamDownP ∷ Monoid (SlamDownP a)
