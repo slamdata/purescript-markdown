@@ -14,25 +14,16 @@ module Text.Markdown.SlamDown.Syntax.FormField
 
 import Prelude
 
-import Data.Array as A
-import Data.Eq (class Eq1)
+import Data.Eq (class Eq1, eq1)
 import Data.Functor.Compose (Compose(..))
 import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
 import Data.Newtype (unwrap)
-import Data.Ord (class Ord1)
-import Data.Set as Set
+import Data.Ord (class Ord1, compare1)
 import Data.Traversable as TR
-import Data.Tuple (uncurry)
-
-import Partial.Unsafe (unsafePartial)
-
-import Test.StrongCheck.Arbitrary as SCA
-import Test.StrongCheck.Gen as Gen
-
-import Text.Markdown.SlamDown.Syntax.TextBox as TB
-import Text.Markdown.SlamDown.Syntax.Value as Value
+import Text.Markdown.SlamDown.Syntax.TextBox (TextBox(..), TimePrecision(..), transTextBox, traverseTextBox) as TB
+import Text.Markdown.SlamDown.Syntax.Value (class Value, renderValue, stringValue) as Value
 
 data FormFieldP f a
   = TextBox (TB.TextBox (Compose M.Maybe f))
@@ -80,31 +71,39 @@ instance showFormField ∷ (Functor f, Show (f a), Show (TB.TextBox (Compose M.M
       CheckBoxes sel ls → "(CheckBoxes " <> show sel <> " " <> show ls <> ")"
       DropDown sel ls → "(DropDown " <> show sel <> " " <> show ls <> ")"
 
-instance ordFormField ∷ (Functor f, Ord (f a), Ord (TB.TextBox (Compose M.Maybe f)), Eq (TB.TextBox (Compose M.Maybe f)), Ord (f (L.List a)), Ord (f (Set.Set a)), Ord a) ⇒ Ord (FormFieldP f a) where
-  compare =
+instance eq1FormField ∷ Eq1 f ⇒ Eq1 (FormFieldP f) where
+  eq1 = case _, _ of
+    TextBox tb1, TextBox tb2 -> tb1 == tb2
+    RadioButtons sel1 ls1, RadioButtons sel2 ls2 -> sel1 `eq1` sel2 && ls1 `eq1` ls2
+    CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 -> sel1 `eq1` sel2 && ls1 `eq1` ls2
+    DropDown M.Nothing ls1, DropDown M.Nothing ls2 -> ls1 `eq1` ls2
+    DropDown (M.Just sel1) ls1, DropDown (M.Just sel2) ls2 -> sel1 `eq1` sel2 && ls1 `eq1` ls2
+    _, _ -> false
+
+instance eqFormField :: (Eq1 f, Eq a) => Eq (FormFieldP f a) where
+  eq = eq1
+
+instance ord1FormField ∷ Ord1 f ⇒ Ord1 (FormFieldP f) where
+  compare1 =
     case _, _ of
       TextBox tb1, TextBox tb2 → compare tb1 tb2
       TextBox _, _ → LT
       _, TextBox _ → GT
 
-      RadioButtons sel1 ls1, RadioButtons sel2 ls2 → compare sel1 sel2 <> compare ls1 ls2
+      RadioButtons sel1 ls1, RadioButtons sel2 ls2 → compare1 sel1 sel2 <> compare1 ls1 ls2
       RadioButtons _ _, _ → LT
       _, RadioButtons _ _ → GT
 
-      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → compare (Set.fromFoldable <$> sel1) (Set.fromFoldable <$> sel2) <> compare ls1 ls2
+      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → compare1 sel1 sel2 <> compare1 ls1 ls2
       CheckBoxes _ _, _ → LT
       _, CheckBoxes _ _ → GT
 
-      DropDown sel1 ls1, DropDown sel2 ls2 → compare sel1 sel2 <> compare ls1 ls2
+      DropDown M.Nothing ls1, DropDown M.Nothing ls2 → compare1 ls1 ls2
+      DropDown (M.Just sel1) ls1, DropDown (M.Just sel2) ls2 → compare1 sel1 sel2 <> compare1 ls1 ls2
+      _, _ -> EQ
 
-instance eqFormField ∷ (Functor f, Eq (f a), Eq (TB.TextBox (Compose M.Maybe f)), Eq (f (L.List a)), Eq (f (Set.Set a)), Ord a) ⇒ Eq (FormFieldP f a) where
-  eq =
-    case _, _ of
-      TextBox tb1, TextBox tb2 → tb1 == tb2
-      RadioButtons sel1 ls1, RadioButtons sel2 ls2 → sel1 == sel2 && ls1 == ls2
-      CheckBoxes sel1 ls1, CheckBoxes sel2 ls2 → (Set.fromFoldable <$> sel1 == Set.fromFoldable <$> sel2) && ls1 == ls2
-      DropDown sel1 ls1, DropDown sel2 ls2 → sel1 == sel2 && ls1 == ls2
-      _, _ → false
+instance ordFormField :: (Ord1 f, Ord a) => Ord (FormFieldP f a) where
+  compare = compare1
 
 newtype ArbIdentity a = ArbIdentity a
 
@@ -119,15 +118,6 @@ instance functorArbIdentity ∷ Functor ArbIdentity where
   map f (ArbIdentity x) =
     ArbIdentity $ f x
 
-instance arbitraryArbIdentity ∷ (SCA.Arbitrary a) ⇒ SCA.Arbitrary (ArbIdentity a) where
-  arbitrary =
-    ArbIdentity <$>
-      SCA.arbitrary
-
-instance coarbitraryArbIdentity ∷ (SCA.Coarbitrary a) ⇒ SCA.Coarbitrary (ArbIdentity a) where
-  coarbitrary (ArbIdentity x) =
-    SCA.coarbitrary x
-
 newtype ArbCompose f g a = ArbCompose (f (g a))
 
 getArbCompose
@@ -141,141 +131,6 @@ instance functorArbCompose ∷ (Functor f, Functor g) ⇒ Functor (ArbCompose f 
   map f (ArbCompose x) =
     ArbCompose $
       map (map f) x
-
-instance arbitraryArbCompose ∷ (SCA.Arbitrary (f (g a))) ⇒ SCA.Arbitrary (ArbCompose f g a) where
-  arbitrary =
-    ArbCompose <$>
-      SCA.arbitrary
-
-instance coarbitraryArbCompose ∷ (SCA.Coarbitrary (f (g a))) ⇒ SCA.Coarbitrary (ArbCompose f g a) where
-  coarbitrary (ArbCompose t) =
-    SCA.coarbitrary t
-
-unsafeElements ∷ ∀ a. L.List a → Gen.Gen a
-unsafeElements =
-  Gen.elements
-    <$> (unsafePartial M.fromJust <<< L.head)
-    <*> id
-
-instance arbitraryFormField ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (FormFieldP Expr a) where
-  arbitrary = do
-    k ← Gen.chooseInt 0 3
-    case k of
-      0 → TextBox <<< TB.transTextBox getArbCompose <$> SCA.arbitrary
-      1 → do
-        xse ← genExpr $ distinctListOf1 SCA.arbitrary
-        case xse of
-          Literal xs → do
-            x ← Literal <$> unsafeElements xs
-            pure $ RadioButtons x xse
-          Unevaluated e → do
-            x ← Unevaluated <$> genUnevaluated
-            pure $ RadioButtons x xse
-      2 → do
-        xse ← genExpr $ distinctListOf1 SCA.arbitrary
-        case xse of
-          Literal xs → do
-            ys ← Literal <$> distinctListOf (unsafeElements xs)
-            pure $ CheckBoxes ys xse
-          Unevaluated e → do
-            yse ← Unevaluated <$> genUnevaluated
-            pure $ CheckBoxes yse xse
-      _ → do
-        xse ← genExpr $ distinctListOf1 SCA.arbitrary
-        case xse of
-          Literal xs → do
-            mx ← genMaybe $ Literal <$> unsafeElements xs
-            pure $ DropDown mx xse
-          Unevaluated e → do
-            mx ← genMaybe $ Unevaluated <$> genUnevaluated
-            pure $ DropDown mx xse
-
-instance arbitraryFormFieldIdentity ∷ (SCA.Arbitrary a, Eq a) ⇒ SCA.Arbitrary (FormFieldP Identity a) where
-  arbitrary = do
-    k ← Gen.chooseInt 0 3
-    case k of
-      0 → TextBox <<< TB.transTextBox (\(ArbCompose x) → Compose $ map getArbIdentity x) <$> SCA.arbitrary
-      1 → do
-        xs ← distinctListOf1 $ getArbIdentity <$> SCA.arbitrary
-        x ← unsafeElements xs
-        pure $ RadioButtons x $ TR.sequence xs
-      2 → do
-        xs ← map TR.sequence <<< distinctListOf1 $ getArbIdentity <$> SCA.arbitrary
-        ys ← TR.traverse (distinctListOf <<< unsafeElements) xs
-        pure $ CheckBoxes ys xs
-      _ → do
-        xs ← distinctListOf1 $ getArbIdentity <$> SCA.arbitrary
-        mx ← genMaybe $ unsafeElements xs
-        pure $ DropDown mx $ TR.sequence xs
-
-
-genMaybe
-  ∷ ∀ a
-  . Gen.Gen a
-  → Gen.Gen (M.Maybe a)
-genMaybe gen = do
-  b ← SCA.arbitrary
-  if b then M.Just <$> gen else pure M.Nothing
-
-instance coarbitraryFormFieldIdentity ∷ (SCA.Coarbitrary a) ⇒ SCA.Coarbitrary (FormFieldP Identity a) where
-  coarbitrary field =
-    case field of
-      TextBox tb → SCA.coarbitrary $ TB.transTextBox (unwrap >>> map (unwrap >>> ArbIdentity) >>> ArbCompose) tb
-      RadioButtons x xs → \gen → do
-        _← SCA.coarbitrary (ArbIdentity $ unwrap x) gen
-        SCA.coarbitrary (ArbIdentity $ unwrap xs) gen
-      CheckBoxes sel xs → \gen → do
-        _← SCA.coarbitrary (ArbIdentity $ unwrap sel) gen
-        SCA.coarbitrary (ArbIdentity $ unwrap xs) gen
-      DropDown mx xs → \gen → do
-        _← SCA.coarbitrary (ArbIdentity <<< unwrap <$> mx) gen
-        SCA.coarbitrary (ArbIdentity $ unwrap xs) gen
-
-listOf1
-  ∷ ∀ f a
-  . Monad f
-  ⇒ Gen.GenT f a
-  → Gen.GenT f (L.List a)
-listOf1 =
-  map (L.fromFoldable <<< uncurry A.cons)
-    <<< Gen.arrayOf1
-
-listOf
-  ∷ ∀ f a
-  . (Monad f)
-  ⇒ Gen.GenT f a
-  → Gen.GenT f (L.List a)
-listOf =
-  map L.fromFoldable
-    <<< Gen.arrayOf
-
-listOfLength
-  ∷ ∀ f a
-  . (Monad f)
-  ⇒ Int
-  → Gen.GenT f a
-  → Gen.GenT f (L.List a)
-listOfLength i =
-  map L.fromFoldable
-    <<< Gen.vectorOf i
-
-distinctListOf1
-  ∷ ∀ f a
-  . Monad f
-  ⇒ Eq a
-  ⇒ Gen.GenT f a
-  → Gen.GenT f (L.List a)
-distinctListOf1 =
-  map (map L.nub) listOf1
-
-distinctListOf
-  ∷ ∀ f a
-  . Monad f
-  ⇒ Eq a
-  ⇒ Gen.GenT f a
-  → Gen.GenT f (L.List a)
-distinctListOf =
-  map (map L.nub) listOf
 
 data Expr a
   = Literal a
@@ -302,23 +157,7 @@ instance showExpr ∷ (Show a) ⇒ Show (Expr a) where
       Unevaluated e → "(Unevaluated " <> show e <> ")"
 
 derive instance eqExpr ∷ Eq a ⇒ Eq (Expr a)
+derive instance eq1 ∷ Eq1 Expr
+
+derive instance ord1Expr ∷ Ord1 Expr
 derive instance ordExpr ∷ Ord a ⇒ Ord (Expr a)
-
-instance eq1 ∷ Eq1 Expr where
-  eq1 = eq
-
-instance ord1Expr ∷ Ord1 Expr where
-  compare1 = compare
-
-genExpr ∷ ∀ a. Gen.Gen a → Gen.Gen (Expr a)
-genExpr g = do
-  b ← SCA.arbitrary
-  if b then Literal <$> g else Unevaluated <$> genUnevaluated
-
-genUnevaluated ∷ Gen.Gen String
-genUnevaluated = do
-  x ← SCA.arbitrary
-  pure $ " " <> x <> " "
-
-instance arbitraryExpr ∷ (SCA.Arbitrary a) ⇒ SCA.Arbitrary (Expr a) where
-  arbitrary = genExpr SCA.arbitrary

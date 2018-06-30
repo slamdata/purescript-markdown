@@ -14,9 +14,9 @@ import Data.Identity (Identity(..))
 import Data.List as L
 import Data.Maybe as M
 import Data.Enum (fromEnum)
-import Data.Monoid (mempty)
 import Data.Newtype (unwrap)
-import Data.String as S
+import Data.String (Pattern(..), indexOf, joinWith, length, split, stripSuffix) as S
+import Data.String.CodeUnits (fromCharArray) as S
 import Data.Unfoldable as U
 
 import Text.Markdown.SlamDown.Syntax as SD
@@ -174,11 +174,11 @@ prettyPrintTextBox t =
     prettyPrintDefault ∷ SD.TextBox SD.Expr → String
     prettyPrintDefault =
       case _ of
-        SD.PlainText def → prettyPrintExpr id id def
-        SD.Numeric def → prettyPrintExpr id HN.toString def
-        SD.Date def → prettyPrintExpr id prettyPrintDate def
-        SD.Time prec def → prettyPrintExpr id (prettyPrintTime prec) def
-        SD.DateTime prec def → prettyPrintExpr id (prettyPrintDateTime prec) def
+        SD.PlainText def → prettyPrintExpr identity identity def
+        SD.Numeric def → prettyPrintExpr identity HN.toString def
+        SD.Date def → prettyPrintExpr identity prettyPrintDate def
+        SD.Time prec def → prettyPrintExpr identity (prettyPrintTime prec) def
+        SD.DateTime prec def → prettyPrintExpr identity (prettyPrintDateTime prec) def
 
 
 prettyPrintFormElement ∷ ∀ a. (SD.Value a) ⇒ SD.FormField a → String
@@ -200,8 +200,8 @@ prettyPrintFormElement el =
     SD.CheckBoxes (SD.Unevaluated bs) (SD.Unevaluated ls) →
       "[!`" <> bs <> "`] !`" <> ls <> "`"
     SD.DropDown sel lbls →
-      braces (prettyPrintExpr id (A.fromFoldable >>> map SD.renderValue >>> S.joinWith ", ") lbls)
-        <> M.maybe "" (parens <<< prettyPrintExpr id SD.renderValue) sel
+      braces (prettyPrintExpr identity (A.fromFoldable >>> map SD.renderValue >>> S.joinWith ", ") lbls)
+        <> M.maybe "" (parens <<< prettyPrintExpr identity SD.renderValue) sel
     _ → "Unsupported form element"
 
 prettyPrintExpr ∷ ∀ a. (String → String) → (a → String) → SD.Expr a → String

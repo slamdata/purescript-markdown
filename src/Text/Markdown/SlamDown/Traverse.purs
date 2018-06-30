@@ -11,7 +11,6 @@ import Prelude
 
 import Data.Foldable as F
 import Data.Identity as Id
-import Data.Monoid (class Monoid)
 import Data.Newtype (un)
 import Data.Traversable as T
 

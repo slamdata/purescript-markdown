@@ -15,5 +15,5 @@ class (Eq a, Ord a) ⇐ Value a where
     → String
 
 instance valueString ∷ Value String where
-  stringValue = id
-  renderValue = id
+  stringValue = identity
+  renderValue = identity

@@ -10,7 +10,7 @@ module Text.Markdown.SlamDown.Parser.Utils
 import Prelude
 
 import Data.Either (fromRight)
-import Data.String (singleton)
+import Data.String.CodeUnits (singleton)
 import Data.String.Regex as R
 import Data.String.Regex.Flags as RF
 

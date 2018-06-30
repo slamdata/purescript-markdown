@@ -23,7 +23,8 @@ import Data.HugeNum as HN
 import Data.Int as Int
 import Data.List as L
 import Data.Maybe as M
-import Data.String as S
+import Data.String (joinWith, trim) as S
+import Data.String.CodeUnits (fromCharArray, singleton, toCharArray) as S
 import Data.Traversable (traverse)
 import Data.Tuple (Tuple(..), fst, snd)
 import Data.Validation.Semigroup as V
@@ -278,7 +279,7 @@ inlines = L.many inline2 <* PS.eof
         M.Nothing → pure $ Right $ SD.TextBox $ SD.transTextBox (const $ Compose M.Nothing) template
         M.Just _ → do
           PU.skipSpaces
-          mdef ← PC.optionMaybe $ PC.try $ parseTextBox (_ /= ')') (expr id) template
+          mdef ← PC.optionMaybe $ PC.try $ parseTextBox (_ /= ')') (expr identity) template
           case mdef of
             M.Just def → do
               PU.skipSpaces
@@ -386,8 +387,8 @@ inlines = L.many inline2 <* PS.eof
     dropDown ∷ P.Parser String (SD.FormField a)
     dropDown = do
       let item = SD.stringValue <<< S.trim <$> manyOf \c → not $ c `elem` ['{','}',',','!','`','(',')']
-      ls ← PU.braces $ expr id $ (PC.try (PU.skipSpaces *> item)) `PC.sepBy` (PU.skipSpaces *> PS.string ",")
-      sel ← PC.optionMaybe $ PU.skipSpaces *> (PU.parens $ expr id $ item)
+      ls ← PU.braces $ expr identity $ (PC.try (PU.skipSpaces *> item)) `PC.sepBy` (PU.skipSpaces *> PS.string ",")
+      sel ← PC.optionMaybe $ PU.skipSpaces *> (PU.parens $ expr identity $ item)
       pure $ SD.DropDown sel ls
 
   other ∷ P.Parser String (SD.Inline a)
