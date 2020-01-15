@@ -29,7 +29,7 @@
     "purescript-ordered-collections": "^1.0.0",
     "purescript-parsing": "^5.0.1",
     "purescript-partial": "^2.0.0",
-    "purescript-precise": "git@github.com:poorscript/purescript-precise",
+    "purescript-precise": "https://github.com/poorscript/purescript-precise.git",
     "purescript-prelude": "^4.1.1",
     "purescript-strings": "^4.0.0",
     "purescript-unicode": "^4.0.1",
