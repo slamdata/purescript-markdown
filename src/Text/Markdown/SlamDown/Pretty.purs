@@ -103,7 +103,7 @@ prettyPrintInline il =
         star = if r then "*" else" "
       in
         esc l <> star <> " = " <> prettyPrintFormElement e
-      where
+    where
 
       esc s = M.maybe s (const $ "[" <> s <> "]") $ S.indexOf (S.Pattern " ") s
 

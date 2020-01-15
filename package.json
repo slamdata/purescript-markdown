@@ -7,8 +7,11 @@
   },
   "devDependencies": {
     "pulp": "^12.3.0",
-    "purescript": "^0.12.0",
+    "purescript": "^0.13.5",
     "purescript-psa": "^0.6.0",
     "rimraf": "^2.5.4"
+  },
+  "dependencies": {
+    "bower": "^1.8.8"
   }
 }

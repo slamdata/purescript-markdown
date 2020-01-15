@@ -29,8 +29,8 @@
     "purescript-ordered-collections": "^1.0.0",
     "purescript-parsing": "^5.0.1",
     "purescript-partial": "^2.0.0",
-    "purescript-precise": "^3.0.1",
-    "purescript-prelude": "^4.0.1",
+    "purescript-precise": "git@github.com:poorscript/purescript-precise",
+    "purescript-prelude": "^4.1.1",
     "purescript-strings": "^4.0.0",
     "purescript-unicode": "^4.0.1",
     "purescript-validation": "^4.0.0"
